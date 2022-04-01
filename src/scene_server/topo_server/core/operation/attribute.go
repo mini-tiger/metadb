@@ -227,6 +227,7 @@ func (a *attribute) DeleteObjectAttribute(kit *rest.Kit, cond condition.Conditio
 }
 
 func (a *attribute) FindObjectAttributeWithDetail(kit *rest.Kit, cond condition.Condition, modelBizID int64) ([]*metadata.ObjAttDes, error) {
+	// xxx request /api/v3/read/model/attributes
 	attrs, err := a.FindObjectAttribute(kit, cond, modelBizID)
 	if nil != err {
 		blog.ErrorJSON("FindObjectAttribute failed, err: %s, cond: %s", err, cond.ToMapStr())
@@ -246,6 +247,7 @@ func (a *attribute) FindObjectAttributeWithDetail(kit *rest.Kit, cond condition.
 			metadata.GroupFieldObjectID: attribute.ObjectID,
 		})
 	}
+	// xxx request /api/v3/read/model/group
 	grps, err := a.grp.FindObjectGroup(kit, grpCond, modelBizID)
 	if nil != err {
 		blog.ErrorJSON("FindObjectGroup failed, err: %s, grpCond: %s", err, grpCond.ToMapStr())

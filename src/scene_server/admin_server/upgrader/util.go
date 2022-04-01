@@ -14,6 +14,7 @@ package upgrader
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -167,4 +168,30 @@ func Insert(ctx context.Context, db dal.RDB, tableName string, row interface{}, 
 	}
 
 	return nil
+}
+
+func InsertData(ctx context.Context, db dal.RDB, tableName string, row interface{}) (err error) {
+	err = db.Table(tableName).Insert(ctx, row)
+	if err != nil {
+		blog.Errorf("insert error %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// Convert json string to map
+func JsonToMap(jsonStr string) (map[string]interface{}, error) {
+	m := make(map[string]interface{})
+	err := json.Unmarshal([]byte(jsonStr), &m)
+	if err != nil {
+		blog.Errorf("Unmarshal with error: %+v\n", err)
+		return nil, err
+	}
+
+	//for k, v := range m {
+	//	fmt.Printf("%v: %v\n", k, v)
+	//}
+
+	return m, nil
 }

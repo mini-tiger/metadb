@@ -1,46 +1,73 @@
+apps:
+  - name: adminserver
+    port: 60004
+  - name: webserver
+    port: 8090
+  - name: apiserver
+    port: 8080
+  - name: coreservice
+    port: 50009
+  - name: toposerver
+    port: 60002
+  - name: hostserver
+    port: 60001
 
-externalURL: https://bk-cmdb.blueking.domain
 
-
-imagePullPolicy: IfNotPresent
-
-webserver:
-  # dnsPolicy: ClusterFirstWithHostNet
-  # hostNetwork: true
-  dnsPolicy: ClusterFirst
-  hostNetwork: false
-  ingress:
-    enabled: false
-    hosts:
-      - cmdb.bk.com
-    annotations:
-      kubernetes.io/ingress.class: nginx
-      # kubernetes.io/tls-acme: "true"
-    tls:
-  enabled: true
-  image:
-    repository: harbor.dev.21vianet.com/cmdb/cmdb
-    tag: v2
-  replicas: 1
-  port: 8090
-  service:
-    type: "NodePort"
-    ports:
-      - protocol: TCP
-        port: 80
-        targetPort: 8090
-        nodePort: 30311
-    externalPort: 80
-
-  # resources:
-  #  requests:
-  #    memory: 256Mi
-  #    cpu: 100m
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  ## Additional deployment annotations
-  podAnnotations: {}
-
-ApiVersion:
-  Deployment: "apps/v1"
+image:
+  repository: harbor.dev.21vianet.com/cmdb/
+  tag: "2022322_12283"
+#
+#erp:
+#  service:
+#    port: 30012
+#  eureka:
+#    port: 30001
+#    ipAddr: 10.96.0.2
+#    #配置中心
+#  config:
+#    port: 30005
+#    ipAddr: 172.22.50.25
+#  openapi:
+#    port: 30006
+#  apiManager:
+#    port: 30003
+#  apiService:
+#    port:  30004
+env:
+#  suffix: prod
+#  cloudProfile: prod
+#  localProfile: prod
+#  edgeProfile: prod
+  pullPolicy: IfNotPresent
+#  java_opt: -Xmx1024m -Xms1024m
+#  java_opt_lev_2: -Xmx2048m -Xms2048m
+#  java_opt_lev_3: -Xmx3072m -Xms3072m
+#  #openFileBeat: on
+#  #filebeatHost: 10.205.153.38:5044
+#  #filebeatImage: 10.205.153.39:8900/library/filebeat:7.2.0
+#  initContainer: on
+#  initImage: misharbor.dyxnet.com/library/busybox-curl:latest
+#  cm:
+#    cmName: common-config
+#  pvc:
+#    pvName: csi-cephfs-sc
+#    pvcName: erp-log-pvc
+#    volumeMode: Filesystem
+#    storage: 10Gi
+#  pv:
+#    storage: 10Gi
+#    pvName: erp-log-pv
+#    pvPath: /nfs/logs
+#    nfsServer: 10.205.170.181
+#    pvClassName: erp-log
+res:
+  req:
+    mem: 1024Mi
+    cpu: 600m
+  req2:
+    mem: 2048Mi
+  req3:
+    mem: 3072Mi
+  ave:
+    mem: 1024Mi
+    cpu: 1000m

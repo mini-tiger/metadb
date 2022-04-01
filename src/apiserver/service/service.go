@@ -76,7 +76,7 @@ func (s *service) WebServices() []*restful.WebService {
 	if auth.EnableAuthorize() {
 		ws.Filter(s.authFilter(getErrFun))
 	}
-	// s.URLFilterChan 分类请求服务cdddddcd
+	//xxx s.URLFilterChan 分类请求服务
 	ws.Route(ws.POST("/auth/verify").To(s.AuthVerify))
 	ws.Route(ws.GET("/auth/business_list").To(s.GetAnyAuthorizedAppList))
 	ws.Route(ws.POST("/auth/skip_url").To(s.GetUserNoAuthSkipURL))

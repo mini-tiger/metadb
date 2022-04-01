@@ -122,16 +122,19 @@ var ValidMigrationVersionFormat = []*regexp.Regexp{
 
 func ValidateMigrationVersionFormat(version string) error {
 	// only check newer add migration's version
+	//xxx 检查 大版本
 	if util.InStrArr(LegacyMigrationVersion, version) {
 		return nil
 	}
 	match := false
+	// xxx 检查 补丁版本
 	for _, re := range ValidMigrationVersionFormat {
 		if re.MatchString(version) {
 			match = true
 			break
 		}
 	}
+
 	if !match {
 		err := fmt.Errorf(`
 	invalid migration version: %s,

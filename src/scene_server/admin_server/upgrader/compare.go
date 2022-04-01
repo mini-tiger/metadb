@@ -35,6 +35,7 @@ func VersionCmp(version1, version2 string) int {
 		// y > x > v
 		return StringCompare(version1, version2)
 	}
+
 	// legacy compare scheme
 	return StringCompare(version1, version2)
 }
