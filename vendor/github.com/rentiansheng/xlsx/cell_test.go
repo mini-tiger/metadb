@@ -329,19 +329,6 @@ func (l *CellSuite) TestCellTypeFormatHandling(c *C) {
 		c.Assert(val, Equals, testCase.formattedValueOutput)
 	}
 }
-
-func (s *CellSuite) TestIsTime(c *C) {
-	cell := Cell{}
-	isTime := cell.IsTime()
-	c.Assert(isTime, Equals, false)
-	cell.Value = "43221"
-	c.Assert(isTime, Equals, false)
-	cell.NumFmt = "d-mmm-yy"
-	cell.Value = "43221"
-	isTime = cell.IsTime()
-	c.Assert(isTime, Equals, true)
-}
-
 func (s *CellSuite) TestGetTime(c *C) {
 	cell := Cell{}
 	cell.SetFloat(0)

@@ -164,7 +164,7 @@ func DefaultFont() *Font {
 }
 
 func DefaultFill() *Fill {
-	return NewFill("none", "", "")
+	return NewFill("none", "FFFFFFFF", "00000000")
 
 }
 
