@@ -15,11 +15,11 @@ import (
 )
 
 var (
-	rootDir   = "/data/work/go/src/neodata"
+	rootDir   = "/data/work/go/src/configcenter"
 	dockerDir = path.Join(rootDir, "DockerFile")
 	tmpDir    = path.Join(dockerDir, "tmp")
 
-	branch    = "master"
+	branch    = "3.9.39.x"
 	binaryDir = path.Join(rootDir, "src", "bin", "build", branch)
 	//validDir  = map[string]int{"cmdb_adminserver": 60004, "cmdb_webserver": 8090,
 	//	"cmdb_apiserver": 8080, "cmdb_coreservice": 50009, "cmdb_toposerver": 60002, "cmdb_hostserver": 60001,
@@ -28,10 +28,13 @@ var (
 		"cmdb_apiserver": struct{}{}, "cmdb_coreservice": struct{}{}, "cmdb_toposerver": struct{}{}, "cmdb_hostserver": struct{}{},
 	}
 
-	dockerTmp = "Dockerfile_tmp"
-	harbor    = "harbor.dev.21vianet.com/cmdb/"
-	t1        = time.Now()
-	version   = fmt.Sprintf("%d%d%d_%d%d%d", t1.Year(), t1.Month(), t1.Day(), t1.Hour(), t1.Minute(), t1.Second())
+	//dockerTmp = "Dockerfile_tmp"
+	harbor = "harbor.dev.21vianet.com/cmdb/"
+	github = "meta42/"
+	ver    = "latest"
+
+	t1      = time.Now()
+	version = fmt.Sprintf("%d%d%d_%d%d%d", t1.Year(), t1.Month(), t1.Day(), t1.Hour(), t1.Minute(), t1.Second())
 )
 
 // 判断所给路径是否为文件夹
@@ -79,7 +82,7 @@ func main() {
 			if ok {
 				srcDir = path.Join(binaryDir, subDir.Name())
 				destDir = path.Join(tmpDir, "cmdb")
-				log.Printf("===============%s=================\n", srcDir)
+				log.Printf("===============  %s  =================\n", srcDir)
 				log.Printf("copy %s %s\n", srcDir, destDir)
 				err = binaryFileDirCopy(path.Join(binaryDir, subDir.Name()), destDir, true)
 				if err != nil {
@@ -111,6 +114,7 @@ func main() {
 					AdminServer: false,
 					WebServer:   false,
 					AppName:     subDir.Name(),
+					HarborUri:   "",
 				}
 				log.Println("generate run.sh")
 				err = sv.generateShell()
@@ -127,8 +131,14 @@ func main() {
 				if err != nil {
 					log.Fatalln(err)
 				}
-				log.Println("push dockerImage")
+				log.Println("push dockerImage harbor")
 				err = sv.pushDockerImage()
+				if err != nil {
+					log.Fatalln(err)
+				}
+
+				log.Println("push dockerImage github")
+				err = sv.pushDockerHubImage()
 				if err != nil {
 					log.Fatalln(err)
 				}
@@ -170,20 +180,37 @@ type TplVariables struct {
 	WebServer   bool
 	//ExtraCommand1 string
 	//ExtraCommand2 string
-	AppName string
+	AppName   string
+	HarborUri string
 }
 
 func (t *TplVariables) generateDockerImage() error {
 	var cmdstr string
-	log.Printf("%s%s:%s\n", harbor, t.AppName, version)
-	cmdstr = fmt.Sprintf("pushd %s && docker build --no-cache -f Dockerfile -t %s%s:%s . && popd", tmpDir, harbor, t.AppName, version)
+	t.HarborUri = fmt.Sprintf("%s%s:%s", harbor, t.AppName, ver)
+	//log.Printf("%s\n", t.HarborUri)
+	cmdstr = fmt.Sprintf("pushd %s && docker build --no-cache -f Dockerfile -t %s . && popd", tmpDir, t.HarborUri)
 
 	return RunCommand(cmdstr)
 }
 func (t *TplVariables) pushDockerImage() error {
 	var cmdstr string
-	log.Printf("%s%s:%s\n", harbor, t.AppName, version)
-	cmdstr = fmt.Sprintf("docker push %s%s:%s ", harbor, t.AppName, version)
+	//log.Printf("%s\n", t.HarborUri)
+	cmdstr = fmt.Sprintf("docker push %s ", t.HarborUri)
+
+	return RunCommand(cmdstr)
+}
+
+func (t *TplVariables) pushDockerHubImage() error {
+	var cmdstr string
+	githubUri := fmt.Sprintf("%s%s:%s", github, t.AppName, ver)
+
+	//log.Printf("docker tag %s %s\n", t.HarborUri, githubUri)
+
+	_ = RunCommand(fmt.Sprintf("docker tag %s %s", t.HarborUri, githubUri))
+
+	//log.Printf("%s \n", githubUri)
+
+	cmdstr = fmt.Sprintf("docker push %s ", githubUri)
 
 	return RunCommand(cmdstr)
 }

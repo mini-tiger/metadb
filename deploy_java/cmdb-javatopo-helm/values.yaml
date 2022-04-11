@@ -1,16 +1,9 @@
 apps:
-  - name: adminserver
-    port: 60004
-  - name: webserver
-    port: 8090
-  - name: apiserver
-    port: 8080
-  - name: coreservice
-    port: 50009
-  - name: toposerver
-    port: 60002
-  - name: hostserver
-    port: 60001
+  - name: javatopo
+    ports:
+      - 60002
+      - 60003
+
 
 
 image:
