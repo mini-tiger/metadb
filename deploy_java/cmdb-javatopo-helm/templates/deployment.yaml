@@ -28,21 +28,25 @@ spec:
           imagePullPolicy: {{ $pullPolicy }}
           {{- end}}
           ports:
-          { { - range .ports } }
-          { { - with . } }
+          {{- range .ports }}
+            {{- with . }}
           - containerPort: {{ . }}
+          {{- end}}
+            {{- end }}
+          {{- range .ports }}
+            {{- with . }}
           readinessProbe:
             tcpSocket:
-              port: .
+              port: {{ . }}
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             tcpSocket:
-              port: .
+              port: {{ . }}
             initialDelaySeconds: 15
             periodSeconds: 20
           {{- end}}
-          {{- end }}
+            {{- end }}
 ---
 {{- end}}
   {{- end }}

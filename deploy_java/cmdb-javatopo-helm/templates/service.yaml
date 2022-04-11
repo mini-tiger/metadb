@@ -10,12 +10,13 @@ metadata:
     app: {{ .name }}-svc
 spec: 
   ports:
-  { { - range .ports } }
-  { { - with . } }
+  {{- range .ports }}
+    {{- with . }}
   - port: {{ . }}
     targetPort: {{ . }}
+    name: {{ printf "port-%f"  . | replace ".000000" "" }}
   {{- end}}
-  {{- end}}
+    {{- end}}
   type: NodePort
   selector:
     app: {{ .name }}
