@@ -14,3 +14,4 @@ src/configcenter/DockerFile/tmp/*
 /src/scene_server/host_server/go_build_host_go
 /src/source_controller/coreservice/go_build_core
 *.pid
+*.jar
