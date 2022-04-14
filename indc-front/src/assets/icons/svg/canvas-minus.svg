@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>-</title>
+    <g id="页面-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="应用中心-CMDB-切图" transform="translate(-575.000000, -487.000000)">
+            <g id="-" transform="translate(575.000000, 487.000000)">
+                <circle id="Circle-Copy" stroke="#595AEC" stroke-width="1.5" cx="8" cy="8" r="7.25"></circle>
+                <path d="M8.80014998,7.20015 L11.2500937,7.20089997 C11.6642555,7.20089997 12,7.53667592 12,7.95087654 L12,8.05062342 C12,8.46482404 11.6642555,8.80059998 11.2500937,8.80059998 L8.80014998,8.80059998 L7.20059993,8.79985 L4.74990626,8.79985 C4.33574447,8.79985 4,8.46407406 4,8.04987344 L4,7.95012656 C4,7.53592594 4.33574447,7.20015 4.74990626,7.20015 L7.20059993,7.20015 L8.80014998,7.20015 Z" id="路径" fill="#595AEC"></path>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -1,0 +1,38 @@
+$base-color: #302e6d;
+$button-cancel: #e4e4fc;
+$main-color: #595aec;
+$asist-color: #8f8ff6;
+$menu-color: #ededfd;
+$bg-color: #f5f6fa;
+$danger-color: #fa4d05;
+$blue-color: #0054fe;
+$yellow-color: #ffba34;
+$green-color: #52af86;
+$deep-border-color: #b8b8d5;
+$shallow-border-color: #ebebf1;
+//文字颜色
+$main-text-color: #302e6d;
+$deep-text-color: #5c5c8d;
+$gray-text-color: #a1a1c3;
+$blue-text-color: #595aec;
+$shallow-text-color: #b8b8c5;
+$btn-text-color: #fff;
+:export {
+  baseColor: $base-color;
+  mainColor: $main-color;
+  asistColor: $asist-color;
+  menuColor: $menu-color;
+  bgColor: $bg-color;
+  dangerColor: $danger-color;
+  blueColor: $blue-color;
+  yellowColor: $yellow-color;
+  greenColor: $green-color;
+  deepBorderColor: $deep-border-color;
+  shallowBorderColor: $shallow-border-color;
+  mainTextColor: $main-text-color;
+  deepTextColor: $deep-text-color;
+  grayTextColor: $gray-text-color;
+  blueTextColor: $blue-text-color;
+  shallowTextColor: $shallow-text-color;
+  btnTextColor: $btn-text-color;
+}

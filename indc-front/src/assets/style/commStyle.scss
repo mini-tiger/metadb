@@ -1,0 +1,147 @@
+//查询条件部分
+.div-box-form{
+  box-sizing: border-box;
+  padding: 0 20px 20px 20px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  margin-bottom: 10px;
+
+}
+//表格部分
+.div-box-table {
+  padding: 0 10px 10px 10px;
+  background: #FFFFFF;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+
+//右上角按钮占位框
+//.box-absolute-button{
+//  height: 50px;
+//}
+
+//右上角按钮位置
+.absolute-button{
+  height: 46px;
+  position: absolute;
+  right: 10px;
+  top: 50px;
+  display: flex;
+  align-items: center;
+  .el-button{
+    margin-left: 10px;
+  }
+}
+
+//表格中操作列
+//新增
+.el-tooltip .table-add{
+  font-size: 12px;
+  font-weight: 500;
+  color: #595AEC;
+  margin-right: 15px;
+  cursor: pointer;
+}
+//查看
+.el-tooltip .table-look{
+  font-size: 12px;
+  font-weight: 500;
+  color: #595AEC;
+  margin-right: 15px;
+  cursor: pointer;
+}
+//编辑
+.el-tooltip .table-modify{
+  font-size: 12px;
+  font-weight: 500;
+  color: #595AEC;
+  margin-right: 15px;
+  cursor: pointer;
+}
+//停用 启用
+.el-tooltip .table-stop{
+  font-size: 12px;
+  font-weight: 500;
+  color: #595AEC;
+  margin-right: 15px;
+  cursor: pointer;
+}
+//关联
+.el-tooltip .table-relevance{
+  font-size: 12px;
+  font-weight: 500;
+  color: #595AEC;
+  margin-right: 15px;
+  cursor: pointer;
+}
+//已关联
+.el-tooltip .table-be-relevance{
+  font-size: 12px;
+  font-weight: 500;
+  color: #302E6D;
+  margin-right: 15px;
+  cursor: pointer;
+}
+//删除
+.el-tooltip .table-delete{
+  font-size: 12px;
+  font-weight: 500;
+  color: #FA4D05;
+  margin-right: 15px;
+  cursor: pointer;
+}
+.el-tooltip .table-default{
+  font-size: 12px;
+  font-weight: 500;
+  color: #302E6D;
+  margin-right: 15px;
+  cursor: pointer;
+}
+.el-tooltip span:nth-last-child(1){
+  margin-right: 0 !important;
+}
+
+//drawer样式
+
+.el-drawer__title{
+  color: #302e6d;
+  font-size: 18px;
+}
+.el-drawer__header{
+  margin-bottom: 0 !important;
+  height: 60px;
+  line-height: 60px;
+  padding-top: 0 !important;
+  padding-left: 20px;
+  border-bottom: 1px #F3F3F3 solid;
+}
+.el-drawer__body{
+  padding: 30px 20px 0 20px !important;
+  box-sizing: border-box;
+}
+.el-drawer__footer{
+  height: 70px;
+  //line-height: 70px;
+  border-top: 1px #F3F3F3 solid;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+
+.drawerFooter{
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  button{
+    margin-left: 20px;
+  }
+}
+
+}
+//数量是否为0
+span.use-is-zero {
+  color: #302e6d;
+}
+span.use-is-noZero {
+  color: #595AEC;
+}
