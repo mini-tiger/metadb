@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Rectangle_4_@1x</title>
+    <g id="页面-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="应用中心-CMDB-模型-CI模型-模型详情-模型字段" transform="translate(-1394.000000, -311.000000)" fill="#A1A1C3">
+            <g id="CI模型" transform="translate(250.000000, 100.000000)">
+                <g id="内容" transform="translate(0.000000, 130.000000)">
+                    <g id="编组-9" transform="translate(10.000000, 12.000000)">
+                        <g id="编组-14" transform="translate(0.000000, 57.000000)">
+                            <g id="编组-26" transform="translate(1134.000000, 12.000000)">
+                                <path d="M5.14621326,8.33955402 C4.95144536,8.15193676 4.95144536,7.84882523 5.14621326,7.66072066 L9.76870479,3.20371425 C10.0498697,2.93227837 10.5073246,2.93227837 10.788989,3.20371425 C11.0701539,3.47515013 11.0701539,3.9156852 10.788989,4.18712108 L6.83470115,8.000381 L10.788989,11.8126663 C11.0701539,12.0845895 11.0701539,12.5251245 10.788989,12.7965604 C10.5073246,13.0679963 10.0498697,13.0679963 9.76870479,12.7965604 L5.14621326,8.33955402 Z" id="Arrow" transform="translate(8.000000, 8.000137) rotate(-90.000000) translate(-8.000000, -8.000137) "></path>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

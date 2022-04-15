@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Rectangle 2</title>
+    <defs>
+        <linearGradient x1="34.49256%" y1="50%" x2="100%" y2="50%" id="linearGradient-1">
+            <stop stop-color="#F5F6FA" offset="0%"></stop>
+            <stop stop-color="#CECFFA" stop-opacity="0.299688593" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="页面-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="应用中心-CMDB-模型-CI模型-切icon" transform="translate(-218.000000, -73.000000)">
+            <g id="Left" transform="translate(218.000000, 73.000000)">
+                <circle id="Avatar" stroke="url(#linearGradient-1)" stroke-width="2" fill="#FFFFFF" transform="translate(12.000000, 12.000000) scale(-1, 1) translate(-12.000000, -12.000000) " cx="12" cy="12" r="8"></circle>
+                <path d="M10.4605194,15 C10.2061816,15 10,14.8003693 10,14.5291901 L10,9.47080994 C10,9.21078879 10.209024,9 10.4605194,9 L10.7394806,9 C10.9938184,9 11.2,9.19963074 11.2,9.47080994 L11.2,13.8 L15.5089948,13.8 C15.7801695,13.8 16,14.0313721 16,14.301955 L16,14.498045 C16,14.7752671 15.7721195,15 15.5089948,15 L10.4605194,15 Z" id="Arrow" fill="#595AEC" transform="translate(13.000000, 12.000000) rotate(-315.000000) translate(-13.000000, -12.000000) "></path>
+            </g>
+        </g>
+    </g>
+</svg>

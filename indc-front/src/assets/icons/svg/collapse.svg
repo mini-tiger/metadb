@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="44px" height="20px" viewBox="0 0 44 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>矩形@1x</title>
+    <defs>
+        <linearGradient x1="-52.0919671%" y1="50%" x2="100%" y2="50%" id="linearGradient-1">
+            <stop stop-color="#F5F6FA" offset="0%"></stop>
+            <stop stop-color="#F5F6FA" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="页面-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="应用中心-CMDB-切图" transform="translate(-184.000000, -562.000000)">
+            <g id="编组" transform="translate(184.000000, 562.000000)">
+                <rect id="矩形" stroke="url(#linearGradient-1)" stroke-width="2" fill="#FFFFFF" x="1" y="1" width="42" height="18" rx="8"></rect>
+                <path d="M18.7963181,16 C18.4238356,16 18.1110848,15.7452859 18.0240753,15.3970207 C18.0083894,15.3342721 18,15.2697647 18,15.2036819 L18,8.79631805 C18,8.39035407 18.3025635,8.05534253 18.699044,8.00620445 L18.8,8 C19.2418278,8 19.6,8.36453152 19.6,8.79631805 L19.6,14.4 L25.2036819,14.4 C25.6096459,14.4 25.9446575,14.7025635 25.9937956,15.099044 L26,15.2 C26,15.6418278 25.6354685,16 25.2036819,16 L18.7963181,16 Z" id="Arrow" fill="#595AEC" transform="translate(22.000000, 12.000000) rotate(135.000000) translate(-22.000000, -12.000000) "></path>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32px" height="32px" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Rectangle 2@1x</title>
+    <defs>
+        <circle id="path-1" cx="16" cy="16" r="14"></circle>
+        <filter x="-23.2%" y="-19.6%" width="146.4%" height="146.4%" filterUnits="objectBoundingBox" id="filter-2">
+            <feOffset dx="0" dy="1" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+            <feGaussianBlur stdDeviation="2" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+            <feColorMatrix values="0 0 0 0 0.360784314   0 0 0 0 0.419607843   0 0 0 0 0.752941176  0 0 0 0.2 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+        </filter>
+    </defs>
+    <g id="页面-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="应用中心-CMDB-模型-CI模型-切icon" transform="translate(-9.000000, -311.000000)">
+            <g id="左侧导航" transform="translate(0.000000, 60.000000)">
+                <g id="报表" transform="translate(0.000000, 251.000000)">
+                    <g transform="translate(9.000000, 0.000000)">
+                        <g id="编组-19"></g>
+                        <g id="Avatar">
+                            <use fill="black" fill-opacity="1" filter="url(#filter-2)" xlink:href="#path-1"></use>
+                            <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-1"></use>
+                        </g>
+                        <g id="Group-1004" transform="translate(7.000000, 7.000000)">
+                            <path d="M0,0 L18,0 L18,18 L0,18 L0,0 Z" id="Rectangle-2" fill="#595AEC" opacity="0"></path>
+                            <g id="Group-1003" transform="translate(3.000146, 2.250000)" stroke="#595AEC" stroke-dasharray="0,0" stroke-width="1.20000005">
+                                <path d="M2,0 L9.25,0 C10.3545695,-2.02906125e-16 11.25,0.8954305 11.25,2 L11.25,11.5 C11.25,12.6045695 10.3545695,13.5 9.25,13.5 L2,13.5 C0.8954305,13.5 5.7935996e-16,12.6045695 0,11.5 L0,2 C-1.3527075e-16,0.8954305 0.8954305,2.02906125e-16 2,0 Z" id="Rectangle-148"></path>
+                                <line x1="2.26179245" y1="3.80621338" x2="5.9882074" y2="3.80621338" id="Line-2" stroke-linecap="round"></line>
+                                <line x1="2.26650943" y1="6.80625" x2="7.48349071" y2="6.80625" id="Line-3" stroke-linecap="round"></line>
+                                <line x1="2.27122642" y1="9.80628662" x2="8.97877358" y2="9.80628662" id="Line-4" stroke-linecap="round"></line>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

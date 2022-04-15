@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>right</title>
+    <defs>
+        <linearGradient x1="34.49256%" y1="50%" x2="100%" y2="50%" id="linearGradient-1">
+            <stop stop-color="#F5F6FA" offset="0%"></stop>
+            <stop stop-color="#CECFFA" stop-opacity="0.299688593" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="页面-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="应用中心-CMDB-模型-CI模型-切icon" transform="translate(-218.000000, -73.000000)">
+            <g id="right" transform="translate(218.000000, 73.000000)">
+                <circle id="Avatar" stroke="url(#linearGradient-1)" stroke-width="2" fill="#FFFFFF" transform="translate(12.000000, 12.000000) scale(-1, 1) translate(-12.000000, -12.000000) " cx="12" cy="12" r="8"></circle>
+                <path d="M8.46051941,15 C8.20618156,15 8,14.8003693 8,14.5291901 L8,9.47080994 C8,9.21078879 8.20902405,9 8.46051941,9 L8.73948059,9 C8.99381844,9 9.2,9.19963074 9.2,9.47080994 L9.2,13.8 L13.5089948,13.8 C13.7801695,13.8 14,14.0313721 14,14.301955 L14,14.498045 C14,14.7752671 13.7721195,15 13.5089948,15 L8.46051941,15 Z" id="Arrow" fill="#595AEC" transform="translate(11.000000, 12.000000) scale(-1, 1) rotate(-315.000000) translate(-11.000000, -12.000000) "></path>
+            </g>
+        </g>
+    </g>
+</svg>
