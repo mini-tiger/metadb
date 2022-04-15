@@ -1,0 +1,25 @@
+{{- range .Values.apps }}
+  {{- with . }}
+---
+
+apiVersion: v1
+kind: Service
+metadata: 
+  name: {{ .name }}-svc
+  labels: 
+    app: {{ .name }}-svc
+spec: 
+  ports:
+  {{- range .ports }}
+    {{- with . }}
+  - port: {{ . }}
+    targetPort: {{ . }}
+    name: {{ printf "port-%f"  . | replace ".000000" "" }}
+  {{- end}}
+    {{- end}}
+  type: NodePort
+  selector:
+    app: {{ .name }}
+---
+{{- end}}
+  {{- end}}

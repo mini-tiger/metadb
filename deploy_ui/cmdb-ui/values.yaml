@@ -1,0 +1,27 @@
+apps:
+  - name: ui
+    ports:
+      - 8080
+
+
+
+image:
+  repository: harbor.dev.21vianet.com/cmdb/
+#  tag: "2022322_12283"
+  tag: "latest"
+
+env:
+
+#  pullPolicy: IfNotPresent
+  pullPolicy: Always
+#res:
+#  req:
+#    mem: 1024Mi
+#    cpu: 600m
+#  req2:
+#    mem: 2048Mi
+#  req3:
+#    mem: 3072Mi
+#  ave:
+#    mem: 1024Mi
+#    cpu: 1000m

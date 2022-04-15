@@ -1,0 +1,52 @@
+---
+{{ $repository := .Values.image.repository}}
+{{ $tag := .Values.image.tag }}
+{{ $pullPolicy := .Values.env.pullPolicy }}
+
+{{- range .Values.apps }}
+  {{- with . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+  labels:
+    app:  {{ .name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app:  {{ .name }}
+  template:
+    metadata:
+      labels:
+        app:  {{ .name }}
+    spec:
+      containers:
+        - name:  {{ .name }}
+          image: {{ $repository }}cmdb_{{ .name}}:{{ $tag }}
+          {{- if $pullPolicy }}
+          imagePullPolicy: {{ $pullPolicy }}
+          {{- end}}
+          ports:
+          {{- range .ports }}
+            {{- with . }}
+          - containerPort: {{ . }}
+          {{- end}}
+            {{- end }}
+          {{- range .ports }}
+            {{- with . }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ . }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: {{ . }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          {{- end}}
+            {{- end }}
+---
+{{- end}}
+  {{- end }}
