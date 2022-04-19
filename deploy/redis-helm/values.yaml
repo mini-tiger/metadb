@@ -165,9 +165,11 @@ master:
   ## e.g:
   ## extraFlags:
   ##  - "--maxmemory-policy volatile-ttl"
-  ##  - "--repl-backlog-size 1024mb"
+  ##  - "--repl0-backlog-size 1024mb"
   ##
-  extraFlags: []
+  extraFlags:
+     - --notify-keyspace-events "KEA"
+
   ## @param master.extraEnvVars Array with extra environment variables to add to Redis&trade; master nodes
   ## e.g:
   ## extraEnvVars:
