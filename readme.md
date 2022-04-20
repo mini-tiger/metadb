@@ -6,6 +6,10 @@ METADB提供了自定义模型管理，用户可以实现自定义的空间关�
 
 
 
+## 架构设计
+
+![image](resources/images/Architecture.png)
+
 ## Overview
 
 - [接口文档](docs/apidocs.md)
@@ -18,8 +22,8 @@ METADB提供了自定义模型管理，用户可以实现自定义的空间关�
 
 
 
-
 ## Contributing
+
 如果你有好的意见或建议，欢迎给我们提 Issues 或 Pull Requests，为METADB贡献力量。
 
 
