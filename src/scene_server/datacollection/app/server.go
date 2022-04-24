@@ -149,12 +149,13 @@ func NewDataCollection(ctx context.Context, op *options.ServerOption) (*DataColl
 	// new DataCollection instance.
 	newDataCollection := &DataCollection{ctx: ctx}
 
-	engine, err := backbone.NewBackbone(ctx, &backbone.BackboneParameter{
-		ConfigUpdate: newDataCollection.OnHostConfigUpdate,
-		ConfigPath:   op.ServConf.ExConfig,
-		Regdiscv:     op.ServConf.RegDiscover,
-		SrvInfo:      svrInfo,
-	})
+	//engine, err := backbone.NewBackbone(ctx, &backbone.BackboneParameter{
+	//	ConfigUpdate: newDataCollection.OnHostConfigUpdate,
+	//	ConfigPath:   op.ServConf.ExConfig,
+	//	Regdiscv:     op.ServConf.RegDiscover,
+	//	SrvInfo:      svrInfo,
+	//})
+	engine := &backbone.Engine{}
 	if err != nil {
 		return nil, fmt.Errorf("build backbone, %+v", err)
 	}

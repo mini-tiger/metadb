@@ -8,7 +8,7 @@ python init.py --discovery zookeeper:2181 --database cmdb --redis_ip redis-maste
 cd /data/cmdb/cmdb_adminserver/configures/
 
 #sed -i 's/opensource/skip-login/g' common.conf
-sed -i 's/opensource/skip-login/g' common.yaml
+#sed -i 's/opensource/skip-login/g' common.yaml
 {{end}}
 
 # start cmdb

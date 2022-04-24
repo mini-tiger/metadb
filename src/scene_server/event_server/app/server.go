@@ -24,7 +24,6 @@ import (
 	cc "configcenter/src/common/backbone/configcenter"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/errors"
-	"configcenter/src/common/types"
 	"configcenter/src/scene_server/event_server/app/options"
 	"configcenter/src/scene_server/event_server/distribution"
 	"configcenter/src/scene_server/event_server/identifier"
@@ -79,24 +78,26 @@ type EventServer struct {
 // NewEventServer creates a new EventServer object.
 func NewEventServer(ctx context.Context, op *options.ServerOption) (*EventServer, error) {
 	// build server info.
-	svrInfo, err := types.NewServerInfo(op.ServConf)
-	if err != nil {
-		return nil, fmt.Errorf("build server info, %+v", err)
-	}
+	//svrInfo, err := types.NewServerInfo(op.ServConf)
+	//if err != nil {
+	//	return nil, fmt.Errorf("build server info, %+v", err)
+	//}
 
 	// new EventServer instance.
 	newEventServer := &EventServer{ctx: ctx}
 
-	engine, err := backbone.NewBackbone(ctx, &backbone.BackboneParameter{
-		ConfigUpdate: newEventServer.OnHostConfigUpdate,
-		ConfigPath:   op.ServConf.ExConfig,
-		Regdiscv:     op.ServConf.RegDiscover,
-		SrvInfo:      svrInfo,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("build backbone, %+v", err)
-	}
+	//engine, err := backbone.NewBackbone(ctx, &backbone.BackboneParameter{
+	//	ConfigUpdate: newEventServer.OnHostConfigUpdate,
+	//	ConfigPath:   op.ServConf.ExConfig,
+	//	Regdiscv:     op.ServConf.RegDiscover,
+	//	SrvInfo:      svrInfo,
+	//})
+	//
+	//if err != nil {
+	//	return nil, fmt.Errorf("build backbone, %+v", err)
+	//}
 
+	engine := &backbone.Engine{}
 	// set global cc errors.
 	errors.SetGlobalCCError(engine.CCErr)
 

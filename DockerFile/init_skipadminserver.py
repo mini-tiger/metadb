@@ -16,7 +16,8 @@ def generate_config_file(
         rd_server_v, db_name_v, redis_ip_v, redis_port_v,
         redis_pass_v, sentinel_pass_v, mongo_ip_v, mongo_port_v, mongo_user_v, mongo_pass_v, rs_name, user_info,
         cc_url_v, paas_url_v, full_text_search, es_url_v, es_user_v, es_pass_v, auth_address, auth_app_code,
-        auth_app_secret, auth_enabled, auth_scheme, auth_sync_workers, auth_sync_interval_minutes, log_level, register_ip,
+        auth_app_secret, auth_enabled, auth_scheme, auth_sync_workers, auth_sync_interval_minutes, log_level,
+        register_ip,
         enable_cryptor_v, secret_key_url_v, secrets_addrs_v, secrets_token_v, secrets_project_v, secrets_env_v
 ):
     output = os.getcwd() + "/cmdb_adminserver/configures/"
@@ -49,19 +50,17 @@ def generate_config_file(
         full_text_search=full_text_search,
         rs_name=rs_name,
         user_info=user_info,
-        enable_cryptor = enable_cryptor_v,
-        secret_key_url = secret_key_url_v,
-        secrets_addrs = secrets_addrs_v,
-        secrets_token = secrets_token_v,
-        secrets_project = secrets_project_v,
-        secrets_env = secrets_env_v,
+        enable_cryptor=enable_cryptor_v,
+        secret_key_url=secret_key_url_v,
+        secrets_addrs=secrets_addrs_v,
+        secrets_token=secrets_token_v,
+        secrets_project=secrets_project_v,
+        secrets_env=secrets_env_v,
     )
     if not os.path.exists(output):
         os.mkdir(output)
 
-
-
-    #redis.yaml
+    # redis.yaml
     redis_file_template_str = '''
 #redis:
 #  host: 127.0.0.1:6379
@@ -188,7 +187,7 @@ watch:
 #    agentAppUrl: http://127.0.0.1/console/?app=bk_agent_setup
 #    authscheme: internal
 #  login:
-#    version: opensource
+#    version: skip-login
 #operationServer:
 #  timer:
 #    spec: 00:30
@@ -313,7 +312,7 @@ monitor:
     '''
 
     template = FileTemplate(common_file_template_str)
-    loginVersion = 'opensource'
+    loginVersion = 'skip-login'
     if auth_enabled == "true":
         loginVersion = 'blueking'
     result = template.substitute(loginVersion=loginVersion, **context)
@@ -367,7 +366,7 @@ monitor:
 
 # 配置中心
 configServer:
-  addrs: $rd_server
+  addrs:
   usr:
   pwd:
 # 注册中心
@@ -391,38 +390,43 @@ language:
     with open(output + "migrate.yaml", 'w') as tmp_file:
         tmp_file.write(result)
 
+
 def update_start_script(rd_server, server_ports, enable_auth, log_level, register_ip, enable_cryptor):
-    list_dirs = os.walk(os.getcwd()+"/")
+    list_dirs = os.walk(os.getcwd() + "/")
+    print(rd_server)
     for root, dirs, _ in list_dirs:
+
         for d in dirs:
             if not d.startswith("cmdb_"):
                 continue
 
             if d == "cmdb_adminserver":
-                if os.path.exists(root+d+"/init_db.sh"):
+                if os.path.exists(root + d + "/init_db.sh"):
                     shutil.copy(root + d + "/init_db.sh", os.getcwd() + "/init_db.sh")
 
             target_file = root + d + "/start.sh"
-            if not os.path.exists(target_file) or not os.path.exists(root+d + "/template.sh.start"):
+            if not os.path.exists(target_file) or not os.path.exists(root + d + "/template.sh.start"):
                 continue
 
             # Read in the file
-            with open(root+d + "/template.sh.start", 'r') as template_file:
+            with open(root + d + "/template.sh.start", 'r') as template_file:
                 filedata = template_file.read()
                 # Replace the target string
                 filedata = filedata.replace('cmdb-name-placeholder', d)
                 filedata = filedata.replace('cmdb-port-placeholder', str(server_ports.get(d, 9999)))
                 if d == "cmdb_adminserver":
                     filedata = filedata.replace('rd_server_placeholder', "configures/migrate.yaml")
-                    filedata = filedata.replace('regdiscv', "config")
+                    filedata = filedata.replace('register', "config")
                 else:
                     filedata = filedata.replace('rd_server_placeholder', rd_server)
 
                 extend_flag = ''
-                if d in ['cmdb_apiserver', 'cmdb_hostserver', 'cmdb_datacollection', 'cmdb_procserver', 'cmdb_toposerver', 'cmdb_eventserver', 'cmdb_operationserver', 'cmdb_cloudserver', 'cmdb_authserver']:
+                if d in ['cmdb_apiserver', 'cmdb_hostserver', 'cmdb_datacollection', 'cmdb_procserver',
+                         'cmdb_toposerver', 'cmdb_eventserver', 'cmdb_operationserver', 'cmdb_cloudserver',
+                         'cmdb_authserver']:
                     extend_flag += ' --enable-auth=%s ' % enable_auth
                 if d in ['cmdb_cloudserver']:
-                     extend_flag += ' --enable_cryptor=%s ' % enable_cryptor
+                    extend_flag += ' --enable_cryptor=%s ' % enable_cryptor
                 if register_ip != '':
                     extend_flag += ' --register-ip=%s ' % register_ip
                 filedata = filedata.replace('extend_flag_placeholder', extend_flag)
@@ -495,7 +499,8 @@ def main(argv):
         "mongo_user=", "mongo_pass=", "blueking_cmdb_url=", "user_info=",
         "blueking_paas_url=", "listen_port=", "es_url=", "es_user=", "es_pass=", "auth_address=",
         "auth_app_code=", "auth_app_secret=", "auth_enabled=",
-        "auth_scheme=", "auth_sync_workers=", "auth_sync_interval_minutes=", "full_text_search=", "log_level=", "register_ip=",
+        "auth_scheme=", "auth_sync_workers=", "auth_sync_interval_minutes=", "full_text_search=", "log_level=",
+        "register_ip=",
         "enable_cryptor=", "secret_key_url=", "secrets_addrs=", "secrets_token=", "secrets_project=", "secrets_env="
     ]
     usage = '''
@@ -580,9 +585,9 @@ def main(argv):
         if opt in ('-h', '--help'):
             print(usage)
             sys.exit()
-        elif opt in ("-d", "--discovery"):
-            rd_server = arg
-            print('rd_server:', rd_server)
+        # elif opt in ("-d", "--discovery"):
+        #     rd_server = arg
+        #     print('rd_server:', rd_server)
         elif opt in ("-D", "--database"):
             db_name = arg
             print('database:', db_name)
@@ -646,7 +651,7 @@ def main(argv):
         elif opt in ("--full_text_search",):
             full_text_search = arg
             print('full_text_search:', full_text_search)
-        elif opt in("-es","--es_url",):
+        elif opt in ("-es", "--es_url",):
             es_url = arg
             print('es_url:', es_url)
         elif opt in ("--es_user",):
@@ -655,37 +660,37 @@ def main(argv):
         elif opt in ("--es_pass",):
             es_pass = arg
             print('es_pass:', es_pass)
-        elif opt in("-v","--log_level",):
+        elif opt in ("-v", "--log_level",):
             log_level = arg
             print('log_level:', log_level)
-        elif opt in("--register_ip",):
+        elif opt in ("--register_ip",):
             register_ip = arg
             print('register_ip:', register_ip)
-        elif opt in("--user_info",):
+        elif opt in ("--user_info",):
             user_info = arg
             print('user_info:', user_info)
-        elif opt in("--enable_cryptor",):
+        elif opt in ("--enable_cryptor",):
             enable_cryptor = arg
             print('enable_cryptor:', enable_cryptor)
-        elif opt in("--secret_key_url",):
+        elif opt in ("--secret_key_url",):
             secret_key_url = arg
             print('secret_key_url:', secret_key_url)
-        elif opt in("--secrets_addrs",):
+        elif opt in ("--secrets_addrs",):
             secrets_addrs = arg
             print('secrets_addrs:', secrets_addrs)
-        elif opt in("--secrets_token",):
+        elif opt in ("--secrets_token",):
             secrets_token = arg
             print('secrets_token:', secrets_token)
-        elif opt in("--secrets_project",):
+        elif opt in ("--secrets_project",):
             secrets_project = arg
             print('secrets_project:', secrets_project)
-        elif opt in("--secrets_env",):
+        elif opt in ("--secrets_env",):
             secrets_env = arg
             print('secrets_env:', secrets_env)
 
-    if 0 == len(rd_server):
-        print('please input the ZooKeeper address, eg:127.0.0.1:2181')
-        sys.exit()
+    # if 0 == len(rd_server):
+    #     print('please input the ZooKeeper address, eg:127.0.0.1:2181')
+    #     sys.exit()
     if 0 == len(db_name):
         print('please input the database name, eg:cmdb')
         sys.exit()
@@ -724,13 +729,15 @@ def main(argv):
         print('full_text_search can only be off or on')
         sys.exit()
     if full_text_search == "on":
-        if not(es_url.startswith("http://") or es_url.startswith("https://")) :
+        if not (es_url.startswith("http://") or es_url.startswith("https://")):
             print('es url not start with http:// or https://')
             sys.exit()
 
     if enable_cryptor == "true":
-        if len(secret_key_url) == 0 or len(secrets_addrs) == 0 or len(secrets_token) == 0 or len(secrets_project) == 0 or len(secrets_env) == 0:
-            print('secret_key_url, secrets_addrs, secrets_token, secrets_project, secrets_env must be set when enable_cryptor is true')
+        if len(secret_key_url) == 0 or len(secrets_addrs) == 0 or len(secrets_token) == 0 or len(
+                secrets_project) == 0 or len(secrets_env) == 0:
+            print(
+                'secret_key_url, secrets_addrs, secrets_token, secrets_project, secrets_env must be set when enable_cryptor is true')
             sys.exit()
 
     if auth["auth_scheme"] not in ["internal", "iam"]:
@@ -756,9 +763,10 @@ def main(argv):
 
     availableLogLevel = [str(i) for i in range(0, 10)]
     if log_level not in availableLogLevel:
-        print("available log_level value are: %s" %  availableLogLevel)
+        print("available log_level value are: %s" % availableLogLevel)
         sys.exit()
-
+    rd_server = "%s:%s:0:%s" % (redis_ip,redis_port,redis_pass)
+    # print(rd_server)
     # generate_config_file(
     #     rd_server_v=rd_server,
     #     db_name_v=db_name,
@@ -767,29 +775,29 @@ def main(argv):
     #     redis_pass_v=redis_pass,
     #     sentinel_pass_v=sentinel_pass,
     #     mongo_ip_v=mongo_ip,
-        # mongo_port_v=mongo_port,
-        # mongo_user_v=mongo_user,
-        # mongo_pass_v=mongo_pass,
-        # rs_name=rs_name,
-        # cc_url_v=cc_url,
-        # paas_url_v=paas_url,
-        # full_text_search=full_text_search,
-        # es_url_v=es_url,
-        # es_user_v=es_user,
-        # es_pass_v=es_pass,
+    #     mongo_port_v=mongo_port,
+    #     mongo_user_v=mongo_user,
+    #     mongo_pass_v=mongo_pass,
+    #     rs_name=rs_name,
+    #     cc_url_v=cc_url,
+    #     paas_url_v=paas_url,
+    #     full_text_search=full_text_search,
+    #     es_url_v=es_url,
+    #     es_user_v=es_user,
+    #     es_pass_v=es_pass,
     #     log_level=log_level,
     #     register_ip=register_ip,
     #     user_info=user_info,
     #     enable_cryptor_v=enable_cryptor,
     #     secret_key_url_v=secret_key_url,
     #     secrets_addrs_v=secrets_addrs,
-    #     secrets_token_v = secrets_token,
-    #     secrets_project_v = secrets_project,
-    #     secrets_env_v = secrets_env,
+    #     secrets_token_v=secrets_token,
+    #     secrets_project_v=secrets_project,
+    #     secrets_env_v=secrets_env,
     #     **auth
     # )
     update_start_script(rd_server, server_ports, auth['auth_enabled'], log_level, register_ip, enable_cryptor)
-    print('initial start.sh success')
+    print('initial configurations success, configs could be found at cmdb_adminserver/configures')
 
 
 if __name__ == "__main__":

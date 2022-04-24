@@ -46,7 +46,9 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		Regdiscv:     op.ServConf.RegDiscover,
 		SrvInfo:      svrInfo,
 	}
-	engine, err := backbone.NewBackbone(ctx, input)
+	redisConf := backbone.RedisConfGenerate(op.ServConf.Register)
+
+	engine, err := backbone.NewBackbone(ctx, input, redisConf)
 	if err != nil {
 		return fmt.Errorf("new backbone failed, err: %v", err)
 	}

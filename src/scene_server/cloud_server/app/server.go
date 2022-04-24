@@ -49,7 +49,9 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		Regdiscv:     op.ServConf.RegDiscover,
 		SrvInfo:      svrInfo,
 	}
-	engine, err := backbone.NewBackbone(ctx, input)
+	redisConf := backbone.RedisConfGenerate(op.ServConf.Register)
+
+	engine, err := backbone.NewBackbone(ctx, input, redisConf)
 	if err != nil {
 		return fmt.Errorf("new backbone failed, err: %v", err)
 	}
@@ -102,7 +104,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 
 	process.setSyncPeriod()
 	syncConf := cloudsync.SyncConf{
-		ZKClient:  service.Engine.ServiceManageClient().Client(),
+		//ZKClient:  service.Engine.ServiceManageClient().Client(),
 		Logics:    process.Service.Logics,
 		AddrPort:  input.SrvInfo.Instance(),
 		MongoConf: mongoConf,
