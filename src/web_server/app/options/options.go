@@ -39,6 +39,7 @@ func (s *ServerOption) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&s.ServConf.RegDiscover, "regdiscv", "", "hosts of register and discover server. e.g: 127.0.0.1:2181")
 	fs.StringVar(&s.ServConf.RegisterIP, "register-ip", "", "the ip address registered on zookeeper, it can be domain")
 	fs.StringVar(&s.ServConf.ExConfig, "config", "", "The config path. e.g conf/ccapi.conf")
+	fs.StringVar(&s.ServConf.Register, "register", "", "redis")
 }
 
 type Session struct {
@@ -66,15 +67,15 @@ type Site struct {
 }
 
 type Config struct {
-	Site         Site
-	Session      Session
-	Redis        redis.Config
-	Version      string
-	AgentAppUrl  string
-	LoginUrl     string
-	LoginVersion string
-	ConfigMap    map[string]string
-	AuthCenter   AppInfo
+	Site                      Site
+	Session                   Session
+	Redis                     redis.Config
+	Version                   string
+	AgentAppUrl               string
+	LoginUrl                  string
+	LoginVersion              string
+	ConfigMap                 map[string]string
+	AuthCenter                AppInfo
 	DisableOperationStatistic bool
 }
 

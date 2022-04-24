@@ -1,4 +1,3 @@
-
 #topoServer:
 #  es:
 #    fullTextSearch: "off"
@@ -22,6 +21,8 @@
 #    resourcesPath: /tmp/
 #    htmlRoot: /data/cmdb/web
 #    fullTextSearch: off
+
+
 #  app:
 #    agentAppUrl: http://127.0.0.1/console/?app=bk_agent_setup
 #    authscheme: internal

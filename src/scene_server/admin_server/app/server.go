@@ -108,21 +108,32 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		Regdiscv:     process.Config.Register.Address,
 		SrvInfo:      svrInfo,
 	}
-	engine, err := backbone.NewBackbone(ctx, input)
+	engine, err := backbone.NewBackbone(ctx, input, redisConf)
 	if err != nil {
 		return fmt.Errorf("new backbone failed, err: %v", err)
 	}
 
 	process.Core = engine
-	process.ConfigCenter = configures.NewConfCenter(ctx, engine.ServiceManageClient())
+	process.ConfigCenter = configures.NewConfCenter(ctx, engine.ServiceManageClient(), redisConf)
+	//process.ConfigCenter = configures.NewConfCenter(ctx, engine.ServiceManageClient())
 
 	// adminserver conf not depend discovery
-	//xxx redis mongo common 配置写入zk
+	//xxx redis mongo common 配置写入redis
 	err = process.ConfigCenter.Start(
 		process.Config.Configures.Dir,
 		process.Config.Errors.Res,
 		process.Config.Language.Res,
 	)
+
+	//xxx fix  配置文件修改 更新redis
+	cc.SetFileChange(func() {
+		if err := process.ConfigCenter.WriteConfs2Center(process.Config.Configures.Dir); err != nil {
+			blog.Errorf("fail to write configures to center, err:%s", err.Error())
+
+		} else {
+			blog.Infof("write all configures resource to center %v success", types.CC_SERVCONF_BASEPATH)
+		}
+	})
 
 	if err != nil {
 		return err

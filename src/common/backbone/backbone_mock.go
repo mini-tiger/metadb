@@ -21,8 +21,8 @@ import (
 
 func NewMockBackbone(c *Config) (*Engine, error) {
 	engine := &Engine{
-		CoreAPI:  apimachinery.NewMockApiMachinery(),
-		SvcDisc:  &mockDisc{},
+		CoreAPI: apimachinery.NewMockApiMachinery(),
+		//SvcDisc:  &mockDisc{},
 		Language: language.NewFromCtx(language.EmptyLanguageSetting),
 		CCErr:    errors.NewFromCtx(errors.EmptyErrorsSetting),
 	}

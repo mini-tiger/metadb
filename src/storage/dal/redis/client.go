@@ -33,6 +33,7 @@ type client struct {
 
 // NewClient returns a client to the Redis Server specified by Options
 func NewClient(opt *redis.Options) Client {
+
 	return &client{
 		cli: redis.NewClient(opt),
 	}

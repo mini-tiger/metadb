@@ -16,6 +16,7 @@ import (
 	"bytes"
 	err "errors"
 	"fmt"
+	"github.com/fsnotify/fsnotify"
 	"os"
 	"path"
 	"strings"
@@ -222,7 +223,22 @@ func SetCommonFromFile(target string) error {
 		blog.Errorf("fail to read configure from common")
 		return err
 	}
+
 	return nil
+}
+func SetFileChange(fn func()) {
+	commonParser.parser.OnConfigChange(func(e fsnotify.Event) {
+		fmt.Println("config file changed:", e.Name)
+		fn()
+	})
+	mongodbParser.parser.OnConfigChange(func(e fsnotify.Event) {
+		fmt.Println("config file changed:", e.Name)
+		fn()
+	})
+	redisParser.parser.OnConfigChange(func(e fsnotify.Event) {
+		fmt.Println("config file changed:", e.Name)
+		fn()
+	})
 }
 
 func SetExtraFromByte(data []byte) error {

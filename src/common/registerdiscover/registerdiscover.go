@@ -42,7 +42,6 @@ func NewRegDiscover(client *zk.ZkClient, timeout time.Duration) *RegDiscover {
 	return regDiscv
 }
 
-// NewRegDiscoverEx used to create a object of RegDiscover
 func NewRegDiscoverEx(client *zk.ZkClient) *RegDiscover {
 	regDiscv := &RegDiscover{
 		rdServer: nil,
@@ -52,6 +51,17 @@ func NewRegDiscoverEx(client *zk.ZkClient) *RegDiscover {
 
 	return regDiscv
 }
+
+// NewRegDiscoverEx used to create a object of RegDiscover
+//func NewRegRedisDiscoverEx(client redis.Client) *RegDiscover {
+//	regDiscv := &RegDiscover{
+//		rdServer: nil,
+//	}
+//
+//	regDiscv.rdServer = RegDiscvServer(NewRedisRegDiscv(client))
+//
+//	return regDiscv
+//}
 
 // RegisterAndWatchService register service info into register-discover platform
 // and then watch the service info, if not exist, then register again

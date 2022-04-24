@@ -13,6 +13,7 @@
 package configures
 
 import (
+	"configcenter/src/storage/dal/redis"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,7 +23,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"configcenter/src/common/backbone/service_mange/zk"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/confregdiscover"
 	"configcenter/src/common/errors"
@@ -40,10 +40,10 @@ type ConfCenter struct {
 }
 
 // NewConfCenter create a ConfCenter object
-func NewConfCenter(ctx context.Context, client *zk.ZkClient) *ConfCenter {
+func NewConfCenter(ctx context.Context, client redis.Client, conf redis.Config) *ConfCenter {
 	return &ConfCenter{
 		ctx:          ctx,
-		confRegDiscv: confregdiscover.NewZkRegDiscover(client),
+		confRegDiscv: confregdiscover.NewRedisRegDiscover(client, conf),
 	}
 }
 
@@ -148,7 +148,7 @@ func (cc *ConfCenter) WriteLanguageRes2Center(languageres string) error {
 // redis.conf, mongodb.conf，common.conf，extra.conf
 func (cc *ConfCenter) WriteConfs2Center(confRootPath string) error {
 	configs := []string{
-		types.CCConfigureRedis,
+		//types.CCConfigureRedis,
 		types.CCConfigureMongo,
 		types.CCConfigureCommon,
 		types.CCConfigureExtra,

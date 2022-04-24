@@ -60,9 +60,10 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		ConfigPath:   op.ServConf.ExConfig,
 		Regdiscv:     op.ServConf.RegDiscover,
 		SrvInfo:      svrInfo,
+		//RegRedis:     op.ServConf.Register,
 	}
-
-	engine, err := backbone.NewBackbone(ctx, input)
+	redisConf := backbone.RedisConfGenerate(op.ServConf.Register)
+	engine, err := backbone.NewBackbone(ctx, input, redisConf)
 	if err != nil {
 		return fmt.Errorf("new backbone failed, err: %v", err)
 	}
@@ -84,6 +85,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 	}
 
 	coreSvr.Core = engine
+	coreSvr.Config.Redis = redisConf
 
 	if err := initResource(coreSvr); err != nil {
 		return err
@@ -110,10 +112,10 @@ func initResource(coreSvr *CoreServer) error {
 	if err != nil {
 		return err
 	}
-	coreSvr.Config.Redis, err = coreSvr.Core.WithRedis()
-	if err != nil {
-		return err
-	}
+	//coreSvr.Config.Redis = coreSvr.Core.RedisConf
+	//if err != nil {
+	//	return err
+	//}
 
 	dbErr := mongodb.InitClient("", &coreSvr.Config.Mongo)
 	if dbErr != nil {

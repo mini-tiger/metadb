@@ -1304,5 +1304,6 @@ const (
 
 // configcenter
 const (
-	BKDefaultConfigCenter = "zookeeper"
+	//BKDefaultConfigCenter = "zookeeper"
+	BKDefaultConfigCenter = "redis"
 )

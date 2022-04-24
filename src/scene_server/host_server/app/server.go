@@ -47,9 +47,11 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		ConfigPath:   op.ServConf.ExConfig,
 		ConfigUpdate: hostSrv.onHostConfigUpdate,
 		SrvInfo:      svrInfo,
+		RegRedis:     op.ServConf.Register,
 	}
 
-	engine, err := backbone.NewBackbone(ctx, input)
+	redisConf := backbone.RedisConfGenerate(op.ServConf.Register)
+	engine, err := backbone.NewBackbone(ctx, input, redisConf)
 	if err != nil {
 		blog.Errorf("new backbone failed, err: %v", err)
 		return fmt.Errorf("new backbone failed, err: %v", err)
@@ -68,10 +70,11 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		return errors.New("configuration item not found")
 	}
 
-	hostSrv.Config.Redis, err = engine.WithRedis()
-	if err != nil {
-		return err
-	}
+	//hostSrv.Config.Redis, err = engine.WithRedis()
+	//if err != nil {
+	//	return err
+	//}
+	hostSrv.Config.Redis = redisConf
 
 	cacheDB, err := redis.NewFromConfig(hostSrv.Config.Redis)
 	if err != nil {

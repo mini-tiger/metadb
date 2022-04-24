@@ -31,7 +31,7 @@ import (
 type Service interface {
 	WebServices() []*restful.WebService
 	SetConfig(engine *backbone.Engine, httpClient HTTPClient, discovery discovery.DiscoveryInterface,
-		clientSet apimachinery.ClientSetInterface, cache redis.Client, limiter *Limiter)
+		clientSet apimachinery.ClientSetInterface, cache redis.Client)
 }
 
 // NewService create a new service instance
@@ -46,17 +46,17 @@ type service struct {
 	clientSet  apimachinery.ClientSetInterface
 	authorizer ac.AuthorizeInterface
 	cache      redis.Client
-	limiter    *Limiter
+	//limiter    *Limiter
 }
 
 func (s *service) SetConfig(engine *backbone.Engine, httpClient HTTPClient, discovery discovery.DiscoveryInterface,
-	clientSet apimachinery.ClientSetInterface, cache redis.Client, limiter *Limiter) {
+	clientSet apimachinery.ClientSetInterface, cache redis.Client) {
 	s.engine = engine
 	s.client = httpClient
 	s.discovery = discovery
 	s.clientSet = clientSet
 	s.cache = cache
-	s.limiter = limiter
+	//s.limiter = limiter
 	s.authorizer = iam.NewAuthorizer(clientSet)
 }
 
@@ -71,7 +71,7 @@ func (s *service) WebServices() []*restful.WebService {
 	// xxx 认证
 	ws.Filter(rdapi.AllGlobalFilter(getErrFun))
 	ws.Filter(rdapi.RequestLogFilter())
-	ws.Filter(s.LimiterFilter())
+	//ws.Filter(s.LimiterFilter())
 	ws.Produces(restful.MIME_JSON)
 	if auth.EnableAuthorize() {
 		ws.Filter(s.authFilter(getErrFun))

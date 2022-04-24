@@ -27,6 +27,7 @@ type CCAPIConfig struct {
 	TestArgs    string
 	Qps         int64
 	Burst       int64
+	Register    string
 }
 
 // NewCCAPIConfig create ccapi config object

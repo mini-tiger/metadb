@@ -13,12 +13,11 @@
 package discovery
 
 import (
+	"configcenter/src/storage/dal/redis"
 	"fmt"
 
 	"configcenter/src/common"
-	"configcenter/src/common/backbone/service_mange/zk"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/registerdiscover"
 	"configcenter/src/common/types"
 )
 
@@ -54,8 +53,8 @@ type Interface interface {
 }
 
 // NewServiceDiscovery new a simple discovery module which can be used to get alive server address
-func NewServiceDiscovery(client *zk.ZkClient) (DiscoveryInterface, error) {
-	disc := registerdiscover.NewRegDiscoverEx(client)
+func NewServiceDiscovery(client redis.Client) (DiscoveryInterface, error) {
+	//disc := registerdiscover.NewRegDiscoverEx(client)
 
 	d := &discover{
 		servers: make(map[string]*server),
@@ -70,8 +69,8 @@ func NewServiceDiscovery(client *zk.ZkClient) (DiscoveryInterface, error) {
 		if component == types.CC_MODULE_WEBSERVER && curServiceName != types.CC_MODULE_WEBSERVER {
 			continue
 		}
-		path := fmt.Sprintf("%s/%s", types.CC_SERV_BASEPATH, component)
-		svr, err := newServerDiscover(disc, path, component)
+		path := fmt.Sprintf("%s:%s", types.CC_SERV_BASEPATH, component)
+		svr, err := newServerDiscover(client, path, component)
 		if err != nil {
 			return nil, fmt.Errorf("discover %s failed, err: %v", component, err)
 		}

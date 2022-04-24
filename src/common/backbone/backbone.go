@@ -49,6 +49,7 @@ type BackboneParameter struct {
 
 	// service component addr
 	Regdiscv string
+	RegRedis string
 	// config path
 	ConfigPath string
 	// http server parameter
@@ -83,8 +84,8 @@ func newConfig(ctx context.Context, srvInfo *types.ServerInfo, discovery discove
 	if err != nil {
 		return nil, fmt.Errorf("new api machinery failed, err: %v", err)
 	}
-	regPath := fmt.Sprintf("%s/%s/%s", types.CC_SERV_BASEPATH, common.GetIdentification(), srvInfo.IP)
-
+	//regPath := fmt.Sprintf("%s/%s/%s", types.CC_SERV_BASEPATH, common.GetIdentification(), srvInfo.IP)
+	regPath := fmt.Sprintf("%s:%s", types.CC_SERV_BASEPATH, common.GetIdentification())
 	bonC := &Config{
 		RegisterPath: regPath,
 		RegisterInfo: *srvInfo,
@@ -95,9 +96,9 @@ func newConfig(ctx context.Context, srvInfo *types.ServerInfo, discovery discove
 }
 
 func validateParameter(input *BackboneParameter) error {
-	if input.Regdiscv == "" {
-		return fmt.Errorf("regdiscv can not be emtpy")
-	}
+	//if input.Regdiscv == "" {
+	//	return fmt.Errorf("regdiscv can not be emtpy")
+	//}
 	if input.SrvInfo.IP == "" {
 		return fmt.Errorf("addrport ip can not be emtpy")
 	}
@@ -117,7 +118,7 @@ func validateParameter(input *BackboneParameter) error {
 	return nil
 }
 
-func NewBackbone(ctx context.Context, input *BackboneParameter) (*Engine, error) {
+func NewBackbone(ctx context.Context, input *BackboneParameter, redisConf redis.Config) (*Engine, error) {
 	if err := validateParameter(input); err != nil {
 		return nil, err
 	}
@@ -125,21 +126,28 @@ func NewBackbone(ctx context.Context, input *BackboneParameter) (*Engine, error)
 	metricService := metrics.NewService(metrics.Config{ProcessName: common.GetIdentification(), ProcessInstance: input.SrvInfo.Instance()})
 
 	common.SetServerInfo(input.SrvInfo)
+
+	redisClient, err := newSvcManagerRedisClient(ctx, redisConf)
+	if err != nil {
+		return nil, fmt.Errorf("connect regdiscv [%s] failed: %v", redisConf.Address, err)
+	}
+
 	// init zk
-	client, err := newSvcManagerClient(ctx, input.Regdiscv)
-	if err != nil {
-		return nil, fmt.Errorf("connect regdiscv [%s] failed: %v", input.Regdiscv, err)
-	}
-	//zk watch all modules
-	serviceDiscovery, err := discovery.NewServiceDiscovery(client)
-	if err != nil {
-		return nil, fmt.Errorf("connect regdiscv [%s] failed: %v", input.Regdiscv, err)
-	}
+	//client, err := newSvcManagerClient(ctx, input.Regdiscv)
+	//if err != nil {
+	//	return nil, fmt.Errorf("connect regdiscv [%s] failed: %v", input.Regdiscv, err)
+	//}
+
+	//xxx redis watch all modules
+	serviceDiscovery, err := discovery.NewServiceDiscovery(redisClient)
+	//if err != nil {
+	//	return nil, fmt.Errorf("connect regdiscv [%s] failed: %v", input.Regdiscv, err)
+	//}
 	// zk register 可以将 服务注册进zk
-	disc, err := NewServiceRegister(client)
-	if err != nil {
-		return nil, fmt.Errorf("new service discover failed, err:%v", err)
-	}
+	//disc, err := NewServiceRegister(client)
+	//if err != nil {
+	//	return nil, fmt.Errorf("new service discover failed, err:%v", err)
+	//}
 
 	apiMachineryConfig := &util.APIMachineryConfig{
 		QPS:       1000,
@@ -151,14 +159,14 @@ func NewBackbone(ctx context.Context, input *BackboneParameter) (*Engine, error)
 	if err != nil {
 		return nil, err
 	}
-	engine, err := New(c, disc)
+	engine, err := New(c)
 	if err != nil {
 		return nil, fmt.Errorf("new engine failed, err: %v", err)
 	}
-	engine.client = client
+	//engine.client = client
 	engine.apiMachineryConfig = apiMachineryConfig
 	engine.discovery = serviceDiscovery
-	engine.ServiceManageInterface = serviceDiscovery
+	//engine.ServiceManageInterface = serviceDiscovery
 	engine.srvInfo = input.SrvInfo
 	engine.metric = metricService
 
@@ -168,30 +176,62 @@ func NewBackbone(ctx context.Context, input *BackboneParameter) (*Engine, error)
 		OnLanguageUpdate: engine.onLanguageUpdate,
 		OnErrorUpdate:    engine.onErrorUpdate,
 		OnMongodbUpdate:  engine.onMongodbUpdate,
-		OnRedisUpdate:    engine.onRedisUpdate,
+		//OnRedisUpdate:    engine.onRedisUpdate,
 	}
 
+	//var redisConf redis.Config
+	//redisConfCommlineArrs := strings.Split(input.RegRedis, ":")
+	//// xxx 4.21 init redis
+	//if len(redisConfCommlineArrs) > 1 {
+	//	fmt.Printf("server not is adminserver")
+	//	redisConf = redis.Config{
+	//		Address:      fmt.Sprintf("%s:%s", redisConfCommlineArrs[0], redisConfCommlineArrs[1]),
+	//		Password:     redisConfCommlineArrs[3],
+	//		Database:     redisConfCommlineArrs[2],
+	//		MaxOpenConns: 3000,
+	//	}
+	//	engine.RedisConf = redisConf
+	//} else {
+	//	redisConf, err = engine.WithRedis()
+	//	fmt.Println("server is adminserver!!!")
+	//	if err != nil {
+	//		return nil, fmt.Errorf("regCenter redis Conf [%s] failed: %v", redisConf.Address, err)
+	//	}
+	//	engine.RedisConf = redisConf
+	//}
+
+	engine.RedisClient = redisClient
+	//xxx  redis服务注册
+	engine.SvcDisc, err = NewServiceRegister(redisClient)
+
+	if err != nil {
+		panic("register redis svc fail")
+	}
 	// add default configcenter
-	zkdisc := crd.NewZkRegDiscover(client)
+	redisdisc := crd.NewRedisRegDiscover(redisClient, redisConf)
+
 	configCenter := &cc.ConfigCenter{
 		Type:               common.BKDefaultConfigCenter,
-		ConfigCenterDetail: zkdisc,
+		ConfigCenterDetail: redisdisc,
 	}
 	cc.AddConfigCenter(configCenter)
 
 	// get the real configuration center.
-	curentConfigCenter := cc.CurrentConfigCenter()
 
-	// xxx 读取zk配置  并同步到变量中，WATCH zk
+	var curentConfigCenter crd.ConfRegDiscvIf
+	curentConfigCenter = cc.CurrentConfigCenter()
+
+	// xxx 读取zk配置  并同步到变量中
 	err = cc.NewConfigCenter(ctx, curentConfigCenter, input.ConfigPath, handler)
 	if err != nil {
 		return nil, fmt.Errorf("new config center failed, err: %v", err)
 	}
 
-	err = handleNotice(ctx, client.Client(), input.SrvInfo.Instance())
-	if err != nil {
-		return nil, fmt.Errorf("handle notice failed, err: %v", err)
-	}
+	// xxx zk notice 关闭
+	//err = handleNotice(ctx, client.Client(), input.SrvInfo.Instance())
+	//if err != nil {
+	//	return nil, fmt.Errorf("handle notice failed, err: %v", err)
+	//}
 
 	if err := monitor.InitMonitor(); err != nil {
 		return nil, fmt.Errorf("init monitor failed, err: %v", err)
@@ -220,14 +260,14 @@ func StartServer(ctx context.Context, cancel context.CancelFunc, e *Engine, HTTP
 	return e.SvcDisc.Register(e.RegisterPath, *e.srvInfo)
 }
 
-func New(c *Config, disc ServiceRegisterInterface) (*Engine, error) {
+func New(c *Config) (*Engine, error) {
 	return &Engine{
 		RegisterPath: c.RegisterPath,
 		CoreAPI:      c.CoreAPI,
-		SvcDisc:      disc,
-		Language:     language.NewFromCtx(language.EmptyLanguageSetting),
-		CCErr:        errors.NewFromCtx(errors.EmptyErrorsSetting),
-		CCCtx:        newCCContext(),
+		//SvcDisc:      disc,
+		Language: language.NewFromCtx(language.EmptyLanguageSetting),
+		CCErr:    errors.NewFromCtx(errors.EmptyErrorsSetting),
+		CCCtx:    newCCContext(),
 	}, nil
 }
 
@@ -236,6 +276,8 @@ type Engine struct {
 	apiMachineryConfig *util.APIMachineryConfig
 
 	client                 *zk.ZkClient
+	RedisClient            redis.Client
+	RedisConf              redis.Config
 	ServiceManageInterface discovery.ServiceManageInterface
 	SvcDisc                ServiceRegisterInterface
 	discovery              discovery.DiscoveryInterface
@@ -260,8 +302,11 @@ func (e *Engine) ApiMachineryConfig() *util.APIMachineryConfig {
 	return e.apiMachineryConfig
 }
 
-func (e *Engine) ServiceManageClient() *zk.ZkClient {
-	return e.client
+//func (e *Engine) ServiceManageClient() *zk.ZkClient {
+//	return e.client
+//}
+func (e *Engine) ServiceManageClient() redis.Client {
+	return e.RedisClient
 }
 
 func (e *Engine) Metric() *metrics.Service {

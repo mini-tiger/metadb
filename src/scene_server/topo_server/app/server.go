@@ -66,21 +66,27 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		ConfigPath:   op.ServConf.ExConfig,
 		ConfigUpdate: server.onTopoConfigUpdate,
 		SrvInfo:      svrInfo,
+		//RegRedis:     op.ServConf.Register,
 	}
-	engine, err := backbone.NewBackbone(ctx, input)
+
+	redisConf := backbone.RedisConfGenerate(op.ServConf.Register)
+
+	engine, err := backbone.NewBackbone(ctx, input, redisConf)
 	if err != nil {
 		return fmt.Errorf("new backbone failed, err: %v", err)
 	}
 	server.Core = engine
+	engine.RedisConf = redisConf
 
 	if err := server.CheckForReadiness(); err != nil {
 		return err
 	}
 
-	server.Config.Redis, err = engine.WithRedis()
-	if err != nil {
-		return err
-	}
+	//server.Config.Redis, err = engine.WithRedis()
+	//if err != nil {
+	//	return err
+	//}
+	server.Config.Redis = engine.RedisConf
 
 	// TODO 可以在backbone 完成
 	if err := redis.InitClient("redis", &server.Config.Redis); err != nil {

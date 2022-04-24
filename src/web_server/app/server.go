@@ -55,8 +55,10 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		ConfigPath:   op.ServConf.ExConfig,
 		Regdiscv:     op.ServConf.RegDiscover,
 		SrvInfo:      svrInfo,
+		RegRedis:     op.ServConf.Register,
 	}
-	engine, err := backbone.NewBackbone(ctx, input)
+	redisConf := backbone.RedisConfGenerate(op.ServConf.Register)
+	engine, err := backbone.NewBackbone(ctx, input, redisConf)
 	if err != nil {
 		return fmt.Errorf("new backbone failed, err: %v", err)
 	}
@@ -74,10 +76,11 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		return errors.New("configuration item not found")
 	}
 
-	webSvr.Config.Redis, err = engine.WithRedis()
-	if err != nil {
-		return err
-	}
+	//webSvr.Config.Redis, err = engine.WithRedis()
+	//if err != nil {
+	//	return err
+	//}
+	webSvr.Config.Redis = redisConf
 	var redisErr error
 	if webSvr.Config.Redis.MasterName == "" {
 		// MasterName 为空，表示使用直连redis 。 使用Host,Port 做链接redis参数

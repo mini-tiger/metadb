@@ -43,11 +43,13 @@ func New(ctx context.Context, confPath string, disc crd.ConfRegDiscvIf, handler 
 		previousError: make(map[string]errors.ErrorCode),
 	}
 
+	// adminserver  this is
 	// parse config only from file
 	if len(confPath) != 0 {
 		return LoadConfigFromLocalFile(confPath, handler)
 	}
 
+	// other server this is
 	if err := confC.run(); err != nil {
 		return err
 	}
@@ -102,11 +104,11 @@ func (c *CC) run() error {
 		return err
 	}
 
-	redisConfPath := fmt.Sprintf("%s/%s", types.CC_SERVCONF_BASEPATH, types.CCConfigureRedis)
-	redisConfEvent, err := c.disc.Discover(redisConfPath)
-	if err != nil {
-		return err
-	}
+	//redisConfPath := fmt.Sprintf("%s/%s", types.CC_SERVCONF_BASEPATH, types.CCConfigureRedis)
+	//redisConfEvent, err := c.disc.Discover(redisConfPath)
+	//if err != nil {
+	//	return err
+	//}
 
 	langEvent, err := c.disc.Discover(types.CC_SERVLANG_BASEPATH)
 	if err != nil {
@@ -127,8 +129,8 @@ func (c *CC) run() error {
 				c.onExtraChange(pEvent)
 			case pEvent := <-mongodbConfEvent:
 				c.onMongodbChange(pEvent)
-			case pEvent := <-redisConfEvent:
-				c.onRedisChange(pEvent)
+			//case pEvent := <-redisConfEvent:
+			//	c.onRedisChange(pEvent)
 			case eEvent := <-errEvent:
 				c.onErrorChange(eEvent)
 			case langEvent := <-langEvent:
@@ -279,7 +281,7 @@ func (c *CC) sync() {
 	c.syncProc()
 	c.syncExtra()
 	c.syncMongodb()
-	c.syncRedis()
+	//c.syncRedis()
 	c.syncLang()
 	c.syncErr()
 	go func() {
@@ -295,7 +297,7 @@ func (c *CC) sync() {
 			c.syncProc()
 			c.syncExtra()
 			c.syncMongodb()
-			c.syncRedis()
+			//c.syncRedis()
 			c.syncLang()
 			c.syncErr()
 			time.Sleep(15 * time.Second)

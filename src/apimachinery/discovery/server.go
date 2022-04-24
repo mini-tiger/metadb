@@ -13,27 +13,31 @@
 package discovery
 
 import (
+	"configcenter/src/storage/dal/redis"
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"configcenter/src/common/blog"
 	"configcenter/src/common/registerdiscover"
 	"configcenter/src/common/types"
 )
 
-func newServerDiscover(disc *registerdiscover.RegDiscover, path, name string) (*server, error) {
-	discoverChan, eventErr := disc.DiscoverService(path)
-	if nil != eventErr {
-		return nil, eventErr
-	}
+func newServerDiscover(client redis.Client, path, name string) (*server, error) {
+	//discoverChan, eventErr := disc.DiscoverService(path)
+	//if nil != eventErr {
+	//	return nil, eventErr
+	//}
 
 	svr := &server{
-		path:         path,
-		name:         name,
-		servers:      make([]*types.ServerInfo, 0),
-		discoverChan: discoverChan,
-		serversChan:  make(chan []string, 1),
+		path:    path,
+		name:    name,
+		servers: make([]*types.ServerInfo, 0),
+		//discoverChan: discoverChan,
+		serversChan: make(chan []string, 1),
+		redisCli:    client,
 	}
 
 	svr.run()
@@ -49,6 +53,7 @@ type server struct {
 	servers      []*types.ServerInfo
 	discoverChan <-chan *registerdiscover.DiscoverEvent
 	serversChan  chan []string
+	redisCli     redis.Client
 }
 
 func (s *server) GetServers() ([]string, error) {
@@ -97,25 +102,39 @@ func (s *server) IsMaster(UUID string) bool {
 }
 
 func (s *server) run() {
-	blog.Infof("start to discover cc component from zk, path:[%s].", s.path)
+	blog.Infof("start to discover cc component from redis, path:[%s].", s.path)
 	go func() {
-		for svr := range s.discoverChan {
-			blog.Warnf("received one zk event from path %s.", s.path)
-			if svr.Err != nil {
-				blog.Errorf("get zk event with error about path[%s]. err: %v", s.path, svr.Err)
+		for {
+			time.Sleep(3 * time.Second)
+			var exist redis.IntResult
+			if exist = s.redisCli.Exists(context.Background(), s.path); exist.Err() != nil {
+				blog.Errorf("get redis exist path[%s] err:%v", s.path, exist.Err())
 				continue
 			}
-
-			if len(svr.Server) <= 0 {
-				blog.Warnf("get zk event with 0 instance with path[%s], reset its servers", s.path)
+			//fmt.Println(exist.Val())
+			if exist.Val() == 0 {
 				s.resetServer()
 				s.setServersChan()
+
+				blog.Errorf("get redis exist path[%s] is 0", s.path)
 				continue
 			}
 
-			s.updateServer(svr.Server)
+			result := s.redisCli.Get(context.Background(), s.path)
+			if result.Err() != nil {
+				blog.Errorf("get redis path[%s] err:%v", s.path, result.Err())
+				continue
+			}
+			str, err := result.Result()
+			if err != nil {
+				blog.Errorf("get redis path[%s] string err:%v", s.path, err)
+				continue
+			}
+			//fmt.Println(str)
+			s.updateServer([]string{str})
 			s.setServersChan()
 		}
+
 	}()
 }
 

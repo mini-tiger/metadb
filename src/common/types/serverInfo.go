@@ -24,7 +24,7 @@ import (
 
 // zk path
 const (
-	CC_SERV_BASEPATH        = "/cc/services/endpoints"
+	CC_SERV_BASEPATH        = "cc:services:endpoints"
 	CC_SERVCONF_BASEPATH    = "/cc/services/config"
 	CC_SERVERROR_BASEPATH   = "/cc/services/errors"
 	CC_SERVLANG_BASEPATH    = "/cc/services/language"
@@ -58,21 +58,21 @@ const (
 
 // AllModule all cc module
 var AllModule = map[string]bool{
-	CC_MODULE_DATACOLLECTION: false,
-	CC_MODULE_HOST:           true,
-	CC_MODULE_MIGRATE:        true,
-	CC_MODULE_PROC:           true,
-	CC_MODULE_TOPO:           true,
-	CC_MODULE_APISERVER:      true,
-	CC_MODULE_WEBSERVER:      true,
-	CC_MODULE_EVENTSERVER:    true,
-	CC_MODULE_CORESERVICE:    true,
+	//CC_MODULE_DATACOLLECTION: false,
+	CC_MODULE_HOST:    true,
+	CC_MODULE_MIGRATE: true,
+	//CC_MODULE_PROC:           true,
+	CC_MODULE_TOPO:      true,
+	CC_MODULE_APISERVER: true,
+	CC_MODULE_WEBSERVER: true,
+	//CC_MODULE_EVENTSERVER:    true,
+	CC_MODULE_CORESERVICE: true,
 	// CC_MODULE_SYNCHRONZESERVER: true,
-	CC_MODULE_OPERATION:    true,
-	CC_MODULE_TASK:         true,
-	CC_MODULE_CLOUD:        true,
-	CC_MODULE_AUTH:         false,
-	CC_MODULE_CACHESERVICE: true,
+	//CC_MODULE_OPERATION:    true,
+	//CC_MODULE_TASK:         true,
+	//CC_MODULE_CLOUD:        true,
+	CC_MODULE_AUTH: false,
+	//CC_MODULE_CACHESERVICE: true,
 }
 
 // cc functionality define
