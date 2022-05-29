@@ -1,3 +1,6 @@
+![image](resources/images/MetaDB_logo.png)
+
+
 METADB 是一个面向数据中心模型及测点的管理平台。
 
 
