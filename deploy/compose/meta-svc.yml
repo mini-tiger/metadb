@@ -1,0 +1,99 @@
+version: '3.8'
+services:
+  adminserver:
+    container_name: adminserver
+    image: harbor.dev.21vianet.com/cmdb/cmdb_adminserver:latest
+    restart: always
+    ports:
+      - '60004:60004'
+#    command: redis-server --save 180 1 --loglevel warning --requirepass cc
+    external_links:
+      - redis-master  #外部容器连接
+      - mongo1:mongo-mongodb
+      - mongo2
+      - mongo3
+    networks:
+      - default
+  apiserver:
+    container_name: apiserver
+    image: harbor.dev.21vianet.com/cmdb/cmdb_apiserver:latest
+    restart: always
+    ports:
+      - '8080:8080'
+    external_links:
+      - redis-master  #外部容器连接
+      - mongo1:mongo-mongodb
+      - mongo2
+      - mongo3
+    networks:
+      - default
+  coreserver:
+    container_name: coreserver
+    image: harbor.dev.21vianet.com/cmdb/cmdb_coreservice:latest
+    restart: always
+    ports:
+      - '50009:50009'
+    external_links:
+      - redis-master  #外部容器连接
+      - mongo1:mongo-mongodb
+      - mongo2
+      - mongo3
+    networks:
+      - default
+  webserver:
+    container_name: webserver
+    image: harbor.dev.21vianet.com/cmdb/cmdb_webserver:latest
+    restart: always
+    ports:
+      - '8090:8090'
+    external_links:
+      - redis-master  #外部容器连接
+      - mongo1:mongo-mongodb
+      - mongo2
+      - mongo3
+    networks:
+      - default
+  toposerver:
+    container_name: toposerver
+    image: harbor.dev.21vianet.com/cmdb/cmdb_toposerver:latest
+    restart: always
+    ports:
+      - '60002:60002'
+    external_links:
+      - redis-master  #外部容器连接
+      - mongo1:mongo-mongodb
+      - mongo2
+      - mongo3
+    networks:
+      - default
+  hostserver:
+    container_name: hostserver
+    image: harbor.dev.21vianet.com/cmdb/cmdb_hostserver:latest
+    restart: always
+    ports:
+      - '60001:60001'
+    external_links:
+      - redis-master  #外部容器连接
+      - mongo1:mongo-mongodb
+      - mongo2
+      - mongo3
+    networks:
+      - default
+  busybox:
+    container_name: busybox
+    image: harbor.dev.21vianet.com/cmdb/busybox:1.29.3
+    external_links:
+      - redis-master  #外部容器连接
+      - mongo1:mongo-mongodb
+      - mongo2
+      - mongo3
+    networks:
+      #      - mongors-network
+      - default
+    restart: always
+    entrypoint: [ "sleep", "99999"]
+
+networks:
+  default:
+    external:
+      name: work-net

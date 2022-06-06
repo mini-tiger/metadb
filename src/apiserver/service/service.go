@@ -23,7 +23,6 @@ import (
 	"configcenter/src/common/rdapi"
 	"configcenter/src/common/webservice/restfulservice"
 	"configcenter/src/storage/dal/redis"
-
 	"github.com/emicklei/go-restful"
 )
 
@@ -69,13 +68,15 @@ func (s *service) WebServices() []*restful.WebService {
 	ws.Path(rootPath)
 	ws.Filter(s.engine.Metric().RestfulMiddleWare)
 	// xxx 认证
-	ws.Filter(rdapi.AllGlobalFilter(getErrFun))
+	//ws.Filter(rdapi.AllGlobalFilter(getErrFun))
 	ws.Filter(rdapi.RequestLogFilter())
 	//ws.Filter(s.LimiterFilter())
 	ws.Produces(restful.MIME_JSON)
+
 	if auth.EnableAuthorize() {
 		ws.Filter(s.authFilter(getErrFun))
 	}
+
 	//xxx s.URLFilterChan 分类请求服务
 	ws.Route(ws.POST("/auth/verify").To(s.AuthVerify))
 	ws.Route(ws.GET("/auth/business_list").To(s.GetAnyAuthorizedAppList))

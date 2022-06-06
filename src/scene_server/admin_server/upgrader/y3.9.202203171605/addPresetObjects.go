@@ -396,7 +396,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   170,
+					ID:   151,
 				},
 			},
 			Ispre:    false,
@@ -410,7 +410,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   199,
+					ID:   176,
 				},
 			},
 			Ispre:    false,
@@ -424,7 +424,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   203,
+					ID:   180,
 				},
 			},
 			Ispre:    false,
@@ -438,7 +438,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   211,
+					ID:   188,
 				},
 			},
 			Ispre:    false,
@@ -452,7 +452,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   215,
+					ID:   192,
 				},
 			},
 			Ispre:    false,
@@ -466,7 +466,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   220,
+					ID:   197,
 				},
 			},
 			Ispre:    false,
@@ -480,7 +480,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   226,
+					ID:   202,
 				},
 			},
 			Ispre:    false,
@@ -494,7 +494,21 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   227,
+					ID:   203,
+				},
+			},
+			Ispre:    false,
+			OwnerID:  ownerID,
+			LastTime: metadata.Now(),
+		},
+		{
+			ID:        33,
+			ObjID:     "idc",
+			MustCheck: true,
+			Keys: []metadata.UniqueKey{
+				{
+					Kind: metadata.UniqueKeyKindProperty,
+					ID:   164,
 				},
 			},
 			Ispre:    false,

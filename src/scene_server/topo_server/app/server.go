@@ -104,6 +104,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		essrv.Client = esClient
 	}
 
+	// xxx enable-auth 参数
 	authManager := extensions.NewAuthManager(engine.CoreAPI)
 	server.Service = &service.Service{
 		Language:    engine.Language,

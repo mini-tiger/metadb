@@ -131,13 +131,13 @@ func main() {
 				if err != nil {
 					log.Fatalln(err)
 				}
-				log.Println("push dockerImage harbor")
+				log.Println("push dockerImage To harbor")
 				err = sv.pushDockerImage()
 				if err != nil {
 					log.Fatalln(err)
 				}
 
-				log.Println("push dockerImage github")
+				log.Println("push dockerImage To dockerhub")
 				err = sv.pushDockerHubImage()
 				if err != nil {
 					log.Fatalln(err)
@@ -208,7 +208,7 @@ func (t *TplVariables) pushDockerHubImage() error {
 
 	_ = RunCommand(fmt.Sprintf("docker tag %s %s", t.HarborUri, githubUri))
 
-	//log.Printf("%s \n", githubUri)
+	log.Printf("%s \n", githubUri)
 
 	cmdstr = fmt.Sprintf("docker push %s ", githubUri)
 

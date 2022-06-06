@@ -19,7 +19,6 @@ import (
 	"configcenter/src/common/backbone"
 	"configcenter/src/common/errors"
 	"configcenter/src/common/language"
-	"configcenter/src/common/rdapi"
 	"configcenter/src/common/util"
 	"configcenter/src/common/webservice/restfulservice"
 	"configcenter/src/source_controller/coreservice/app/options"
@@ -131,11 +130,13 @@ func (s *coreService) SetConfig(cfg options.Config, engine *backbone.Engine, err
 func (s *coreService) WebService() *restful.Container {
 
 	container := restful.NewContainer()
-	getErrFunc := func() errors.CCErrorIf {
-		return s.err
-	}
+	//getErrFunc := func() errors.CCErrorIf {
+	//	return s.err
+	//}
 	api := new(restful.WebService)
-	api.Path("/api/v3").Filter(s.engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON).Consumes(restful.MIME_JSON)
+	// xxx rdapi.AllGlobalFilter(getErrFunc)) 认证
+	//api.Path("/api/v3").Filter(s.engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON).Consumes(restful.MIME_JSON)
+	api.Path("/api/v3").Filter(s.engine.Metric().RestfulMiddleWare).Produces(restful.MIME_JSON).Consumes(restful.MIME_JSON)
 	//xxx init service actions
 	s.initService(api)
 	container.Add(api)

@@ -1,6 +1,7 @@
 version: '3.8'
 services:
-  cache:
+  redis-master:
+    container_name: redis-master
     image: harbor.dev.21vianet.com/cmdb/redis:6.2-alpine
     restart: always
     ports:
@@ -8,6 +9,12 @@ services:
     command: redis-server --save 180 1 --loglevel warning --requirepass cc
     volumes: 
       - cache:/data
+    networks:
+      - default
 volumes:
   cache:
     driver: local
+networks:
+  default:
+    external:
+      name: work-net

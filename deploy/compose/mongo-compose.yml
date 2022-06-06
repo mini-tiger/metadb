@@ -7,11 +7,16 @@ services:
     volumes:
       - /home/taojun/mongors/data1:/data/db
       - ./rs-init.sh:/scripts/rs-init.sh
+      - ./dbuser-init.sh:/scripts/dbuser-init.sh
     networks:
-      - mongors-network
+      #      - mongors-network
+      - default
     ports:
       - 27021:27017
     links:
+      - mongo2
+      - mongo3
+    depends_on: #当前子集所依赖的服务    需要注意不会等到依赖服务完全启动才启动当前服务。
       - mongo2
       - mongo3
     restart: always
@@ -22,7 +27,8 @@ services:
     volumes:
       - /home/taojun/mongors/data2:/data/db
     networks:
-      - mongors-network
+      #      - mongors-network
+      - default
     ports:
       - 27022:27017
     restart: always
@@ -33,12 +39,17 @@ services:
     volumes:
       - /home/taojun/mongors/data3:/data/db
     networks:
-      - mongors-network
+#      - mongors-network
+      - default
     ports:
       - 27023:27017
     restart: always
     entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
 
+#networks:
+#  mongors-network:
+#    driver: bridge
 networks:
-  mongors-network:
-    driver: bridge
+  default:
+    external:
+      name: work-net

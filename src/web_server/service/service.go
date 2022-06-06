@@ -50,6 +50,7 @@ func (s *Service) WebService() *gin.Engine {
 
 	ws.Use(middleware.RequestIDMiddleware)
 	ws.Use(sessions.Sessions(s.Config.Session.Name, s.Session))
+
 	ws.Use(middleware.ValidLogin(*s.Config, s.Discovery()))
 	ws.Use(func(c *gin.Context) {
 		defer func() {

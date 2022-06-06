@@ -221,7 +221,7 @@ func NewBackbone(ctx context.Context, input *BackboneParameter, redisConf redis.
 	var curentConfigCenter crd.ConfRegDiscvIf
 	curentConfigCenter = cc.CurrentConfigCenter()
 
-	// xxx 读取zk配置  并同步到变量中
+	// xxx 读取redis配置  并同步到变量中
 	err = cc.NewConfigCenter(ctx, curentConfigCenter, input.ConfigPath, handler)
 	if err != nil {
 		return nil, fmt.Errorf("new config center failed, err: %v", err)

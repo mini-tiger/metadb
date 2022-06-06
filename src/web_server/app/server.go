@@ -51,7 +51,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 	webSvr := new(WebServer)
 	service.Config = &webSvr.Config
 	input := &backbone.BackboneParameter{
-		ConfigUpdate: webSvr.onServerConfigUpdate,
+		ConfigUpdate: webSvr.onServerConfigUpdate, // 配置文件 转换为 内部变量
 		ConfigPath:   op.ServConf.ExConfig,
 		Regdiscv:     op.ServConf.RegDiscover,
 		SrvInfo:      svrInfo,

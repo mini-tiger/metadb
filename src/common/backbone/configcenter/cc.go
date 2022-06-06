@@ -54,6 +54,7 @@ func New(ctx context.Context, confPath string, disc crd.ConfRegDiscvIf, handler 
 		return err
 	}
 
+	// sync mongo config
 	confC.sync()
 
 	return nil

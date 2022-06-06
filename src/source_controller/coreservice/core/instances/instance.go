@@ -379,6 +379,7 @@ func (m *instanceManager) SearchModelInstance(kit *rest.Kit, objID string, input
 		}
 		inputParam.Condition[common.BKObjIDField] = objID
 	}
+	// xxx bk_supplier_account 设置
 	inputParam.Condition = util.SetQueryOwner(inputParam.Condition, kit.SupplierAccount)
 
 	if inputParam.TimeCondition != nil {

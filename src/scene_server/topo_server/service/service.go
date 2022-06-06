@@ -20,7 +20,6 @@ import (
 	"configcenter/src/common/errors"
 	"configcenter/src/common/language"
 	"configcenter/src/common/mapstr"
-	"configcenter/src/common/rdapi"
 	"configcenter/src/common/webservice/restfulservice"
 	"configcenter/src/scene_server/topo_server/app/options"
 	"configcenter/src/scene_server/topo_server/core"
@@ -42,13 +41,13 @@ type Service struct {
 // WebService the web service
 func (s *Service) WebService() *restful.Container {
 	errors.SetGlobalCCError(s.Error)
-	getErrFunc := func() errors.CCErrorIf {
-		return s.Error
-	}
+	//getErrFunc := func() errors.CCErrorIf {
+	//	return s.Error
+	//}
 
 	api := new(restful.WebService)
-	api.Path("/topo/v3/").Filter(s.Engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON)
-
+	//api.Path("/topo/v3/").Filter(s.Engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON)
+	api.Path("/topo/v3/").Filter(s.Engine.Metric().RestfulMiddleWare).Produces(restful.MIME_JSON)
 	// init service actions
 	s.initService(api)
 
