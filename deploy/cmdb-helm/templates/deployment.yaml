@@ -51,7 +51,7 @@ spec:
           command: [ 'sh','-c',"until redis-cli -h redis-master.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local -p 6379 -a cc PING;do echo waiting for redis; sleep 10; done" ]
         - name: init-mongo
           image: harbor.dev.21vianet.com/cmdb/mongo:4.4.13-debian-10-r52
-          command: [ 'sh', '-c', 'until mongo "mongodb://cc:cc@mongo-mongodb-0.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local:27017/?replicaSet=rs0&connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done' ]
+          command: [ 'sh', '-c', 'until mongo "mongodb://cc:cc@mongo-mongodb-1.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local:27017/?replicaSet=rs0&connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done' ]
 
 ---
 {{- end}}

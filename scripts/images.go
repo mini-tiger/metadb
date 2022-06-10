@@ -19,7 +19,7 @@ var (
 	dockerDir = path.Join(rootDir, "DockerFile")
 	tmpDir    = path.Join(dockerDir, "tmp")
 
-	branch    = "3.9.39.x"
+	branch    = "metadb-tj" //#"3.9.39.x"
 	binaryDir = path.Join(rootDir, "src", "bin", "build", branch)
 	//validDir  = map[string]int{"cmdb_adminserver": 60004, "cmdb_webserver": 8090,
 	//	"cmdb_apiserver": 8080, "cmdb_coreservice": 50009, "cmdb_toposerver": 60002, "cmdb_hostserver": 60001,
@@ -77,6 +77,7 @@ func main() {
 	listDir, _ := ioutil.ReadDir(binaryDir)
 	var srcDir, destDir string
 	for _, subDir := range listDir {
+		//fmt.Println(subDir)
 		if subDir.IsDir() {
 			_, ok := validDir[subDir.Name()]
 			if ok {
