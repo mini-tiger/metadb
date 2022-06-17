@@ -5,7 +5,7 @@ mkdir  /home/taojun/mongors/data1 -p
 mkdir  /home/taojun/mongors/data2
 mkdir  /home/taojun/mongors/data3
 
-./startdb.sh
+./startdb-dev.sh
 
 sleep 1
 docker-compose -f redis-compose.yml up -d
