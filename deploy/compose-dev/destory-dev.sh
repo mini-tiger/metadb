@@ -9,6 +9,6 @@ rm -rf /home/taojun/mongors
 #docker rm mongo2
 #docker rm mongo3
 
-docker-compose -f redis-compose.yml down
+docker-compose -f redis-compose-dev.yml down
 #docker-compose -f meta-svc.yml down -v --rmi all
 docker network rm work-net-dev
