@@ -8,7 +8,7 @@ mkdir  /home/taojun/mongors/data3
 ./startdb-dev.sh
 
 sleep 1
-docker-compose -f redis-compose.yml up -d
+docker-compose -f redis-compose-dev.yml up -d
 sleep 10
 # add mongo user 防止没成功添加
 docker exec mongo1 /scripts/dbuser-init.sh
