@@ -7,7 +7,7 @@ var config = {
     "members": [
         {
             "_id": 1,
-            "host": "mongo1:27017",
+            "host": "mongo-mongodb-headless:27017",
             "priority": 3
         },
         {

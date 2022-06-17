@@ -1,8 +1,8 @@
 version: '3.8'
 
 services:
-  mongo1:
-    container_name: mongo1
+  mongo-mongodb-headless:
+    container_name: mongo-mongodb-headless
     image: harbor.dev.21vianet.com/cmdb/mongo:4.4.12
     volumes:
       - /home/taojun/mongors/data1:/data/db
