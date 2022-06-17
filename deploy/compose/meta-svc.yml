@@ -79,6 +79,19 @@ services:
       - mongo3
     networks:
       - default
+  operationserver:
+    container_name: operationserver
+    image: harbor.dev.21vianet.com/cmdb/cmdb_operationserver:latest
+    restart: always
+    ports:
+      - '60011:60011'
+    external_links:
+      - redis-master  #外部容器连接
+      - mongo1:mongo-mongodb
+      - mongo2
+      - mongo3
+    networks:
+      - default
   busybox:
     container_name: busybox
     image: harbor.dev.21vianet.com/cmdb/busybox:1.29.3
