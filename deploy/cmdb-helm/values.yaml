@@ -11,7 +11,8 @@ apps:
     port: 60002
   - name: hostserver
     port: 60001
-
+  - name: operationserver
+    port: 60011
 
 image:
   repository: harbor.dev.21vianet.com/cmdb/
