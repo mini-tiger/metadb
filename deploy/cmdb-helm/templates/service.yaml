@@ -12,10 +12,10 @@ spec:
   ports: 
   - port: {{ .port }}
     targetPort: {{ .port }}
-    { { - if .nodePort } }
-    nodePort: { { .nodePort} }
+    {{- if .nodePort}}
+    nodePort: {{ .nodePort}}
 
-    { { - end } }
+    {{- end}}
   type: NodePort
   selector:
     app: {{ .name }}
