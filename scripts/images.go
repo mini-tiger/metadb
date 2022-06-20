@@ -24,8 +24,11 @@ var (
 	//validDir  = map[string]int{"cmdb_adminserver": 60004, "cmdb_webserver": 8090,
 	//	"cmdb_apiserver": 8080, "cmdb_coreservice": 50009, "cmdb_toposerver": 60002, "cmdb_hostserver": 60001,
 	//}
+
+	// dir: src/bin/build/
 	validDir = map[string]struct{}{"cmdb_adminserver": struct{}{}, "cmdb_webserver": struct{}{},
-		"cmdb_apiserver": struct{}{}, "cmdb_coreservice": struct{}{}, "cmdb_toposerver": struct{}{}, "cmdb_hostserver": struct{}{},
+		"cmdb_apiserver": struct{}{}, "cmdb_coreservice": struct{}{}, "cmdb_toposerver": struct{}{},
+		"cmdb_hostserver": struct{}{}, "cmdb_operationserver": struct{}{},
 	}
 
 	//dockerTmp = "Dockerfile_tmp"
@@ -117,32 +120,7 @@ func main() {
 					AppName:     subDir.Name(),
 					HarborUri:   "",
 				}
-				log.Println("generate run.sh")
-				err = sv.generateShell()
-				if err != nil {
-					log.Fatalln(err)
-				}
-				log.Println("generate dockerfile")
-				err = sv.generateDockerFile()
-				if err != nil {
-					log.Fatalln(err)
-				}
-				log.Println("generate dockerImage")
-				err = sv.generateDockerImage()
-				if err != nil {
-					log.Fatalln(err)
-				}
-				log.Println("push dockerImage To harbor")
-				err = sv.pushDockerImage()
-				if err != nil {
-					log.Fatalln(err)
-				}
-
-				log.Println("push dockerImage To dockerhub")
-				err = sv.pushDockerHubImage()
-				if err != nil {
-					log.Fatalln(err)
-				}
+				_ = sv.Entry()
 			}
 		}
 	}
@@ -183,6 +161,41 @@ type TplVariables struct {
 	//ExtraCommand2 string
 	AppName   string
 	HarborUri string
+}
+
+func (sv *TplVariables) Entry() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Dir: %s fail\n", sv.AppName)
+		}
+	}()
+	log.Println("generate run.sh")
+	err = sv.generateShell()
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("generate dockerfile")
+	err = sv.generateDockerFile()
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("generate dockerImage")
+	err = sv.generateDockerImage()
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("push dockerImage To harbor")
+	err = sv.pushDockerImage()
+	if err != nil {
+		log.Println(err)
+	}
+
+	log.Println("push dockerImage To dockerhub")
+	err = sv.pushDockerHubImage()
+	if err != nil {
+		log.Println(err)
+	}
+	return nil
 }
 
 func (t *TplVariables) generateDockerImage() error {

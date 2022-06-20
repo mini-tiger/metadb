@@ -3,8 +3,10 @@ apps:
     port: 60004
   - name: webserver
     port: 8090
+    nodePort: 32162
   - name: apiserver
     port: 8080
+    nodePort: 31921
   - name: coreservice
     port: 50009
   - name: toposerver
