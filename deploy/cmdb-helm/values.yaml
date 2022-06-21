@@ -13,6 +13,7 @@ apps:
     port: 60002
   - name: hostserver
     port: 60001
+    nodePort: 32357
   - name: operationserver
     port: 60011
 
