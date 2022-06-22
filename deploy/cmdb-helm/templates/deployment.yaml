@@ -29,6 +29,14 @@ spec:
           {{- end}}
           ports:
           - containerPort: {{ .port }}
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256m
+#            limits:
+#              cpu: 500m
+#              memory: 512m
+
           livenessProbe:
             failureThreshold: 3
             httpGet:
