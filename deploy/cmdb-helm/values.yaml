@@ -3,15 +3,19 @@ apps:
     port: 60004
   - name: webserver
     port: 8090
+    nodePort: 32162
   - name: apiserver
     port: 8080
+    nodePort: 31921
   - name: coreservice
     port: 50009
   - name: toposerver
     port: 60002
   - name: hostserver
     port: 60001
-
+    nodePort: 32357
+  - name: operationserver
+    port: 60011
 
 image:
   repository: harbor.dev.21vianet.com/cmdb/

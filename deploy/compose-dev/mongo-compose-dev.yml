@@ -1,12 +1,12 @@
 version: '3.8'
 
 services:
-  mongo-mongodb-headless:
-    container_name: mongo-mongodb-headless
+  mongo1:
+    container_name: mongo1
     image: harbor.dev.21vianet.com/cmdb/mongo:4.4.12
     volumes:
       - /home/taojun/mongors/data1:/data/db
-      - ./rs-init.sh:/scripts/rs-init.sh
+      - ./rs-init-dev.sh:/scripts/rs-init.sh
       - ./dbuser-init.sh:/scripts/dbuser-init.sh
     networks:
       #      - mongors-network
@@ -52,4 +52,4 @@ services:
 networks:
   default:
     external:
-      name: work-net
+      name: work-net-dev
