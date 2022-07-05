@@ -56,5 +56,5 @@ endif
 	@echo -e "\033[34mbuilding the target: $@... \033[0m"
 	@echo
 	@echo $(BIN_PATH)/$(TARGET_NAME)/$(TARGET_NAME)
-	go build -i $(GOBUILD_FLAGS) -o $(BIN_PATH)/$(TARGET_NAME)/$(TARGET_NAME)
+	go build $(GOBUILD_FLAGS) -o $(BIN_PATH)/$(TARGET_NAME)/$(TARGET_NAME)
 	@chmod +x  $(BIN_PATH)/$(TARGET_NAME)/$(TARGET_NAME)

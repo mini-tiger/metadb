@@ -15,3 +15,5 @@ src/configcenter/DockerFile/tmp/*
 /src/source_controller/coreservice/go_build_core
 *.pid
 *.jar
+go_build_*
+.idea
