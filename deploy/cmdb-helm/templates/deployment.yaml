@@ -2,6 +2,7 @@
 {{ $repository := .Values.image.repository}}
 {{ $tag := .Values.image.tag }}
 {{ $pullPolicy := .Values.env.pullPolicy }}
+{{ $cache := .Values.cache.enabled}}
 
 {{- range .Values.apps }}
   {{- with . }}
@@ -21,6 +22,17 @@ spec:
       labels:
         app:  {{ .name }}
     spec:
+      {{- if and $cache .cacheAffinity}}
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                {{- range $key, $value := $value.cache.labels }}
+                  - {{  $key  }}: {{ $value }}
+                {{- end }}
+      {{- end}}
       containers:
         - name:  {{ .name }}
           image: {{ $repository }}cmdb_{{ .name}}:{{ $tag }}

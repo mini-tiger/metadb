@@ -9,6 +9,8 @@ apps:
     nodePort: 31921
   - name: coreservice
     port: 50009
+    nodePort: 32001
+    cacheAffinity: true
   - name: toposerver
     port: 60002
   - name: hostserver
@@ -21,11 +23,14 @@ image:
   repository: harbor.dev.21vianet.com/cmdb/
 #  tag: "2022322_12283"
   tag: "latest"
-
 env:
-
 #  pullPolicy: IfNotPresent
   pullPolicy: Always
+
+cache:
+  enabled: true
+  labels:
+    - app.kubernetes.io/instance: redis
 #res:
 #  req:
 #    mem: 1024Mi
