@@ -14,8 +14,11 @@ package service
 
 import (
 	"configcenter/src/common"
+	"configcenter/src/common/blog"
 	"configcenter/src/common/http/rest"
+	"configcenter/src/common/mapstr"
 	"configcenter/src/common/metadata"
+	"configcenter/src/source_controller/coreservice/bussiness/cache"
 	"configcenter/src/source_controller/coreservice/multilingual"
 )
 
@@ -25,16 +28,102 @@ func (s *coreService) CreateOneModelInstance(ctx *rest.Contexts) {
 		ctx.RespAutoError(err)
 		return
 	}
-	ctx.RespEntityWithError(s.core.InstanceOperation().CreateModelInstance(ctx.Kit, ctx.Request.PathParameter("bk_obj_id"), inputData))
+	objectID := ctx.Request.PathParameter("bk_obj_id")
+	dataResult, err := s.core.InstanceOperation().CreateModelInstance(ctx.Kit, objectID, inputData)
+	if err != nil {
+		blog.Errorf("CreateOneModelInstances err:%v", err)
+		ctx.RespEntityWithError(dataResult, err)
+		return
+	}
+	ids := make([]uint64, 0, 1)
+	ids = append(ids, dataResult.Created.ID)
+
+	sc := &cache.SendCache{
+		Cond:     mapstr.MapStr{"bk_inst_id": mapstr.MapStr{common.BKDBIN: ids}},
+		Core:     s.core,
+		ObjectID: objectID,
+	}
+
+	sc.CopyKit(ctx.Kit)
+
+	if err == nil {
+		cache.SendCacheChan <- sc
+		//go func() {
+
+		//var iscache bool
+		//var ui interface{}
+		//ui, iscache = cache.CacheObjMap.Get(objectID)
+		//if !iscache {
+		//	blog.Errorf("objid:%s not found cache skip", objectID)
+		//	return
+		//}
+		//ids := make([]uint64, 0, 1)
+		//ids = append(ids, dataResult.Created.ID)
+		//for _, create := range dataResult.CreateManyInfoResult.Created {
+		//	ids = append(ids, create.ID)
+		//}
+		//cond := mapstr.MapStr{"bk_inst_id": mapstr.MapStr{common.BKDBIN: ids}}
+		//err, _ := sc.SearchDBAndSaveCache(objectID, ui.(string), s.core, iscache)
+		//if err != nil {
+		//	blog.Errorf("objid:%s unique:%v save redis err:%v", objectID, ui, err)
+		//	return
+		//}
+
+		//}()
+	}
+	ctx.RespEntityWithError(dataResult, err)
 }
 
 func (s *coreService) CreateManyModelInstances(ctx *rest.Contexts) {
+	//fmt.Println(ctx.Request.Request.Method)
 	inputData := metadata.CreateManyModelInstance{}
 	if err := ctx.DecodeInto(&inputData); nil != err {
 		ctx.RespAutoError(err)
 		return
 	}
-	ctx.RespEntityWithError(s.core.InstanceOperation().CreateManyModelInstance(ctx.Kit, ctx.Request.PathParameter("bk_obj_id"), inputData))
+	objectID := ctx.Request.PathParameter("bk_obj_id")
+	dataResult, err := s.core.InstanceOperation().CreateManyModelInstance(ctx.Kit, objectID, inputData)
+	if err != nil {
+		blog.Errorf("CreateManyModelInstances err:%v", err)
+		ctx.RespEntityWithError(dataResult, err)
+		return
+	}
+
+	ids := make([]uint64, 0, len(dataResult.Created))
+	for _, create := range dataResult.CreateManyInfoResult.Created {
+		ids = append(ids, create.ID)
+	}
+	sc := &cache.SendCache{
+		Cond:     mapstr.MapStr{"bk_inst_id": mapstr.MapStr{common.BKDBIN: ids}},
+		Core:     s.core,
+		ObjectID: objectID,
+	}
+
+	sc.CopyKit(ctx.Kit)
+
+	if err == nil {
+
+		cache.SendCacheChan <- sc
+
+		//go func() {
+		//
+		//	//var iscache bool
+		//	//var ui interface{}
+		//	//ui, iscache = cache.CacheObjMap.Get(objectID)
+		//	//if !iscache {
+		//	//	blog.Errorf("objid:%s not found cache skip", objectID)
+		//	//	return
+		//	//}
+		//	sc.IsCache(objectID)
+		//	err, _ := sc.SearchDBAndSaveCache(objectID,  s.core)
+		//	if err != nil {
+		//		blog.Errorf("objid:%s unique:%v save redis err:%v", objectID, ui, err)
+		//		return
+		//	}
+		//
+		//}()
+	}
+	ctx.RespEntityWithError(dataResult, err)
 }
 
 func (s *coreService) UpdateModelInstances(ctx *rest.Contexts) {
@@ -43,11 +132,47 @@ func (s *coreService) UpdateModelInstances(ctx *rest.Contexts) {
 		ctx.RespAutoError(err)
 		return
 	}
+	objectID := ctx.Request.PathParameter("bk_obj_id")
+	dataResult, err := s.core.InstanceOperation().UpdateModelInstance(ctx.Kit, objectID, inputData)
+	if err != nil {
+		blog.Errorf(" UpdateModelInstances err:%v", err)
+		ctx.RespEntityWithError(dataResult, err)
+		return
+	}
 
-	ctx.RespEntityWithError(s.core.InstanceOperation().UpdateModelInstance(ctx.Kit, ctx.Request.PathParameter("bk_obj_id"), inputData))
+	//var iscache bool
+	//var ui interface{}
+	//var unique string
+	//ui, iscache = cache.CacheObjMap.Get(objectID)
+	//unique = ui.(string)
+	sc := &cache.SendCache{
+		Cond:     inputData.Condition,
+		Core:     s.core,
+		ObjectID: objectID,
+	}
+	sc.IsCache()
+	if sc.Iscache {
+
+		sc.CopyKit(ctx.Kit)
+		//inputCopy := inputata.Clone()
+		err, _ := sc.SearchDBAndSaveCache()
+		//fmt.Println(dataResult)
+		//fmt.Println(err)
+		if err != nil {
+			blog.Errorf("Update Instance Cache save Cache Cond:[%v] err:%v", inputData.Condition, err)
+
+		}
+
+	}
+
+	ctx.RespEntityWithError(dataResult, err)
 }
 
 func (s *coreService) SearchModelInstances(ctx *rest.Contexts) {
+
+	//dd := s.core.CacheOperation().GetMany(context.Background(), []string{"cc:services:endpoints:apiserver"})
+	//dd := s.engine.RedisClient.GetMany(context.Background(), []string{"cc:services:endpoints:apiserver"})
+	//fmt.Println(dd)
 	inputData := metadata.QueryCondition{}
 	if err := ctx.DecodeInto(&inputData); nil != err {
 		ctx.RespAutoError(err)
@@ -84,7 +209,43 @@ func (s *coreService) DeleteModelInstances(ctx *rest.Contexts) {
 		ctx.RespAutoError(err)
 		return
 	}
-	ctx.RespEntityWithError(s.core.InstanceOperation().DeleteModelInstance(ctx.Kit, ctx.Request.PathParameter("bk_obj_id"), inputData))
+	objectID := ctx.Request.PathParameter("bk_obj_id")
+
+	inputMongoData := metadata.QueryCondition{Condition: inputData.Condition}
+
+	dataResult, err := s.core.InstanceOperation().SearchModelInstance(ctx.Kit, objectID, inputMongoData)
+	if nil != err {
+		ctx.RespEntityWithError(dataResult, err)
+	}
+
+	delResult, err := s.core.InstanceOperation().DeleteModelInstance(ctx.Kit, objectID, inputData)
+	if err == nil {
+		//var iscache bool
+		//var ui interface{}
+		//var unique string
+		//ui, iscache = cache.CacheObjMap.Get(objectID)
+		//unique = ui.(string)
+		sc := &cache.SendCache{
+			Cond:     inputData.Condition,
+			Core:     s.core,
+			ObjectID: objectID,
+		}
+		sc.IsCache()
+
+		if sc.Iscache {
+
+			//inputCopy := inputata.Clone()
+			err, _ := sc.DeleteCache(dataResult)
+			//fmt.Println(dataResult)
+			//fmt.Println(err)
+			if err != nil {
+				blog.Errorf("DeleteModelInstances Cond:[%v] err:%v", inputData.Condition, err)
+
+			}
+
+		}
+	}
+	ctx.RespEntityWithError(delResult, err)
 }
 
 func (s *coreService) CascadeDeleteModelInstances(ctx *rest.Contexts) {

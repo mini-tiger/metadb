@@ -68,7 +68,7 @@ var AllModule = map[string]bool{
 	//CC_MODULE_EVENTSERVER:    true,
 	CC_MODULE_CORESERVICE: true,
 	// CC_MODULE_SYNCHRONZESERVER: true,
-	//CC_MODULE_OPERATION:    true,
+	CC_MODULE_OPERATION: true,
 	//CC_MODULE_TASK:         true,
 	//CC_MODULE_CLOUD:        true,
 	CC_MODULE_AUTH: false,

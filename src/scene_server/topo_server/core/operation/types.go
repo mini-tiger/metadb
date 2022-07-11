@@ -35,6 +35,9 @@ type OpCondition struct {
 	Delete deleteCondition   `json:"delete"`
 	Update []updateCondition `json:"update"`
 }
+type OpMetadbCondition struct {
+	MetaCond interface{} `json:"metaCond"`
+}
 
 type InstBatchInfo struct {
 	// BatchInfo batch info

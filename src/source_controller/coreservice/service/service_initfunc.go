@@ -110,7 +110,12 @@ func (s *coreService) initModelInstances(web *restful.WebService) {
 	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/model/{bk_obj_id}/instance", Handler: s.UpdateModelInstances})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/read/model/{bk_obj_id}/instances", Handler: s.SearchModelInstances})
 	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/delete/model/{bk_obj_id}/instance", Handler: s.DeleteModelInstances})
+
 	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/delete/model/{bk_obj_id}/instance/cascade", Handler: s.CascadeDeleteModelInstances})
+
+	// unique redis
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/read/model/{bk_obj_id}/instances/cache", Handler: s.SearchModelInstancesCache})
+	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/model/{bk_obj_id}/instance/cache", Handler: s.UpdateModelManyInstancesCache})
 
 	utility.AddToRestfulWebService(web)
 }
@@ -417,10 +422,10 @@ func (s *coreService) initService(web *restful.WebService) {
 
 	s.initModelClassification(web)
 	s.initModel(web)
-	s.initAssociationKind(web) // xxx
+	s.initAssociationKind(web)
 	s.initAttrUnique(web)
 	s.initModelAssociation(web)
-	s.initModelInstances(web)
+	s.initModelInstances(web) // xxx
 	s.initInstanceAssociation(web)
 	s.initDataSynchronize(web)
 	s.initMainline(web)

@@ -27,6 +27,7 @@ func Version(req *restful.Request, resp *restful.Response) {
 		Version:   version.CCVersion,
 		BuildTime: version.CCBuildTime,
 		CommitID:  version.CCGitHash,
+		GoVersion: version.GoVersion,
 	}
 	resp.WriteJson(answer, "application/json")
 }

@@ -13,6 +13,7 @@
 package instance
 
 import (
+	"configcenter/src/common/mapstr"
 	"context"
 	"net/http"
 
@@ -32,6 +33,10 @@ type InstanceClientInterface interface {
 	// ReadInstanceStruct 按照结构体返回实例数据
 	ReadInstanceStruct(ctx context.Context, h http.Header, objID string, input *metadata.QueryCondition,
 		result interface{}) (err errors.CCErrorCoder)
+
+	// cache
+	ReadInstanceCache(ctx context.Context, h http.Header, objID string, input mapstr.MapStr) (resp *metadata.QueryConditionResult, header http.Header, err error)
+	UpdateInstanceCache(ctx context.Context, h http.Header, objID string, input mapstr.MapStr) (resp *metadata.ResponseDataMapStr, header http.Header, err error)
 }
 
 func NewInstanceClientInterface(client rest.ClientInterface) InstanceClientInterface {

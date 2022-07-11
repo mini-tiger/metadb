@@ -13,6 +13,7 @@
 package app
 
 import (
+	"configcenter/src/source_controller/coreservice/bussiness/cache"
 	"context"
 	"fmt"
 	"time"
@@ -64,6 +65,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 	}
 	redisConf := backbone.RedisConfGenerate(op.ServConf.Register)
 	engine, err := backbone.NewBackbone(ctx, input, redisConf)
+
 	if err != nil {
 		return fmt.Errorf("new backbone failed, err: %v", err)
 	}
@@ -96,7 +98,23 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		return err
 	}
 
+	// cache redis hotData
+	// 初始化 redis conn
+	cache.InitCli(ctx, redisConf, engine.RedisClient)
+
+	// 同步 db 中iscache true的obj
+	cache.SyncObjCache()
+	// redis 的crud chan
+	cache.SyncCacheData()
+
+	// sendData
+	cache.WaitSendCacheData()
+
 	err = backbone.StartServer(ctx, cancel, engine, coreService.WebService(), true)
+
+	// 初始化 已存在 obj 数据加载到redis xxx 执行一次 阻塞
+	cache.ObjAllDataInitCache()
+
 	if err != nil {
 		return err
 	}

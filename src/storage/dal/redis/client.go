@@ -24,6 +24,11 @@ type Client interface {
 	Subscribe(ctx context.Context, channels ...string) PubSub
 	PSubscribe(ctx context.Context, channels ...string) PubSub
 
+	// add
+	GetMany(ctx context.Context, keys []string) SliceResult
+	SetMany(ctx context.Context, data map[string]interface{}) StatusResult
+	DelMany(ctx context.Context, keys []string) IntResult
+
 	Commands
 }
 
@@ -52,6 +57,32 @@ func (c *client) Subscribe(ctx context.Context, channels ...string) PubSub {
 
 func (c *client) PSubscribe(ctx context.Context, channels ...string) PubSub {
 	return c.cli.PSubscribe(channels...)
+}
+
+func (c *client) GetMany(ctx context.Context, keys []string) SliceResult {
+	//result := make(map[string]redisInter.StringResult, len(keys))
+	params := make([]string, 0, len(keys))
+	for _, key := range keys {
+		params = append(params, key)
+	}
+	return c.MGet(ctx, params...)
+
+}
+
+func (c *client) SetMany(ctx context.Context, data map[string]interface{}) StatusResult {
+	params := make([]interface{}, 0, len(data)*2)
+	for k, v := range data {
+		params = append(params, k, v)
+	}
+	return c.MSet(ctx, params...)
+}
+
+func (c *client) DelMany(ctx context.Context, keys []string) IntResult {
+	params := make([]string, 0, len(keys))
+	for _, key := range keys {
+		params = append(params, key)
+	}
+	return c.Del(ctx, params...)
 }
 
 func (c *client) Pipeline() Pipeliner {

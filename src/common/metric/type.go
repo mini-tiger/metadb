@@ -107,6 +107,7 @@ type VersionInfo struct {
 	Version   string `json:"version"`
 	BuildTime string `json:"build_time"`
 	CommitID  string `json:"commit_id"`
+	GoVersion string `json:"go_version"`
 }
 
 type Action struct {

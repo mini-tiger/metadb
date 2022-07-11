@@ -44,6 +44,7 @@ func createTable(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err er
 }
 
 var tables = map[string][]types.Index{
+	//add cc_AuditLog
 
 	common.BKTableNameObjAsst: {
 		types.Index{Name: "", Keys: map[string]int32{common.BKObjIDField: 1}, Background: true},

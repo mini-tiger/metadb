@@ -20,9 +20,9 @@ import (
 	"configcenter/src/storage/dal"
 )
 
-func init() {
-	upgrader.RegistUpgrader("y3.8.202001172032", upgrade)
-}
+//func init() {
+//	upgrader.RegistUpgrader("y3.8.202001172032", upgrade)
+//}
 
 func upgrade(ctx context.Context, db dal.RDB, conf *upgrader.Config) error {
 	blog.Infof("start execute y3.8.202001172032")

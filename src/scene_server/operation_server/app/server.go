@@ -38,8 +38,8 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 	input := &backbone.BackboneParameter{
 		ConfigUpdate: operationSvr.OnOperationConfigUpdate,
 		ConfigPath:   op.ServConf.ExConfig,
-		Regdiscv:     op.ServConf.RegDiscover,
-		SrvInfo:      svrInfo,
+		//Regdiscv:     op.ServConf.RegDiscover,
+		SrvInfo: svrInfo,
 	}
 	redisConf := backbone.RedisConfGenerate(op.ServConf.Register)
 

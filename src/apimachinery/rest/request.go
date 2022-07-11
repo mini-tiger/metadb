@@ -173,6 +173,7 @@ func (r *Request) Body(body interface{}) *Request {
 	}
 
 	valueOf := reflect.ValueOf(body)
+
 	switch valueOf.Kind() {
 	case reflect.Interface:
 		fallthrough
@@ -428,6 +429,26 @@ func (r *Result) Into(obj interface{}) error {
 		return fmt.Errorf("http request failed: %s", r.Status)
 	}
 	return nil
+}
+
+func (r *Result) IntoBodyHeader(obj interface{}) (error, http.Header) {
+	if nil != r.Err {
+		return r.Err, r.Header
+	}
+
+	if 0 != len(r.Body) {
+		err := json.Unmarshal(r.Body, obj)
+		if nil != err {
+			if r.StatusCode >= 300 {
+				return fmt.Errorf("http request err: %s", string(r.Body)), r.Header
+			}
+			blog.Errorf("invalid response body, unmarshal json failed, reply:%s, error:%s", r.Body, err.Error())
+			return fmt.Errorf("http response err: %v, raw data: %s", err, r.Body), r.Header
+		}
+	} else if r.StatusCode >= 300 {
+		return fmt.Errorf("http request failed: %s", r.Status), r.Header
+	}
+	return nil, r.Header
 }
 
 func (r *Result) IntoJsonString() (*metadata.JsonStringResp, error) {

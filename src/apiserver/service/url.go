@@ -201,6 +201,8 @@ func (u *URLPath) WithHost(req *restful.Request) (isHit bool) {
 	from, to := rootPath, hostRoot
 
 	switch {
+	case strings.HasPrefix(string(*u), rootPath+"/createmany/"):
+		from, to, isHit = rootPath, hostRoot, true
 	case strings.HasPrefix(string(*u), rootPath+"/host/"):
 		from, to, isHit = rootPath, hostRoot, true
 
