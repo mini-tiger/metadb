@@ -30,7 +30,10 @@ env:
 cache:
   enabled: true
   labels:
-    - app.kubernetes.io/instance: redis
+    - name: app.kubernetes.io/instance
+      value: redis
+    - name: app.kubernetes.io/component
+      value: master
 #res:
 #  req:
 #    mem: 1024Mi
