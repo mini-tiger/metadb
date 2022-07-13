@@ -21,6 +21,8 @@ spec:
     metadata:
       labels:
         app:  {{ .name }}
+      annotations:
+        timestamp: {{ now | quote }}
     spec:
       {{- if and $cache .cacheAffinity}}
       affinity:
