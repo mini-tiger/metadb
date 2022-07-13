@@ -399,6 +399,7 @@ func (m *instanceManager) SearchModelInstance(kit *rest.Kit, objID string, input
 		Limit(uint64(inputParam.Page.Limit)).
 		Sort(inputParam.Page.Sort).
 		Fields(fields...)
+
 	var instErr error
 	if objID == common.BKInnerObjIDHost {
 		hosts := make([]metadata.HostMapStr, 0)

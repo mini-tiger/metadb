@@ -154,6 +154,10 @@ func (s *Service) initBusinessAssociation(web *restful.WebService) {
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/find/instassociation/object/{bk_obj_id}", Handler: s.SearchInstByAssociation})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/find/instassttopo/object/{bk_obj_id}/inst/{inst_id}", Handler: s.SearchInstTopo})
 
+	// cache
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/find/instassociation/object/{bk_obj_id}/cache", Handler: s.SearchInstByAssociationCache})
+	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/instance/object/{bk_obj_id}/cache", Handler: s.UpdateInstByAssociationCache})
+
 	// ATTENTION: the following methods is not recommended
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/find/insttopo/object/{bk_obj_id}/inst/{inst_id}", Handler: s.SearchInstChildTopo})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/import/instassociation/{bk_obj_id}", Handler: s.ImportInstanceAssociation})
@@ -170,7 +174,10 @@ func (s *Service) initBusinessInst(web *restful.WebService) {
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/create/instance/object/{bk_obj_id}", Handler: s.CreateInst})
 	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/delete/instance/object/{bk_obj_id}/inst/{inst_id}", Handler: s.DeleteInst})
 	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/deletemany/instance/object/{bk_obj_id}", Handler: s.DeleteInsts})
+	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/deletemany/instance/object/{bk_obj_id}/metadb", Handler: s.DeleteMetadbInsts})
 	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/instance/object/{bk_obj_id}/inst/{inst_id}", Handler: s.UpdateInst})
+
+	// 循环调用单 条更新
 	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/updatemany/instance/object/{bk_obj_id}", Handler: s.UpdateInsts})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/find/instance/object/{bk_obj_id}", Handler: s.SearchInstAndAssociationDetail})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/find/instance/object/{bk_obj_id}/unique_fields", Handler: s.SearchInstUniqueFields})

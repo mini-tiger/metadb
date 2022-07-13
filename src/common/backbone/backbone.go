@@ -13,6 +13,7 @@
 package backbone
 
 import (
+	"configcenter/src/common/logMiddleWare"
 	"configcenter/src/thirdparty/monitor"
 	"context"
 	"fmt"
@@ -166,7 +167,8 @@ func NewBackbone(ctx context.Context, input *BackboneParameter, redisConf redis.
 	//engine.client = client
 	engine.apiMachineryConfig = apiMachineryConfig
 	engine.discovery = serviceDiscovery
-	//engine.ServiceManageInterface = serviceDiscovery
+	// xxx operation module must
+	engine.ServiceManageInterface = serviceDiscovery
 	engine.srvInfo = input.SrvInfo
 	engine.metric = metricService
 
@@ -242,9 +244,10 @@ func NewBackbone(ctx context.Context, input *BackboneParameter, redisConf redis.
 
 func StartServer(ctx context.Context, cancel context.CancelFunc, e *Engine, HTTPHandler http.Handler, pprofEnabled bool) error {
 	e.server = Server{
-		ListenAddr:   e.srvInfo.IP,
-		ListenPort:   e.srvInfo.Port,
-		Handler:      e.Metric().HTTPMiddleware(HTTPHandler),
+		ListenAddr: e.srvInfo.IP,
+		ListenPort: e.srvInfo.Port,
+		Handler:    logMiddleWare.LogMiddleware(e.Metric().HTTPMiddleware(HTTPHandler)), // add log
+		//Handler:      e.Metric().HTTPMiddleware(HTTPHandler),
 		TLS:          TLSConfig{},
 		PProfEnabled: pprofEnabled,
 	}

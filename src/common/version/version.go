@@ -14,6 +14,7 @@ package version
 
 import (
 	"fmt"
+	"runtime"
 )
 
 // CCVersion describes version
@@ -29,6 +30,7 @@ var (
 	CCDistro        = "community" // enterprise, community
 	CCDistroVersion = "9999.9999.9999"
 	ServiceName     = "unknown"
+	GoVersion       = runtime.Version()
 )
 
 // CCRunMode enumeration

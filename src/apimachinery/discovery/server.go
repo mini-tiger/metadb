@@ -105,7 +105,7 @@ func (s *server) run() {
 	blog.Infof("start to discover cc component from redis, path:[%s].", s.path)
 	go func() {
 		for {
-			time.Sleep(3 * time.Second)
+			time.Sleep(10 * time.Second)
 			var exist redis.IntResult
 			if exist = s.redisCli.Exists(context.Background(), s.path); exist.Err() != nil {
 				blog.Errorf("get redis exist path[%s] err:%v", s.path, exist.Err())

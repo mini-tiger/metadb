@@ -33,6 +33,13 @@ func upgrade(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err error)
 	if err != nil {
 		return err
 	}
+
+	// replace y3.8.202001172032
+	err = rebuildAuditLog(ctx, db, conf)
+	if err != nil {
+		return err
+	}
+
 	err = createTable(ctx, db, conf)
 	if err != nil {
 		return err

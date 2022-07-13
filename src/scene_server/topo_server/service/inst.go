@@ -167,6 +167,7 @@ func (s *Service) DeleteInsts(ctx *rest.Contexts) {
 	}
 
 	authInstances := make([]extensions.InstanceSimplify, 0)
+
 	input := &metadata.QueryInput{
 		Condition: map[string]interface{}{
 			obj.GetInstIDFieldName(): map[string]interface{}{
@@ -195,6 +196,89 @@ func (s *Service) DeleteInsts(ctx *rest.Contexts) {
 	txnErr := s.Engine.CoreAPI.CoreService().Txn().AutoRunTxn(ctx.Kit.Ctx, ctx.Kit.Header, func() error {
 		if err = s.Core.InstOperation().DeleteInstByInstID(ctx.Kit, objID, deleteCondition.Delete.InstID, true); err != nil {
 			blog.Errorf("DeleteInst failed, DeleteInstByInstID failed, err: %s, objID: %s, instIDs: %+v, rid: %s", err.Error(), objID, deleteCondition.Delete.InstID, ctx.Kit.Rid)
+			return err
+		}
+		return nil
+	})
+
+	if txnErr != nil {
+		ctx.RespAutoError(txnErr)
+		return
+	}
+	ctx.RespEntity(nil)
+}
+func (s *Service) DeleteMetadbInsts(ctx *rest.Contexts) {
+	objID := ctx.Request.PathParameter("bk_obj_id")
+
+	data := struct {
+		operation.OpMetadbCondition `json:",inline"`
+		//ModelBizID            int64 `json:"bk_biz_id"`
+	}{}
+	if err := ctx.DecodeInto(&data); nil != err {
+		ctx.RespAutoError(err)
+		return
+	}
+	//deleteCondition := data.OpCondition
+
+	// forbidden delete inner model instance with common api
+	if common.IsInnerModel(objID) {
+		blog.Errorf("delete instances failed, delete %s instance with common delete api forbidden, rid: %s", objID, ctx.Kit.Rid)
+		ctx.RespAutoError(ctx.Kit.CCError.CCError(common.CCErrCommForbiddenOperateInnerModelInstanceWithCommonAPI))
+		return
+	}
+
+	//obj, err := s.Core.ObjectOperation().FindSingleObject(ctx.Kit, objID)
+	//if nil != err {
+	//	blog.Errorf("[api-inst] failed to find the objects(%s), error info is %s, rid: %s", ctx.Request.PathParameter("bk_obj_id"), err.Error(), ctx.Kit.Rid)
+	//	ctx.RespAutoError(err)
+	//	return
+	//}
+
+	// forbidden create mainline instance with common api
+	//isMainline, err := obj.IsMainlineObject()
+	//if err != nil {
+	//	blog.Errorf("DeleteInsts failed, check whether model %s to be mainline failed, err: %+v, rid: %s", objID, err, ctx.Kit.Rid)
+	//	ctx.RespAutoError(err)
+	//	return
+	//}
+	//if isMainline == true {
+	//	// TODO add custom mainline instance param validation
+	//}
+
+	//authInstances := make([]extensions.InstanceSimplify, 0)
+	//var input *metadata.QueryInput
+	//if v, ok := data.OpMetadbCondition.MetaCond.(map[string]interface{}); ok {
+	//input = &metadata.QueryInput{
+	//	Condition: v}
+	//}
+
+	//_, insts, err := s.Core.InstOperation().FindInst(ctx.Kit, obj, input, false)
+	//if nil != err {
+	//	blog.Errorf("DeleteInst failed, find authInstances to be deleted failed, error info is %s, rid: %s", err.Error(), ctx.Kit.Rid)
+	//	ctx.RespAutoError(err)
+	//	return
+	//}
+	//fmt.Println(insts)
+	//for _, inst := range insts {
+	//	instID, _ := inst.GetInstID()
+	//	instName, _ := inst.GetInstName()
+	//	instBizID, _ := inst.GetBizID()
+	//	authInstances = append(authInstances, extensions.InstanceSimplify{
+	//		InstanceID: instID,
+	//		Name:       instName,
+	//		BizID:      instBizID,
+	//		ObjectID:   objID,
+	//	})
+	//}
+	var input map[string]interface{}
+	var ok bool
+	var err error
+	if input, ok = data.OpMetadbCondition.MetaCond.(map[string]interface{}); !ok {
+		ctx.RespEntity(nil)
+	}
+	txnErr := s.Engine.CoreAPI.CoreService().Txn().AutoRunTxn(ctx.Kit.Ctx, ctx.Kit.Header, func() error {
+		if err = s.Core.InstOperation().DeleteInst(ctx.Kit, objID, input, true); err != nil {
+			blog.Errorf("DeleteInst failed, DeleteInstByInstID failed, err: %s, objID: %s, instIDs: %+v, rid: %s", err.Error(), objID, input, ctx.Kit.Rid)
 			return err
 		}
 		return nil
@@ -684,6 +768,52 @@ func (s *Service) SearchInstByAssociation(ctx *rest.Contexts) {
 	}
 
 	ctx.RespEntity(result)
+}
+
+// SearchInstByAssociation search inst by the association inst
+func (s *Service) UpdateInstByAssociationCache(ctx *rest.Contexts) {
+	data := make(map[string]interface{}, 0)
+	if err := ctx.DecodeInto(&data); err != nil {
+		ctx.RespAutoError(err)
+		return
+	}
+	objID := ctx.Request.PathParameter("bk_obj_id")
+
+	ctx.SetReadPreference(common.SecondaryPreferredMode)
+	result, header, err := s.Core.InstOperation().UpdateOriginInstCache(ctx.Kit, objID, data)
+	//fmt.Println(err)
+	if nil != err {
+		blog.Errorf("[api-inst] failed to find the objects(%s), error info is %s, rid: %s", ctx.Request.PathParameter("bk_obj_id"), err.Error(), ctx.Kit.Rid)
+		ctx.RespAutoError(err)
+		return
+	}
+	head := make(map[string]string, 1)
+	//if header.Get("iscache")
+	head["iscache"] = header.Get("iscache")
+	ctx.RespEntityHeader(result, head)
+}
+
+// SearchInstByAssociation search inst by the association inst
+func (s *Service) SearchInstByAssociationCache(ctx *rest.Contexts) {
+	data := make(map[string]interface{}, 0)
+	if err := ctx.DecodeInto(&data); err != nil {
+		ctx.RespAutoError(err)
+		return
+	}
+	objID := ctx.Request.PathParameter("bk_obj_id")
+
+	ctx.SetReadPreference(common.SecondaryPreferredMode)
+	result, header, err := s.Core.InstOperation().FindOriginInstCache(ctx.Kit, objID, data)
+	//fmt.Println(err)
+	if nil != err {
+		blog.Errorf("[api-inst] failed to find the objects(%s), error info is %s, rid: %s", ctx.Request.PathParameter("bk_obj_id"), err.Error(), ctx.Kit.Rid)
+		ctx.RespAutoError(err)
+		return
+	}
+	head := make(map[string]string, 1)
+	//if header.Get("iscache")
+	head["iscache"] = header.Get("iscache")
+	ctx.RespEntityHeader(result, head)
 }
 
 // SearchInstByInstID search the inst by inst ID

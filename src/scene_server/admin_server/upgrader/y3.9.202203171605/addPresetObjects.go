@@ -118,7 +118,8 @@ func addObjAttDescData(ctx context.Context, db dal.RDB, conf *upgrader.Config) e
 	blog.Infof("add data for  %s table ", tablename)
 	rows := getObjAttDescData(conf.OwnerID)
 	for _, row := range rows {
-		_, _, err := upgrader.Upsert(ctx, db, tablename, row, "id", []string{common.BKObjIDField, common.BKPropertyIDField}, []string{})
+		err := upgrader.InsertData(ctx, db, tablename, row)
+		//_, _, err := upgrader.Upsert(ctx, db, tablename, row, "id", []string{common.BKObjIDField, common.BKPropertyIDField}, []string{})
 		if nil != err {
 			blog.Errorf("add data for  %s table error  %s", tablename, err)
 			return err
@@ -396,7 +397,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   151,
+					ID:   170,
 				},
 			},
 			Ispre:    false,
@@ -410,7 +411,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   176,
+					ID:   199,
 				},
 			},
 			Ispre:    false,
@@ -424,7 +425,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   180,
+					ID:   203,
 				},
 			},
 			Ispre:    false,
@@ -438,7 +439,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   188,
+					ID:   211,
 				},
 			},
 			Ispre:    false,
@@ -452,7 +453,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   192,
+					ID:   215,
 				},
 			},
 			Ispre:    false,
@@ -466,7 +467,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   197,
+					ID:   220,
 				},
 			},
 			Ispre:    false,
@@ -480,7 +481,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   202,
+					ID:   226,
 				},
 			},
 			Ispre:    false,
@@ -494,7 +495,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   203,
+					ID:   227,
 				},
 			},
 			Ispre:    false,
@@ -508,7 +509,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   164,
+					ID:   187,
 				},
 			},
 			Ispre:    false,
@@ -554,12 +555,15 @@ func getObjAttDescData(ownerID string) []*Attribute {
 		if false != r.IsPre {
 			r.IsPre = true
 		}
-		if false != r.IsEditable {
-			r.IsEditable = true
-		}
-		if true != r.IsSystem {
-			r.IsEditable = false
-		}
+		//if false != r.IsEditable {
+		//	r.IsEditable = true
+		//}
+		//if true != r.IsSystem {
+		//	r.IsEditable = false
+		//}
+		// xxx edit
+		r.IsEditable = true
+
 		r.IsReadOnly = false
 		r.CreateTime = t
 		r.Creator = common.CCSystemOperatorUserName

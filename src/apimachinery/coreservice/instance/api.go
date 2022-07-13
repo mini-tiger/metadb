@@ -13,6 +13,7 @@
 package instance
 
 import (
+	"configcenter/src/common/mapstr"
 	"context"
 	"net/http"
 
@@ -89,6 +90,36 @@ func (inst *instance) ReadInstance(ctx context.Context, h http.Header, objID str
 		WithHeaders(h).
 		Do().
 		Into(resp)
+	return
+}
+
+func (inst *instance) ReadInstanceCache(ctx context.Context, h http.Header, objID string,
+	input mapstr.MapStr) (resp *metadata.QueryConditionResult, header http.Header, err error) {
+	resp = new(metadata.QueryConditionResult)
+	subPath := "/read/model/%s/instances/cache"
+
+	err, header = inst.client.Post().
+		WithContext(ctx).
+		Body(input).
+		SubResourcef(subPath, objID).
+		WithHeaders(h).
+		Do().
+		IntoBodyHeader(resp)
+	return
+}
+
+func (inst *instance) UpdateInstanceCache(ctx context.Context, h http.Header, objID string,
+	input mapstr.MapStr) (resp *metadata.ResponseDataMapStr, header http.Header, err error) {
+	resp = new(metadata.ResponseDataMapStr)
+	subPath := "/update/model/%s/instance/cache"
+
+	err, header = inst.client.Put().
+		WithContext(ctx).
+		Body(input).
+		SubResourcef(subPath, objID).
+		WithHeaders(h).
+		Do().
+		IntoBodyHeader(resp)
 	return
 }
 

@@ -14,6 +14,7 @@ package operation
 
 import (
 	"fmt"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -51,6 +52,10 @@ type InstOperationInterface interface {
 	UpdateInst(kit *rest.Kit, data mapstr.MapStr, obj model.Object, cond mapstr.MapStr) error
 
 	SetProxy(modelFactory model.Factory, instFactory inst.Factory, asst AssociationOperationInterface, obj ObjectOperationInterface)
+
+	// cache
+	FindOriginInstCache(kit *rest.Kit, objID string, cond mapstr.MapStr) (*metadata.InstResult, http.Header, errors.CCError)
+	UpdateOriginInstCache(kit *rest.Kit, objID string, cond mapstr.MapStr) (*metadata.UpdateCacheInstResult, http.Header, errors.CCError)
 }
 
 // NewInstOperation create a new inst operation instance
@@ -91,6 +96,44 @@ func (c *commonInst) SetProxy(modelFactory model.Factory, instFactory inst.Facto
 	c.instFactory = instFactory
 	c.asst = asst
 	c.obj = obj
+}
+
+// cache
+func (c *commonInst) FindOriginInstCache(kit *rest.Kit, objID string, cond mapstr.MapStr) (*metadata.InstResult, http.Header, errors.CCError) {
+
+	rsp, header, err := c.clientSet.CoreService().Instance().ReadInstanceCache(kit.Ctx, kit.Header, objID, cond)
+
+	//return nil
+	if nil != err {
+		blog.Errorf("[operation-inst] failed to request object controller, err: %s, rid: %s", err.Error(), kit.Rid)
+		return nil, header, kit.CCError.Error(common.CCErrCommHTTPDoRequestFailed)
+	}
+
+	if !rsp.Result {
+		blog.Errorf("[operation-inst] failed to delete the object(%s) inst by the condition(%#v), err: %s, rid: %s", objID, cond, rsp.ErrMsg, kit.Rid)
+		return nil, header, kit.CCError.New(rsp.Code, rsp.ErrMsg)
+	}
+	return &metadata.InstResult{Info: rsp.Data.Info, Count: rsp.Data.Count}, header, nil
+
+}
+
+// cache
+func (c *commonInst) UpdateOriginInstCache(kit *rest.Kit, objID string, cond mapstr.MapStr) (*metadata.UpdateCacheInstResult, http.Header, errors.CCError) {
+
+	rsp, header, err := c.clientSet.CoreService().Instance().UpdateInstanceCache(kit.Ctx, kit.Header, objID, cond)
+
+	//return nil
+	if nil != err {
+		blog.Errorf("[operation-inst] failed to request object controller, err: %s, rid: %s", err.Error(), kit.Rid)
+		return nil, header, kit.CCError.Error(common.CCErrCommHTTPDoRequestFailed)
+	}
+
+	if !rsp.Result {
+		blog.Errorf("[operation-inst] failed to delete the object(%s) inst by the condition(%#v), err: %s, rid: %s", objID, cond, rsp.ErrMsg, kit.Rid)
+		return nil, header, kit.CCError.New(rsp.Code, rsp.ErrMsg)
+	}
+	return &metadata.UpdateCacheInstResult{BaseResp: rsp.BaseResp, Data: rsp.Data}, header, nil
+
 }
 
 // CreateInstBatch

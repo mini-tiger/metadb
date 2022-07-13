@@ -122,6 +122,7 @@ func (s *coreService) SetConfig(cfg options.Config, engine *backbone.Engine, err
 		auth.New(mongodb.Client()),
 		e.New(mongodb.Client(), redis.Client()),
 		coreCommon.New(),
+		//cache.New(), //xxx add cache redis
 	)
 	return nil
 }
@@ -137,6 +138,7 @@ func (s *coreService) WebService() *restful.Container {
 	// xxx rdapi.AllGlobalFilter(getErrFunc)) 认证
 	//api.Path("/api/v3").Filter(s.engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON).Consumes(restful.MIME_JSON)
 	api.Path("/api/v3").Filter(s.engine.Metric().RestfulMiddleWare).Produces(restful.MIME_JSON).Consumes(restful.MIME_JSON)
+
 	//xxx init service actions
 	s.initService(api)
 	container.Add(api)

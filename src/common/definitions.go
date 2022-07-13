@@ -707,14 +707,14 @@ const DefaultFlagDefaultValue int = 0
 const DefaultAppFlag int = 1
 
 // DefaultAppName the default app name
-const DefaultAppName string = "资源池"
+const DefaultAppName string = "资源池A"
 
 const DefaultCloudName string = "default area"
 
 const DefaultInstName string = "实例名"
 
 // BKAppName the default app name
-const BKAppName string = "蓝鲸"
+const BKAppName string = "蓝鲸A"
 
 // bk_classification_id value
 const BKNetwork = "bk_network"
@@ -920,6 +920,7 @@ const (
 	// CCSystemOperatorUserName the system user
 	CCSystemOperatorUserName  = "cc_system"
 	CCSystemCollectorUserName = "cc_collector"
+	CCSystemUserName          = "user"
 )
 
 // APIRsp the result the http requst

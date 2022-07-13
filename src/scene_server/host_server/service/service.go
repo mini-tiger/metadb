@@ -19,10 +19,8 @@ import (
 	"configcenter/src/apimachinery/discovery"
 	"configcenter/src/common"
 	"configcenter/src/common/backbone"
-	"configcenter/src/common/errors"
 	"configcenter/src/common/metadata"
 	"configcenter/src/common/metric"
-	"configcenter/src/common/rdapi"
 	"configcenter/src/common/types"
 	"configcenter/src/common/webservice/restfulservice"
 	"configcenter/src/scene_server/host_server/app/options"
@@ -46,10 +44,11 @@ func (s *Service) WebService() *restful.Container {
 	container := restful.NewContainer()
 
 	api := new(restful.WebService)
-	getErrFunc := func() errors.CCErrorIf {
-		return s.CCErr
-	}
-	api.Path("/host/v3").Filter(s.Engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON)
+	//getErrFunc := func() errors.CCErrorIf {
+	//	return s.CCErr
+	//}
+	//api.Path("/host/v3").Filter(s.Engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON)
+	api.Path("/host/v3").Filter(s.Engine.Metric().RestfulMiddleWare).Produces(restful.MIME_JSON)
 
 	//xxx init service actions
 	s.initService(api)

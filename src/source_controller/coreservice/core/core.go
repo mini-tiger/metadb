@@ -246,6 +246,7 @@ type Core interface {
 	AuthOperation() AuthOperation
 	EventOperation() EventOperation
 	CommonOperation() CommonOperation
+	//CacheOperation() CacheOperation
 }
 
 // ProcessOperation methods
@@ -421,6 +422,7 @@ type core struct {
 	auth            AuthOperation
 	event           EventOperation
 	common          CommonOperation
+	//cache           CacheOperation
 }
 
 // New create core
@@ -441,6 +443,7 @@ func New(
 	auth AuthOperation,
 	event EventOperation,
 	common CommonOperation,
+	//cache CacheOperation,
 ) Core {
 	return &core{
 		model:           model,
@@ -460,6 +463,7 @@ func New(
 		auth:            auth,
 		event:           event,
 		common:          common,
+		//cache:           cache,
 	}
 }
 

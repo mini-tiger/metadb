@@ -10,6 +10,7 @@ import (
 
 func (s *Service) initService(web *restful.WebService) {
 
+	s.initInst(web)
 	s.initCloudarea(web)
 	s.initFavourite(web)
 	s.initFindhost(web)
@@ -24,6 +25,19 @@ func (s *Service) initService(web *restful.WebService) {
 
 }
 
+func (s *Service) initInst(web *restful.WebService) {
+
+	utility := rest.NewRestUtility(rest.Config{
+		ErrorIf:  s.Engine.CCErr,
+		Language: s.Engine.Language,
+	})
+
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/createmany/{bk_obj_id}", Handler: s.CreateManyBatch})
+
+	utility.AddToRestfulWebService(web)
+
+}
+
 func (s *Service) initCloudarea(web *restful.WebService) {
 
 	utility := rest.NewRestUtility(rest.Config{
@@ -33,6 +47,7 @@ func (s *Service) initCloudarea(web *restful.WebService) {
 
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/findmany/cloudarea", Handler: s.FindManyCloudArea})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/createmany/cloudarea", Handler: s.CreatePlatBatch})
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/createmany/{bk_obj_id}", Handler: s.CreateManyBatch})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/create/cloudarea", Handler: s.CreatePlat})
 	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/cloudarea/{bk_cloud_id}", Handler: s.UpdatePlat})
 	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/delete/cloudarea/{bk_cloud_id}", Handler: s.DeletePlat})

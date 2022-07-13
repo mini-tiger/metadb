@@ -30,7 +30,6 @@ import (
 	"configcenter/src/common/language"
 	"configcenter/src/common/metadata"
 	"configcenter/src/common/metric"
-	"configcenter/src/common/rdapi"
 	"configcenter/src/common/types"
 	"configcenter/src/common/util"
 	"configcenter/src/common/webservice/restfulservice"
@@ -79,12 +78,14 @@ func (o *OperationServer) newSrvComm(header http.Header) *srvComm {
 
 func (o *OperationServer) WebService() *restful.Container {
 
-	getErrFunc := func() errors.CCErrorIf {
-		return o.Engine.CCErr
-	}
+	//getErrFunc := func() errors.CCErrorIf {
+	//	return o.Engine.CCErr
+	//}
 
 	api := new(restful.WebService)
-	api.Path("/operation/v3").Filter(o.Engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON)
+	//api.Path("/operation/v3").Filter(o.Engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON)
+
+	api.Path("/operation/v3").Filter(o.Engine.Metric().RestfulMiddleWare).Produces(restful.MIME_JSON)
 	restful.DefaultRequestContentType(restful.MIME_JSON)
 	restful.DefaultResponseContentType(restful.MIME_JSON)
 

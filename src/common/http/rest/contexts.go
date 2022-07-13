@@ -75,6 +75,17 @@ func (c *Contexts) RespEntity(data interface{}) {
 	c.Response(metadata.NewSuccessResp(data))
 }
 
+func (c *Contexts) RespEntityHeader(data interface{}, headers map[string]string) {
+	if c.respStatusCode != 0 {
+		c.resp.WriteHeader(c.respStatusCode)
+	}
+	c.resp.Header().Set("Content-Type", "application/json")
+	for key, value := range headers {
+		c.resp.Header().Set(key, value)
+	}
+	c.Response(metadata.NewSuccessResp(data))
+}
+
 // RespString response the data format to a json string.
 // the data is a string, and do not need marshal, can return directly.
 func (c *Contexts) RespString(data *string) {

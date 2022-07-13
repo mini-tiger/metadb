@@ -144,6 +144,12 @@ type QueryInstResult struct {
 	Data     InstResult `json:"data"`
 }
 
+// UpdateInstResult cache inst result
+type UpdateCacheInstResult struct {
+	BaseResp `json:",inline"`
+	Data     mapstr.MapStr `json:"data"`
+}
+
 // CreateInstResult create inst result
 type CreateInstResult struct {
 	BaseResp `json:",inline"`

@@ -27,6 +27,7 @@ func Version(c *gin.Context) {
 		Version:   version.CCVersion,
 		BuildTime: version.CCBuildTime,
 		CommitID:  version.CCGitHash,
+		GoVersion: version.GoVersion,
 	}
 	c.JSON(200, answer)
 }
