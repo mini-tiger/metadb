@@ -1,4 +1,5 @@
-FROM harbor.dev.21vianet.com/taojun/centos:7.4.1708-debug
+# FROM harbor.dev.21vianet.com/taojun/centos:7.4.1708-debug
+FROM harbor.dev.21vianet.com/taojun/python2.7-debug-tz:latest
 COPY cmdb /data/cmdb
 ADD run.sh  /data
 {{if .WebServer}}
