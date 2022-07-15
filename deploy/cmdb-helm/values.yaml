@@ -1,6 +1,7 @@
 apps:
   - name: adminserver
     port: 60004
+    nodePort: 30970
   - name: webserver
     port: 8090
     nodePort: 32162
