@@ -8,6 +8,7 @@ services:
       - /home/taojun/mongors/data1:/data/db
       - ./rs-init-dev.sh:/scripts/rs-init.sh
       - ./dbuser-init.sh:/scripts/dbuser-init.sh
+      - ./mongodb.conf:/etc/mongodb.conf
     networks:
       #      - mongors-network
       - default
@@ -20,31 +21,36 @@ services:
       - mongo2
       - mongo3
     restart: always
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+#    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+    entrypoint: [ "/usr/bin/mongod", "--config", "/etc/mongodb.conf" ]
   mongo2:
     container_name: mongo2
     image: harbor.dev.21vianet.com/cmdb/mongo:4.4.12
     volumes:
       - /home/taojun/mongors/data2:/data/db
+      - ./mongodb.conf:/etc/mongodb.conf
     networks:
       #      - mongors-network
       - default
     ports:
       - 27022:27017
     restart: always
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+    #    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+    entrypoint: [ "/usr/bin/mongod", "--config", "/etc/mongodb.conf" ]
   mongo3:
     container_name: mongo3
     image: harbor.dev.21vianet.com/cmdb/mongo:4.4.12
     volumes:
       - /home/taojun/mongors/data3:/data/db
+      - ./mongodb.conf:/etc/mongodb.conf
     networks:
 #      - mongors-network
       - default
     ports:
       - 27023:27017
     restart: always
-    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+    #    entrypoint: [ "/usr/bin/mongod", "--bind_ip_all", "--replSet", "rs0" ]
+    entrypoint: [ "/usr/bin/mongod", "--config", "/etc/mongodb.conf" ]
 
 #networks:
 #  mongors-network:
