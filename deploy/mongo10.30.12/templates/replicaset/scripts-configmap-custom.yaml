@@ -62,7 +62,7 @@ data:
   mongoarr.js: |-
       config=rs.config()
       var nodearrs = {{ $nodeList }}
-      for (var index in nodearrs){
+      for (var i=0; i<{{ $nodeLen }}; i++){
       print(host+":"+nodearrs[index] + "\n");
       var hh=host+":"+nodearrs[index]
       
