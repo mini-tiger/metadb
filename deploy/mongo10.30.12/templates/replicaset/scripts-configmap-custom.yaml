@@ -1,5 +1,5 @@
 {{- if eq .Values.architecture "replicaset" }}
-{{ $nodeLen := len .Values.externalAccess.service.nodePorts }}
+{{ $nodeLen := .Values.replicaCount }}
 {{ $nodelist := join "," .Values.externalAccess.service.nodePorts }}
 {{ $nodeList := printf "[%s]" $nodelist }}
 {{ $nodelastNum := sub ($nodeLen) 1   }}
