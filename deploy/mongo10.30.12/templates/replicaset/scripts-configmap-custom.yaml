@@ -37,6 +37,7 @@ data:
     
       echo "debug helm args nodeLen:" {{ $nodeLen }}
       echo "debug helm args nodelist:" {{ $nodeList }}
+      echo ""
       master() {
       echo `mongo --disableImplicitSessions $TLS_OPTIONS --eval 'db.hello().isWritablePrimary'|grep -c true`
       }
@@ -63,11 +64,11 @@ data:
       config=rs.config()
       var nodearrs = {{ $nodeList }}
       for (var i=0; i<{{ $nodeLen }}; i++){
-      print(host+":"+nodearrs[index] + "\n");
-      var hh=host+":"+nodearrs[index]
-      
-      config.members[index].host=hh
-      print(config.members[index].host)
+        print(host+":"+nodearrs[i] + "\n");
+        var hh=host+":"+nodearrs[i]
+        
+        config.members[i].host=hh
+        print(config.members[i].host)
       }
       rs.reconfig(config, { force: true });
 
