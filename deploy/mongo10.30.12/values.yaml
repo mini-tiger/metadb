@@ -711,8 +711,8 @@ externalAccess:
     ##   - 30002
     ##
     nodePorts:
-      - 32087
-      - 32088
+      - 32027
+      - 32028
 #      - 32089
     ## @param externalAccess.service.domain Domain or external IP used to configure MongoDB&reg; advertised hostname when service type is NodePort
     ## If not specified, the container will try to get the kubernetes node external IP
