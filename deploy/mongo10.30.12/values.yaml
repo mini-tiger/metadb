@@ -271,14 +271,14 @@ existingConfigmap: ""
 ## @param initdbScripts Dictionary of initdb scripts
 ## Specify dictionary of scripts to be run at first boot
 ## Example:
-initdbScripts:
-   my_init_script.sh: |
-      #!/bin/bash
-      echo "Do rs.reconfig sync"
-      sh /scripts/custom/rs-sync.sh
+#initdbScripts:
+#   my_init_script.sh: |
+#      #!/bin/bash
+#      echo "Do rs.reconfig sync"
+#      sh /scripts/custom/rs-sync.sh
 
 ## #
-#initdbScripts: {}
+initdbScripts: {}
 
 ## @param replicaCount Number of MongoDB&reg; nodes (only when `architecture=replicaset`)
 ## Ignored when mongodb.architecture=standalone
@@ -713,7 +713,7 @@ externalAccess:
     nodePorts:
       - 32087
       - 32088
-      - 32089
+#      - 32089
     ## @param externalAccess.service.domain Domain or external IP used to configure MongoDB&reg; advertised hostname when service type is NodePort
     ## If not specified, the container will try to get the kubernetes node external IP
     ## e.g:
@@ -1002,7 +1002,7 @@ arbiter:
   ## @param arbiter.enabled Enable deploying the arbiter
   ##   https://docs.mongodb.com/manual/tutorial/add-replica-set-arbiter/
   ##
-  enabled: false
+  enabled: true
   ## @param arbiter.configuration Arbiter configuration file to be used
   ##   http://docs.mongodb.org/manual/reference/configuration-options/
   ##
@@ -1476,7 +1476,7 @@ hidden:
   persistence:
     ## @param hidden.persistence.enabled Enable hidden node data persistence using PVC
     ##
-    enabled: true
+    enabled: false
     ## @param hidden.persistence.medium Provide a medium for `emptyDir` volumes.
     ## Requires hidden.persistence.enabled: false
     ##
