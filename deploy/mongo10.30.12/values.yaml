@@ -283,7 +283,7 @@ initdbScripts: {}
 ## @param replicaCount Number of MongoDB&reg; nodes (only when `architecture=replicaset`)
 ## Ignored when mongodb.architecture=standalone
 ##
-replicaCount: 2
+replicaCount: 1
 ## @param initdbScriptsConfigMap Existing ConfigMap with custom initdb scripts
 ##
 initdbScriptsConfigMap: ""
