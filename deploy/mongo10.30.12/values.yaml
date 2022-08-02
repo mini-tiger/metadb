@@ -586,7 +586,7 @@ pdb:
 service:
   ## @param service.nameOverride MongoDB&reg; service name
   ##
-  nameOverride: ""
+  nameOverride: "mongo-mongodb-headless"
   ## @param service.type Kubernetes Service type
   ##
   type: ClusterIP
