@@ -24,7 +24,8 @@ var SendCacheChan chan *SendCache = make(chan *SendCache, 2048)
 
 //const redisdataprefix = "cc:objdata:%s"
 const Rediskeyprefix = "cc:objdata:%s:%s"
-const timeoutSec = 10
+const redisTimeoutSec = 10
+const mongoWriteTimeoutSec = 60 * 10
 
 type CacheType string
 
@@ -96,7 +97,7 @@ func (c *CacheData) FormatRedisKey() {
 
 func (c *CacheData) FindOne() (string, error) {
 	if c.Type == Select {
-		ctx, _ := context.WithTimeout(topCtx, time.Duration(timeoutSec*time.Second))
+		ctx, _ := context.WithTimeout(topCtx, time.Duration(redisTimeoutSec*time.Second))
 		return RedisInter.Get(ctx, fmt.Sprintf(Rediskeyprefix, c.ObjID, c.UniqueValue)).Result()
 	} else {
 		return "", errors.New(fmt.Sprintf("Type not Select"))
@@ -130,7 +131,7 @@ func (s *SendCache) CopyKit(k *rest.Kit) {
 	kit.CCError = k.CCError
 	kit.User = k.User
 	kit.Rid = k.Rid
-	kit.Ctx, _ = context.WithTimeout(topCtx, time.Duration(10*time.Second))
+	kit.Ctx, _ = context.WithTimeout(topCtx, time.Duration(mongoWriteTimeoutSec*time.Second))
 	s.Kit = kit
 }
 

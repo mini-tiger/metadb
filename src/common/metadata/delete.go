@@ -24,3 +24,8 @@ type DeletedOptionResult struct {
 	BaseResp `json:",inline"`
 	Data     DeletedCount `json:"data"`
 }
+
+type DelAndInsertOption struct {
+	Condition mapstr.MapStr   `json:"condition"`
+	Datas     []mapstr.MapStr `json:"datas"`
+}

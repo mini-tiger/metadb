@@ -13,38 +13,35 @@
 package y3_9_202206200944
 
 import (
+	"context"
+
+	"configcenter/src/common"
 	"configcenter/src/scene_server/admin_server/upgrader"
 	"configcenter/src/storage/dal"
-	"context"
+	"configcenter/src/storage/dal/types"
 )
 
-func init() {
-	// xxx 必须是 y3.9.202112071431 格式
-	upgrader.RegistUpgrader("y3.9.202206200944", upgrade)
+func updateTableIndex(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err error) {
+	for tableName, indexes := range tablesIndex {
+		exists, err := db.HasTable(ctx, tableName)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			continue
+		}
+		for index := range indexes {
+			if err = db.Table(tableName).CreateIndex(ctx, indexes[index]); err != nil && !db.IsDuplicatedError(err) {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
-func upgrade(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err error) {
+var tablesIndex = map[string][]types.Index{
 
-	// 21vianet 内部模型  表不需要创建
-	//err = dropObjects(ctx, db, conf)
-	//if err != nil {
-	//	return err
-	//}
-
-	err = addPresetObjects(ctx, db, conf)
-	if err != nil {
-		return err
-	}
-
-	err = updateTableIndex(ctx, db, conf)
-	if err != nil {
-		return err
-	}
-	// 更新 序列号表
-	err = UpdateSequence(ctx, db, conf)
-	if err != nil {
-		return err
-	}
-
-	return
+	common.BKTableNameBaseInst: {
+		types.Index{Name: "", Keys: map[string]int32{"datacenterCode": 1}, Background: true},
+	},
 }

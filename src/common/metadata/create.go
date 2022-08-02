@@ -23,3 +23,9 @@ type CreatedOneOptionResult struct {
 	BaseResp `json:",inline"`
 	Data     CreateOneDataResult `json:"data"`
 }
+
+// CreatedManyOptionResult create many api http response return this result struct
+type DelAndCreatedManyOptionResult struct {
+	BaseResp `json:",inline"`
+	Data     map[string]interface{} `json:"data"`
+}

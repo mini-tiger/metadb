@@ -3,6 +3,9 @@ IMAGE?=image_placeholder
 NPM?=npm
 
 include $(realpath $(firstword $(subst :, ,${GOPATH}))/src/configcenter/scripts/Makefile)
+include .env
+
+$(eval export $(shell sed -ne 's/ *#.*$$//; /./ s/=.*$$// p' .env))
 
 .PHONY:default
 default:
@@ -24,7 +27,8 @@ linux:
 	@cd  $(SCRIPT_DIR) && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 bash ./build.sh
 	@#cd $(SCRIPT_DIR) && python ./generate.py -t '$(BIN_PATH)' -i '${IMAGE}' -o '$(BIN_PATH)/docker'
 	@#echo -e "\033[34mbuilding web... \033[0m"
-#	@cd $(SOURCE_ROOT)/ui && bash ./build.sh ${NPM} ${BIN_PATH}
+	@#cd $(SOURCE_ROOT)/ui && bash ./build.sh ${NPM} ${BIN_PATH}
+	@cd  $(SCRIPT_DIR) && go run images.go
 
 .PHONY:server
 server:

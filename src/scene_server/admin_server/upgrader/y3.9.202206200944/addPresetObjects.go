@@ -453,7 +453,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 		{
 			ID:        18,
 			ObjID:     "crm_dim_product",
-			MustCheck: true,
+			MustCheck: false,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,

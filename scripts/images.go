@@ -9,18 +9,18 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"text/template"
 	"time"
 )
 
 var (
-	rootDir   = "/data/work/go/src/configcenter"
-	dockerDir = path.Join(rootDir, "DockerFile")
-	tmpDir    = path.Join(dockerDir, "tmp")
+	currentFileName, rootDir, dockerDir, tmpDir, binaryDir string // images.go 路径
 
-	branch    = "metadb-tj" //#"3.9.39.x"
-	binaryDir = path.Join(rootDir, "src", "bin", "build", branch)
+	branch = "metadb-tj" //#"3.9.39.x"
+
 	//validDir  = map[string]int{"cmdb_adminserver": 60004, "cmdb_webserver": 8090,
 	//	"cmdb_apiserver": 8080, "cmdb_coreservice": 50009, "cmdb_toposerver": 60002, "cmdb_hostserver": 60001,
 	//}
@@ -32,12 +32,17 @@ var (
 	}
 
 	//dockerTmp = "Dockerfile_tmp"
-	harbor = "harbor.dev.21vianet.com/cmdb/"
-	github = "meta42/"
-	ver    = "latest"
-
-	t1      = time.Now()
-	version = fmt.Sprintf("%d%d%d_%d%d%d", t1.Year(), t1.Month(), t1.Day(), t1.Hour(), t1.Minute(), t1.Second())
+	harbor             = "harbor.dev.21vianet.com/cmdb/"
+	github             = "meta42/"
+	ver                = "latest"
+	kubeconfig         = "/smb/50.25kubeconfig"
+	helm_ns            = "cmdbv3"
+	helm_uninstall_cmd = fmt.Sprintf("helm --kubeconfig=%s uninstall -n %s cmdb", kubeconfig, helm_ns)
+	helm_path          string
+	helm_install_cmd   = fmt.Sprintf("helm --kubeconfig=%s install -n %s cmdb -f values.yaml .", kubeconfig, helm_ns)
+	helm_upgrade_cmd   = fmt.Sprintf("helm --kubeconfig=%s upgrade -n %s cmdb --history-max 3 -f values.yaml .", kubeconfig, helm_ns)
+	t1                 = time.Now()
+	version            = fmt.Sprintf("%d%d%d_%d%d%d", t1.Year(), t1.Month(), t1.Day(), t1.Hour(), t1.Minute(), t1.Second())
 )
 
 // 判断所给路径是否为文件夹
@@ -50,6 +55,16 @@ func IsDir(path string) bool {
 }
 
 func init() {
+	_, currentFileName, _, _ = runtime.Caller(0)
+	//fmt.Println(CurrentFileName)
+	rootDir = filepath.Dir(filepath.Dir(currentFileName))
+	dockerDir = path.Join(rootDir, "DockerFile")
+	tmpDir = path.Join(dockerDir, "tmp")
+	binaryDir = path.Join(rootDir, "src", "bin", "build", branch)
+
+	log.Printf("rootDir:%v\n", rootDir)
+	log.Printf("binaryDir:%v\n", binaryDir)
+	helm_path = filepath.Join(rootDir, "deploy", "cmdb-helm")
 	if !IsDir(tmpDir) {
 		os.MkdirAll(tmpDir, os.ModePerm)
 	}
@@ -72,6 +87,25 @@ func RunCommand(command string) error {
 	}
 
 	return nil
+}
+
+func RunCommandStd(command string) (bytes.Buffer, bytes.Buffer) {
+	cmd := exec.Command("/bin/bash", "-c", command)
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+
+	var e bytes.Buffer
+	cmd.Stderr = &e
+	//cmd.Start()
+	//buf, _ := cmd.CombinedOutput()
+	cmd.Run()
+	//if e.Len() != 0 || strings.Contains(e.String(), "fail") || strings.Contains(e.String(), "err") {
+	//	//return e.String(), out.String()
+	//	return errors.New(fmt.Sprintf("cmd: %s err:%s", command, e.String()))
+	//}
+
+	return out, e
 }
 
 func main() {
@@ -124,6 +158,28 @@ func main() {
 			}
 		}
 	}
+
+	// xxx Deploy k8s dev
+	//log.Println(helm_uninstall_cmd)
+
+	//std, stderr := RunCommandStd(helm_uninstall_cmd)
+	//log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
+
+	log.Printf("chdir %s\n", helm_path)
+	err = os.Chdir(helm_path)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	log.Println(helm_upgrade_cmd)
+	std, stderr := RunCommandStd(helm_upgrade_cmd)
+	log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
+	//log.Println("sleep 10s")
+	//time.Sleep(10 * time.Second)
+	//log.Println(helm_install_cmd)
+
+	//std, stderr = RunCommandStd(helm_install_cmd)
+	//log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
+
 }
 func binaryFileDirCopy(src, dest string, dir bool) error {
 	var cmdstr string
@@ -190,11 +246,11 @@ func (sv *TplVariables) Entry() (err error) {
 		log.Println(err)
 	}
 
-	log.Println("push dockerImage To dockerhub")
-	err = sv.pushDockerHubImage()
-	if err != nil {
-		log.Println(err)
-	}
+	//log.Println("push dockerImage To dockerhub")
+	//err = sv.pushDockerHubImage()
+	//if err != nil {
+	//	log.Println(err)
+	//}
 	return nil
 }
 

@@ -74,6 +74,41 @@ func (s *coreService) CreateOneModelInstance(ctx *rest.Contexts) {
 	ctx.RespEntityWithError(dataResult, err)
 }
 
+func (s *coreService) InsertManyModelInstances(ctx *rest.Contexts) {
+	inputData := metadata.CreateManyModelInstance{}
+	if err := ctx.DecodeInto(&inputData); nil != err {
+		ctx.RespAutoError(err)
+		return
+	}
+	objectID := ctx.Request.PathParameter("bk_obj_id")
+	//fmt.Println("11111111111111114444444444 InsertManyModelInstances", ctx.Kit)
+	ids, err := s.core.InstanceOperation().InsertManyModelInstance(ctx.Kit, objectID, inputData)
+	if err != nil {
+		blog.Errorf("InsertManyModelInstances err:%v", err)
+		ctx.RespEntityWithError(nil, err)
+		return
+	}
+	//
+	//ids := make([]uint64, 0, len(dataResult.Created))
+	//for _, create := range dataResult.CreateManyInfoResult.Created {
+	//	ids = append(ids, create.ID)
+	//}
+	sc := &cache.SendCache{
+		Cond:     mapstr.MapStr{"bk_inst_id": mapstr.MapStr{common.BKDBGTE: ids[0], common.BKDBLT: ids[len(ids)-1]}},
+		Core:     s.core,
+		ObjectID: objectID,
+	}
+
+	sc.CopyKit(ctx.Kit)
+
+	if err == nil {
+
+		cache.SendCacheChan <- sc
+
+	}
+	ctx.RespEntityWithError(map[string]interface{}{"success": len(ids)}, err)
+}
+
 func (s *coreService) CreateManyModelInstances(ctx *rest.Contexts) {
 	//fmt.Println(ctx.Request.Request.Method)
 	inputData := metadata.CreateManyModelInstance{}
@@ -105,23 +140,6 @@ func (s *coreService) CreateManyModelInstances(ctx *rest.Contexts) {
 
 		cache.SendCacheChan <- sc
 
-		//go func() {
-		//
-		//	//var iscache bool
-		//	//var ui interface{}
-		//	//ui, iscache = cache.CacheObjMap.Get(objectID)
-		//	//if !iscache {
-		//	//	blog.Errorf("objid:%s not found cache skip", objectID)
-		//	//	return
-		//	//}
-		//	sc.IsCache(objectID)
-		//	err, _ := sc.SearchDBAndSaveCache(objectID,  s.core)
-		//	if err != nil {
-		//		blog.Errorf("objid:%s unique:%v save redis err:%v", objectID, ui, err)
-		//		return
-		//	}
-		//
-		//}()
 	}
 	ctx.RespEntityWithError(dataResult, err)
 }
@@ -239,13 +257,54 @@ func (s *coreService) DeleteModelInstances(ctx *rest.Contexts) {
 			//fmt.Println(dataResult)
 			//fmt.Println(err)
 			if err != nil {
-				blog.Errorf("DeleteModelInstances Cond:[%v] err:%v", inputData.Condition, err)
+				blog.Errorf("DeleteSkipAModelInstances Cond:[%v] err:%v", inputData.Condition, err)
 
 			}
 
 		}
 	}
 	ctx.RespEntityWithError(delResult, err)
+}
+
+func (s *coreService) DeleteSkipArchiveModelInstances(ctx *rest.Contexts) {
+	inputData := metadata.DeleteOption{}
+	if err := ctx.DecodeInto(&inputData); nil != err {
+		ctx.RespAutoError(err)
+		return
+	}
+	objectID := ctx.Request.PathParameter("bk_obj_id")
+
+	inputMongoData := metadata.QueryCondition{Condition: inputData.Condition}
+
+	dataResult, err := s.core.InstanceOperation().SearchModelInstance(ctx.Kit, objectID, inputMongoData)
+	if nil != err {
+		ctx.RespEntityWithError(dataResult, err)
+	}
+
+	err = s.core.InstanceOperation().DeleteArchiveModelInstance(ctx.Kit, objectID, inputData)
+	if err == nil {
+
+		sc := &cache.SendCache{
+			Cond:     inputData.Condition,
+			Core:     s.core,
+			ObjectID: objectID,
+		}
+		sc.IsCache()
+
+		if sc.Iscache {
+
+			//inputCopy := inputata.Clone()
+			err, _ := sc.DeleteCache(dataResult)
+			//fmt.Println(dataResult)
+			//fmt.Println(err)
+			if err != nil {
+				blog.Errorf("DeleteModelInstances Cond:[%v] err:%v", inputData.Condition, err)
+
+			}
+
+		}
+	}
+	ctx.RespEntityWithError(nil, err)
 }
 
 func (s *coreService) CascadeDeleteModelInstances(ctx *rest.Contexts) {

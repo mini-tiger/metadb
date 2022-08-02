@@ -3,6 +3,8 @@ package service
 import (
 	"configcenter/src/common/blog"
 	"configcenter/src/common/core/utils"
+	"errors"
+
 	"configcenter/src/common/http/rest"
 	"configcenter/src/common/mapstr"
 	"configcenter/src/common/metadata"
@@ -82,6 +84,7 @@ func (s *coreService) SearchModelInstancesCache(ctx *rest.Contexts) {
 	err, dataResult := sc.SearchDBAndSaveCache()
 	if err != nil {
 		ctx.RespEntityWithError(fmt.Sprintf("obj: %s unique:%s  get mongo err:%v ", objectID, unique, err), err)
+		return
 	}
 
 	ctx.RespEntityHeader(dataResult, map[string]string{"iscache": "0"})
@@ -95,23 +98,41 @@ func (s *coreService) UpdateModelManyInstancesCache(ctx *rest.Contexts) {
 		return
 	}
 	objectID := ctx.Request.PathParameter("bk_obj_id")
-	var successSaveDB []mapstr.MapStr = make([]mapstr.MapStr, 0, len(inputData.Datas))
+	if objectID == "" || inputData.UniqueKey == "" {
+		ctx.RespAutoError(errors.New(fmt.Sprintf("params err")))
+		return
+	}
+	UniqueKey := inputData.UniqueKey
+
+	var successSaveDB = make([]interface{}, 0, len(inputData.Datas))
+	var errSaveDB = make([]interface{}, 0, len(inputData.Datas))
+	var successSaveDBMap []mapstr.MapStr = make([]mapstr.MapStr, 0, len(inputData.Datas))
 
 	for _, inputRow := range inputData.Datas {
 		//fmt.Println(inputRow)
-		inputCopy := inputRow.Condition.Clone()
-		dataResult, err := s.core.InstanceOperation().UpdateModelInstance(ctx.Kit, objectID, inputRow)
+		//inputCopy := inputRow.Condition.Clone()
+		if _, ok := inputRow[UniqueKey]; !ok {
+			continue
+		}
+		inputUpdate := metadata.UpdateOption{
+			Data:      inputRow,
+			Condition: mapstr.MapStr{UniqueKey: inputRow[UniqueKey]},
+			//CanEditAll: false,
+		}
+		dataResult, err := s.core.InstanceOperation().UpdateModelInstance(ctx.Kit, objectID, inputUpdate)
 		//fmt.Println(dataResult, err)
 		if err == nil && dataResult.Count > 0 {
-			successSaveDB = append(successSaveDB, inputCopy)
+			successSaveDBMap = append(successSaveDBMap, inputRow)
+			successSaveDB = append(successSaveDB, inputRow[UniqueKey])
 
 		} else {
-			blog.Errorf("Update Instance Cache save db Cond:[%v] err:%v", inputRow.Condition, err)
+			errSaveDB = append(errSaveDB, inputRow[UniqueKey].(string))
+			blog.Errorf("Update Instance Cache save db Cond:[%v] err:%v", inputUpdate, err)
 			continue
 		}
 	}
 
-	var successSaveCache []mapstr.MapStr = make([]mapstr.MapStr, 0, len(successSaveDB))
+	var successSaveCache []interface{}
 	//var iscache bool
 	//var ui interface{}
 	//var unique string
@@ -124,7 +145,8 @@ func (s *coreService) UpdateModelManyInstancesCache(ctx *rest.Contexts) {
 	}
 	sc.IsCache()
 	if sc.Iscache {
-		for _, inputdata := range successSaveDB {
+		successSaveCache = make([]interface{}, 0, len(successSaveDB))
+		for _, inputdata := range successSaveDBMap {
 			inputCopy := inputdata.Clone()
 			sc.Cond = inputCopy
 
@@ -137,50 +159,12 @@ func (s *coreService) UpdateModelManyInstancesCache(ctx *rest.Contexts) {
 				blog.Errorf("Update Instance Cache save Cache Cond:[%v] err:%v", inputdata, err)
 				continue
 			}
-			successSaveCache = append(successSaveCache, inputdata)
+			successSaveCache = append(successSaveCache, inputdata[UniqueKey])
 		}
 	}
 
 	//fmt.Println(result)
-	ctx.RespEntityWithError(map[string]interface{}{"successDB": successSaveDB, "successCache": successSaveCache}, nil)
-	//fmt.Println(objectID)
-
-	//1. find in iscache obj and unique , 从input 是否存在unique
-	//err, uniqueValue := cache.CacheObjMap.FindKeyAndValue(objectID, inputData.Data)
-	//if nil != err {
-	//	ctx.RespEntityWithError(fmt.Sprintf("obj: %s not found unique ", objectID), err)
-	//	return
-	//}
-	//ui, b := cache.CacheObjMap.Get(objectID)
-	//if !b {
-	//	ctx.RespEntityWithError(nil, errors.New(fmt.Sprintf("cahceObjMap not found obj: %s not found  ", objectID)))
-	//	return
-	//}
-	//unique := ui.(string)
-	//
-	//dataResult, err := s.core.InstanceOperation().UpdateModelInstance(ctx.Kit, ctx.Request.PathParameter("bk_obj_id"), inputData)
-	//if err == nil {
-
-	//go func() {
-	//
-	//	objectID := ctx.Request.PathParameter("bk_obj_id")
-	//	ui, b := cache.CacheObjMap.Get(objectID)
-	//	if !b {
-	//		blog.Errorf("objid:%s not found cache skip", objectID)
-	//		return
-	//	}
-	//	ids := make([]uint64, 0, len(dataResult.))
-	//	for _, create := range dataResult.CreateManyInfoResult.Created {
-	//		ids = append(ids, create.ID)
-	//	}
-	//	cond := mapstr.MapStr{"bk_inst_id": mapstr.MapStr{common.BKDBIN: ids}}
-	//	err, _ := cache.SearchDBAndSaveCache(objectID, ui.(string), cond, s.core, ctx)
-	//	if err != nil {
-	//		blog.Errorf("objid:%s unique:%v save redis err:%v", objectID, ui, err)
-	//		return
-	//	}
-	//
-	//}()
-	//}
+	ctx.RespEntityWithError(map[string]interface{}{"successDB": successSaveDB, "errDB": errSaveDB}, nil)
+	//ctx.RespMap(map[string]interface{}{"successDB": successSaveDB, "successCache": successSaveCache})
 
 }

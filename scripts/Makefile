@@ -49,10 +49,10 @@ PREPARE_CFG?=true
 
 # building
 ${TARGET_NAME}: $(GOFILES_ALL)
-ifeq ($(PREPARE_CFG),true)
+ifeq ($(PREPARE_CFG),true) # xxx 执行这里
 	@python $(SCRIPT_DIR)/prepare_cfg.py $(BIN_PATH) $(TARGET_NAME) $(RESOURCE_DIR) $(SCRIPT_DIR) $(TARGET_PORT) $(VERSION)
 	@echo
-endif
+endif # xxx 也会执行这里
 	@echo -e "\033[34mbuilding the target: $@... \033[0m"
 	@echo
 	@echo $(BIN_PATH)/$(TARGET_NAME)/$(TARGET_NAME)

@@ -15,6 +15,7 @@ package service
 import (
 	"configcenter/src/common/auditlog"
 	"strconv"
+	"time"
 
 	"configcenter/src/ac/iam"
 	"configcenter/src/common"
@@ -57,8 +58,15 @@ func (s *Service) CreateManyBatch(ctx *rest.Contexts) {
 	}
 
 	result := metadata.CreateManyDataResult{}
+	opt := metadata.TxnOption{Timeout: time.Duration(2 * time.Hour)}
+
+	//ctx.Kit.Ctx
+	//ctx1 := ctx.Kit.Ctx
+	//ctx2 := context.Background()
 	txnErr := s.Engine.CoreAPI.CoreService().Txn().AutoRunTxn(ctx.Kit.Ctx, ctx.Kit.Header, func() error {
 		var err error
+		//ctx.Kit.Header.Del("Cc_transaction_id_string")
+		//ctx.Kit.Header.Del("Cc_transaction_timeout")
 		res, err := s.CoreAPI.CoreService().Instance().CreateManyInstance(ctx.Kit.Ctx, ctx.Kit.Header, objID, instInfo)
 		if nil != err {
 			blog.Errorf("CreateMany failed, CreateManyInstance error: %s, input:%+v,rid:%s", err.Error(), input, ctx.Kit.Rid)
@@ -138,7 +146,7 @@ func (s *Service) CreateManyBatch(ctx *rest.Contexts) {
 		}
 
 		return nil
-	})
+	}, []metadata.TxnOption{opt}...)
 
 	if txnErr != nil {
 		ctx.RespAutoError(txnErr)
@@ -146,5 +154,76 @@ func (s *Service) CreateManyBatch(ctx *rest.Contexts) {
 	}
 
 	ctx.RespEntity(result)
+
+}
+
+// CreatePlatBatch create plat instance in batch
+func (s *Service) DelAndCreateManyBatch(ctx *rest.Contexts) {
+	objID := ctx.Request.PathParameter("bk_obj_id")
+	input := metadata.DelAndInsertOption{}
+
+	if err := ctx.DecodeInto(&input); nil != err {
+		ctx.RespAutoError(err)
+		return
+	}
+
+	//if len(input.Data) == 0 {
+	//	blog.Errorf("CreateMany , input is empty, rid:%s", ctx.Kit.Rid)
+	//	ctx.RespAutoError(ctx.Kit.CCError.CCError(common.CCErrCommHTTPBodyEmpty))
+	//	return
+	//}
+
+	//user := util.GetUser(ctx.Request.Request.Header)
+	//for i := range input.Data {
+	//	input.Data[i][common.BKCreator] = user
+	//	input.Data[i][common.BKLastEditor] = user
+	//}
+
+	//instInfo := &meta.CreateManyModelInstance{
+	//	Datas: input.Data,
+	//}
+
+	var res *metadata.DelAndCreatedManyOptionResult
+	opt := metadata.TxnOption{Timeout: time.Duration(2 * time.Hour)}
+
+	//ctx.Kit.Ctx
+	//ctx1 := ctx.Kit.Ctx
+	//ctx2 := context.Background()
+	//fmt.Println(ctx.Kit.Header)
+	txnErr := s.Engine.CoreAPI.CoreService().Txn().AutoRunTxn(ctx.Kit.Ctx, ctx.Kit.Header, func() error {
+		var err error
+		//fmt.Println(ctx.Kit.Header)
+		//ctx.Kit.Header.Del("Cc_transaction_id_string")
+		//ctx.Kit.Header.Del("Cc_transaction_timeout")
+		//res, err := s.CoreAPI.CoreService().Instance().CreateManyInstance(ctx.Kit.Ctx, ctx.Kit.Header, objID, instInfo)
+
+		resDel, err := s.CoreAPI.CoreService().Instance().DeleteSkipArchiveInstance(ctx.Kit.Ctx, ctx.Kit.Header, objID, &metadata.DeleteOption{Condition: input.Condition})
+		if nil != err {
+			blog.Errorf("InsertMany failed, DeleteInstance error: %s, input:%+v,rid:%s", err.Error(), input, ctx.Kit.Rid)
+			return ctx.Kit.CCError.CCError(common.CCErrHostDeleteFail)
+		}
+		//fmt.Println(resDel)
+		if !resDel.Result {
+			blog.Errorf("InsertMany failed, DeleteInstance error: %s, input:%+v,rid:%s", err.Error(), input, ctx.Kit.Rid)
+			return ctx.Kit.CCError.CCError(common.CCErrHostDeleteFail)
+		}
+		res, err = s.CoreAPI.CoreService().Instance().InsertManyInstance(ctx.Kit.Ctx, ctx.Kit.Header, objID, &metadata.CreateManyModelInstance{Datas: input.Datas})
+		if nil != err {
+			blog.Errorf("InsertMany failed, CreateManyInstance error: %s, input:%+v,rid:%s", err.Error(), input, ctx.Kit.Rid)
+			return ctx.Kit.CCError.CCError(common.CCErrHostCreateInst)
+		}
+		if !res.Result {
+			blog.Errorf("InsertMany failed, CreateManyInstance error: %s, input:%+v,rid:%s", err.Error(), input, ctx.Kit.Rid)
+			return ctx.Kit.CCError.CCError(common.CCErrHostCreateInst)
+		}
+		return nil
+	}, []metadata.TxnOption{opt}...)
+
+	if txnErr != nil {
+		ctx.RespAutoError(txnErr)
+		return
+	}
+
+	ctx.RespEntity(res.Data)
 
 }

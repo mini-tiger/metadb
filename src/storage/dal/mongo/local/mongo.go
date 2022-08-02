@@ -155,6 +155,12 @@ func (c *Mongo) Close() error {
 	return nil
 }
 
+// Close replica client
+func (c *Mongo) Client() *mongo.Client {
+	//c.dbc.Disconnect(context.TODO())
+	return c.dbc
+}
+
 // Ping replica client
 func (c *Mongo) Ping() error {
 	return c.dbc.Ping(context.TODO(), nil)
@@ -459,6 +465,7 @@ func (c *Collection) Insert(ctx context.Context, docs interface{}) error {
 	rows := util.ConverToInterfaceSlice(docs)
 
 	return c.tm.AutoRunWithTxn(ctx, c.dbc, func(ctx context.Context) error {
+		//fmt.Println("1111111111111333333333 Insert")
 		_, err := c.dbc.Database(c.dbname).Collection(c.collName).InsertMany(ctx, rows)
 		if err != nil {
 			mtc.collectErrorCount(c.collName, insertOper)
@@ -566,6 +573,36 @@ func (c *Collection) Delete(ctx context.Context, filter types.Filter) error {
 			mtc.collectErrorCount(c.collName, deleteOper)
 			return err
 		}
+
+		return nil
+	})
+}
+
+// Delete 删除数据 跳过已删除 文档
+func (c *Collection) DeleteSkipArchive(ctx context.Context, filter types.Filter) error {
+	//mtc.collectOperCount(c.collName, deleteOper)
+	//
+	//start := time.Now()
+	//defer func() {
+	//	mtc.collectOperDuration(c.collName, deleteOper, time.Since(start))
+	//}()
+
+	return c.tm.AutoRunWithTxn(ctx, c.dbc, func(ctx context.Context) error {
+		//if err := c.tryArchiveDeletedDoc(ctx, filter); err != nil {
+		//	mtc.collectErrorCount(c.collName, deleteOper)
+		//	return err
+		//}
+		//fmt.Println("11111111111111 DeleteSkipArchive")
+		_, err := c.dbc.Database(c.dbname).Collection(c.collName).DeleteMany(ctx, filter)
+		if err != nil {
+			//mtc.collectErrorCount(c.collName, deleteOper)
+			return err
+		}
+		//_, err = c.dbc.Database(c.dbname).Collection(c.collName).InsertMany(ctx, rows)
+		//if err != nil {
+		//	//mtc.collectErrorCount(c.collName, insertOper)
+		//	return err
+		//}
 
 		return nil
 	})
