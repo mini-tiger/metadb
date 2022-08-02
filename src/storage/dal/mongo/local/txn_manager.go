@@ -232,6 +232,7 @@ func (t *TxnManager) AutoRunWithTxn(ctx context.Context, cli *mongo.Client, cmd 
 		return cmd(ctx)
 	}
 
+	// xxx 通过redis 中的key sessionid 重新reload session
 	session, err := t.PrepareTransaction(cap, cli)
 	if err != nil {
 		return err
@@ -249,6 +250,7 @@ func (t *TxnManager) AutoRunWithTxn(ctx context.Context, cli *mongo.Client, cmd 
 		t.setTxnError(sessionKey(cap.SessionID), err)
 		return err
 	}
+	//fmt.Println("11111111112222222", cap.SessionID)
 	// release the session connection.
 	// Attention: do not use session.EndSession() to do this, it will abort the transaction.
 	// mongo.CmdbReleaseSession(ctx, session)

@@ -51,6 +51,20 @@ func (inst *instance) CreateManyInstance(ctx context.Context, h http.Header, obj
 	return
 }
 
+func (inst *instance) InsertManyInstance(ctx context.Context, h http.Header, objID string, input *metadata.CreateManyModelInstance) (resp *metadata.DelAndCreatedManyOptionResult, err error) {
+	resp = new(metadata.DelAndCreatedManyOptionResult)
+	subPath := "insertmany/model/%s/instances/cache"
+
+	err = inst.client.Post().
+		WithContext(ctx).
+		Body(input).
+		SubResourcef(subPath, objID).
+		WithHeaders(h).
+		Do().
+		Into(resp)
+	return
+}
+
 func (inst *instance) SetManyInstance(ctx context.Context, h http.Header, objID string, input *metadata.SetManyModelInstance) (resp *metadata.SetOptionResult, err error) {
 	resp = new(metadata.SetOptionResult)
 	subPath := "/setmany/model/%s/instances"
@@ -126,6 +140,20 @@ func (inst *instance) UpdateInstanceCache(ctx context.Context, h http.Header, ob
 func (inst *instance) DeleteInstance(ctx context.Context, h http.Header, objID string, input *metadata.DeleteOption) (resp *metadata.DeletedOptionResult, err error) {
 	resp = new(metadata.DeletedOptionResult)
 	subPath := "/delete/model/%s/instance"
+
+	err = inst.client.Delete().
+		WithContext(ctx).
+		Body(input).
+		SubResourcef(subPath, objID).
+		WithHeaders(h).
+		Do().
+		Into(resp)
+	return
+}
+
+func (inst *instance) DeleteSkipArchiveInstance(ctx context.Context, h http.Header, objID string, input *metadata.DeleteOption) (resp *metadata.DeletedOptionResult, err error) {
+	resp = new(metadata.DeletedOptionResult)
+	subPath := "/deleteskiparchive/model/%s/instance/cache"
 
 	err = inst.client.Delete().
 		WithContext(ctx).

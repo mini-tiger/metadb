@@ -1,0 +1,75 @@
+{{- if eq .Values.architecture "replicaset" }}
+{{ $nodeLen := .Values.replicaCount }}
+{{ $nodelist := join "," .Values.externalAccess.service.nodePorts }}
+{{ $nodeList := printf "[%s]" $nodelist }}
+{{ $nodelastNum := sub ($nodeLen) 1   }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scripts-mongojs
+  namespace: {{ include "mongodb.namespace" . }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: mongodb
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- $fullname := include "mongodb.fullname" . }}
+  {{- $releaseNamespace := include "mongodb.namespace" . }}
+  rs-sync.sh: |-
+    #!/bin/sh
+      cat $0        # debug
+      echo "debug helm args nodelastNum:" {{ $nodelastNum }}
+      i=0
+      while [ "$i" -le 20 ]; do
+        mongo --disableImplicitSessions --host {{ $fullname }}-{{ $nodelastNum}} --eval "db.adminCommand('ping')" --quiet
+        if [ "$?" -eq 0 ]
+        then
+            echo "autosync finish!"
+            break
+        fi
+        sleep 5
+      done
+    
+    
+      echo "debug helm args nodeLen:" {{ $nodeLen }}
+      echo "debug helm args nodelist:" {{ $nodeList }}
+      echo ""
+      master() {
+      echo `mongo --disableImplicitSessions $TLS_OPTIONS --eval 'db.hello().isWritablePrimary'|grep -c true`
+      }
+      
+      host_count() {
+      echo `mongo  mongodb://$MONGODB_ADVERTISED_HOSTNAME:27017/admin -u root -p $MONGODB_ROOT_PASSWORD --authenticationDatabase admin --eval "rs.conf()"|grep -c host`
+      }
+
+      i=0
+      while [ "$i" -le 20 ]; do
+        m=$( master )
+        h=$( host_count )
+        if [ "$m" -eq 1 -a "$h" -eq {{ $nodeLen }} ]
+        then
+          # wait autosync
+          mongo  mongodb://$MONGODB_ADVERTISED_HOSTNAME:27017/admin -u root -p $MONGODB_ROOT_PASSWORD --authenticationDatabase admin --eval "var host = '$host'" /scripts/custom/mongoarr.js
+          mongo  mongodb://$MONGODB_ADVERTISED_HOSTNAME:27017/admin -u root -p $MONGODB_ROOT_PASSWORD --authenticationDatabase admin --eval "rs.conf()"
+          break
+        fi
+        sleep 10
+        i=$(( i + 1 ))
+      done
+  mongoarr.js: |-
+      config=rs.config()
+      var nodearrs = {{ $nodeList }}
+      for (var i=0; i<{{ $nodeLen }}; i++){
+        print(host+":"+nodearrs[i] + "\n");
+        var hh=host+":"+nodearrs[i]
+        
+        config.members[i].host=hh
+        print(config.members[i].host)
+      }
+      rs.reconfig(config, { force: true });
+
+{{end}}

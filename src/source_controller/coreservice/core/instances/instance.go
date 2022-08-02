@@ -101,26 +101,26 @@ func (m *instanceManager) CreateManyModelInstance(kit *rest.Kit, objID string,
 	for index, item := range inputParam.Datas {
 		if item == nil {
 			blog.ErrorJSON("the model instance data can't be empty, input data: %s rid: %s", inputParam.Datas, kit.Rid)
-			return nil, kit.CCError.Errorf(common.CCErrCommInstDataNil, "modelInstance")
+			return dataResult, kit.CCError.Errorf(common.CCErrCommInstDataNil, "modelInstance")
 		}
 		item.Set(common.BKOwnerIDField, kit.SupplierAccount)
 
 		validator := instValidators[index]
 		if validator == nil {
 			blog.Errorf("get validator failed, objID: %s, inst: %#v, rid: %s", err, objID, item, kit.Rid)
-			return nil, kit.CCError.CCErrorf(common.CCErrCommNotFound)
+			return dataResult, kit.CCError.CCErrorf(common.CCErrCommNotFound)
 		}
 
 		err = m.validCreateInstanceData(kit, objID, item, validator)
 		if nil != err {
 			blog.Errorf("valid create instance data(%#v) failed, err: %v, obj: %s, rid: %s", err, item, objID, kit.Rid)
-			return nil, err
+			return dataResult, err
 		}
 
 		id, err := m.save(kit, objID, item)
 		if nil != err {
 			blog.Errorf("create instance failed, err: %v, objID: %s, item: %#v, rid: %s", err, objID, item, kit.Rid)
-			return nil, err
+			return dataResult, err
 		}
 
 		dataResult.Created = append(dataResult.Created, metadata.CreatedDataResult{
@@ -129,6 +129,34 @@ func (m *instanceManager) CreateManyModelInstance(kit *rest.Kit, objID string,
 	}
 
 	return dataResult, nil
+}
+
+// InsertManyModelInstance create model instances
+func (m *instanceManager) InsertManyModelInstance(kit *rest.Kit, objID string,
+	inputParam metadata.CreateManyModelInstance) ([]uint64, error) {
+
+	//dataResult := new(metadata.CreateManyDataResult)
+	if len(inputParam.Datas) == 0 {
+		return nil, nil
+	}
+	ids, err := mongodb.Client().NextSequences(kit.Ctx, common.BKTableNameBaseInst, len(inputParam.Datas))
+	if err != nil {
+		blog.Errorf("get next audit log id failed, err: %s", err.Error())
+		return ids, err
+	}
+	instIDFieldName := common.GetInstIDField(objID)
+
+	Rows := make([]mapstr.MapStr, 0, len(inputParam.Datas))
+	for index, data := range inputParam.Datas {
+		//data["bk_inst_id"] = ids[index]
+		data[instIDFieldName] = ids[index]
+		data[common.BKOwnerIDField] = kit.SupplierAccount
+		data["bk_obj_id"] = objID
+		Rows = append(Rows, data)
+	}
+
+	err = mongodb.Client().Table(common.BKTableNameBaseInst).Insert(kit.Ctx, Rows)
+	return ids, err
 }
 
 // UpdateModelInstance update model instances
@@ -468,6 +496,7 @@ func (m *instanceManager) DeleteModelInstance(kit *rest.Kit, objID string, input
 		return &metadata.DeletedCount{}, err
 	}
 
+	// 需要 删除 的数据 是否存在
 	for _, origin := range origins {
 		instID, err := util.GetInt64ByInterface(origin[instIDFieldName])
 		if nil != err {
@@ -489,6 +518,24 @@ func (m *instanceManager) DeleteModelInstance(kit *rest.Kit, objID string, input
 	}
 
 	return &metadata.DeletedCount{Count: uint64(len(origins))}, nil
+}
+
+func (m *instanceManager) DeleteArchiveModelInstance(kit *rest.Kit, objID string, inputParam metadata.DeleteOption) error {
+	tableName := common.GetInstTableName(objID)
+	//instIDFieldName := common.GetInstIDField(objID)
+	inputParam.Condition.Set(common.BKOwnerIDField, kit.SupplierAccount)
+
+	inputParam.Condition = util.SetModOwner(inputParam.Condition, kit.SupplierAccount)
+	var err error
+	//fmt.Println("delete cond", inputParam.Condition)
+	//fmt.Println("delete cond", instIDFieldName)
+	err = mongodb.Client().Table(tableName).DeleteSkipArchive(kit.Ctx, inputParam.Condition)
+	if nil != err {
+		blog.ErrorJSON("DeleteModelInstance delete objID(%s) instance error. err:%s, coniditon:%s, rid:%s", objID, err.Error(), inputParam.Condition, kit.Rid)
+		return err
+	}
+
+	return nil
 }
 
 func (m *instanceManager) CascadeDeleteModelInstance(kit *rest.Kit, objID string, inputParam metadata.DeleteOption) (*metadata.DeletedCount, error) {

@@ -259,7 +259,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_supplier_account":                "0",
 			"manufacturer":                       "约克",
 			"rated_power":                        4000,
-			"bk_inst_id":                         9,
+			"bk_inst_id":                         int64(9),
 			"create_time":                        ct,
 			"last_time":                          ct,
 		},
@@ -268,7 +268,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_supplier_account": "0",
 			"manufacturer":        "施耐德",
 			"rated_power":         1231,
-			"bk_inst_id":          10,
+			"bk_inst_id":          int64(10),
 			"output_voltage":      235,
 			"bk_obj_id":           "low_voltage_switchgear",
 			"nominal_voltage":     400,
@@ -283,7 +283,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"manufacturer":        "格兰富",
 			"rated_speed":         532,
 			"model":               "SAFsf",
-			"bk_inst_id":          11,
+			"bk_inst_id":          int64(11),
 			"nominal_voltage":     400,
 			"SN":                  "123456",
 			"bk_obj_id":           "refrigeration_pump",
@@ -294,7 +294,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_obj_id":               "building",
 			"floor_high":              6,
 			"seismic_grade":           "8",
-			"bk_inst_id":              12,
+			"bk_inst_id":              int64(12),
 			"area":                    3758.34,
 			"bk_inst_name":            "1栋",
 			"bk_supplier_account":     "0",
@@ -311,7 +311,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"handle_weight":       500,
 			"name":                "1层",
 			"prod_time":           "2021-03-09",
-			"bk_inst_id":          13,
+			"bk_inst_id":          int64(13),
 			"create_time":         ct,
 			"last_time":           ct,
 			"bk_inst_name":        "1层",
@@ -321,7 +321,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_obj_id":           "room",
 			"is_cold_channel":     true,
 			"name":                "001",
-			"bk_inst_id":          14,
+			"bk_inst_id":          int64(14),
 			"bk_inst_name":        "001室",
 			"customer_name":       "",
 			"create_time":         ct,
@@ -332,7 +332,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_obj_id":           "room",
 			"is_cold_channel":     true,
 			"name":                "002",
-			"bk_inst_id":          15,
+			"bk_inst_id":          int64(15),
 			"bk_inst_name":        "002室",
 			"customer_name":       "",
 			"create_time":         ct,
@@ -340,18 +340,18 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_supplier_account": "0",
 		},
 	}
-	var n int32 = 1
+	var n int64 = 1
 	for i := 16; i <= 20; i++ {
 		dataRows = append(dataRows, map[string]interface{}{
 			"bk_inst_name":        fmt.Sprintf("%d列", n),
 			"bk_obj_id":           "line",
 			"bk_supplier_account": "0",
 			"manufacturer":        "华为",
-			"bk_inst_id":          i,
+			"bk_inst_id":          int64(i),
 			"create_time":         ct,
 			"last_time":           ct,
 		})
-		atomic.AddInt32(&n, 1)
+		atomic.AddInt64(&n, 1)
 	}
 
 	n = 1
@@ -364,9 +364,9 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_supplier_account": "0",
 			"depth":               800,
 			"hight":               2000,
-			"bk_inst_id":          ii,
+			"bk_inst_id":          int64(ii),
 		})
-		atomic.AddInt32(&n, 1)
+		atomic.AddInt64(&n, 1)
 	}
 	//row, err := upgrader.JsonToMap(data)
 	//if err == nil {

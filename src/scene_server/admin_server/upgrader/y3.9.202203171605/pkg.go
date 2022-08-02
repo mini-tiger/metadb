@@ -49,22 +49,12 @@ func upgrade(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err error)
 	if err != nil {
 		return err
 	}
-	//err = addPlatData(ctx, db, conf)
-	//if err != nil {
-	//	return err
-	//}
-	//err = addSystemData(ctx, db, conf)
-	//if err != nil {
-	//	return err
-	//}
-	//err = addDefaultBiz(ctx, db, conf)
-	//if err != nil {
-	//	return err
-	//}
-	//err = addBKApp(ctx, db, conf)
-	//if err != nil {
-	//	return err
-	//}
+
+	// 更新 序列号表
+	err = UpdateSequence(ctx, db, conf)
+	if err != nil {
+		return err
+	}
 
 	return
 }

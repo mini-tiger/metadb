@@ -13,6 +13,7 @@
 package service
 
 import (
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -780,16 +781,30 @@ func (s *Service) UpdateInstByAssociationCache(ctx *rest.Contexts) {
 	objID := ctx.Request.PathParameter("bk_obj_id")
 
 	ctx.SetReadPreference(common.SecondaryPreferredMode)
-	result, header, err := s.Core.InstOperation().UpdateOriginInstCache(ctx.Kit, objID, data)
-	//fmt.Println(err)
-	if nil != err {
-		blog.Errorf("[api-inst] failed to find the objects(%s), error info is %s, rid: %s", ctx.Request.PathParameter("bk_obj_id"), err.Error(), ctx.Kit.Rid)
-		ctx.RespAutoError(err)
+	var result mapstr.MapStr
+	var head map[string]string
+	var err error
+	txnErr := s.Engine.CoreAPI.CoreService().Txn().AutoRunTxn(ctx.Kit.Ctx, ctx.Kit.Header, func() error {
+		var header http.Header
+		result, header, err = s.Core.InstOperation().UpdateOriginInstCache(ctx.Kit, objID, data)
+		//fmt.Println(err)
+		//fmt.Println(result)
+		if nil != err {
+			blog.Errorf("[api-inst] failed to find the objects(%s), error info is %s, rid: %s", ctx.Request.PathParameter("bk_obj_id"), err.Error(), ctx.Kit.Rid)
+			//ctx.RespAutoError(err)
+			return err
+		}
+		head = make(map[string]string, 1)
+		//if header.Get("iscache")
+		head["iscache"] = header.Get("iscache")
+		//ctx.RespEntityHeader(result, head)
+		return nil
+	})
+
+	if txnErr != nil {
+		ctx.RespAutoError(txnErr)
 		return
 	}
-	head := make(map[string]string, 1)
-	//if header.Get("iscache")
-	head["iscache"] = header.Get("iscache")
 	ctx.RespEntityHeader(result, head)
 }
 

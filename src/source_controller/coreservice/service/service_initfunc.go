@@ -115,8 +115,12 @@ func (s *coreService) initModelInstances(web *restful.WebService) {
 
 	// unique redis
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/read/model/{bk_obj_id}/instances/cache", Handler: s.SearchModelInstancesCache})
+	// 不具备 updateinsert 功能 ， 改造 查不到已有数据 拼arr,调用 insertmany
 	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/model/{bk_obj_id}/instance/cache", Handler: s.UpdateModelManyInstancesCache})
 
+	// business兼容事务 不对外暴露,  host模块 接口使用
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/insertmany/model/{bk_obj_id}/instances/cache", Handler: s.InsertManyModelInstances})
+	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/deleteskiparchive/model/{bk_obj_id}/instance/cache", Handler: s.DeleteSkipArchiveModelInstances})
 	utility.AddToRestfulWebService(web)
 }
 

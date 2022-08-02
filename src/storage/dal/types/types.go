@@ -50,6 +50,9 @@ type Table interface {
 	// Delete 删除数据
 	Delete(ctx context.Context, filter Filter) error
 
+	// Delete 删除数据    不存记录
+	DeleteSkipArchive(ctx context.Context, filter Filter) error
+
 	// CreateIndex 创建索引
 	CreateIndex(ctx context.Context, index Index) error
 	// DropIndex 移除索引

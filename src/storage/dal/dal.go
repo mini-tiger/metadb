@@ -14,6 +14,7 @@ package dal
 
 import (
 	"context"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"configcenter/src/common/metadata"
 	"configcenter/src/storage/dal/redis"
@@ -29,7 +30,7 @@ type RDB DB
 type DB interface {
 	// Table collection 操作
 	Table(collection string) types.Table
-
+	Client() *mongo.Client
 	// NextSequence 获取新序列号(非事务)
 	NextSequence(ctx context.Context, sequenceName string) (uint64, error)
 
@@ -56,7 +57,7 @@ type DB interface {
 	// CommitTransaction 提交事务
 	CommitTransaction(context.Context, *metadata.TxnCapable) error
 	// AbortTransaction 取消事务
-	AbortTransaction(context.Context, *metadata.TxnCapable) (bool,error)
+	AbortTransaction(context.Context, *metadata.TxnCapable) (bool, error)
 
 	// InitTxnManager TxnID management of initial transaction
 	InitTxnManager(r redis.Client) error

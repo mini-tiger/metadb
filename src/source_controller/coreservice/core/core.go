@@ -114,8 +114,13 @@ type InstanceOperation interface {
 	CountModelInstances(kit *rest.Kit, objID string, inputParam *metadata.CountCondition) (*metadata.CommonCountResult,
 		error)
 	DeleteModelInstance(kit *rest.Kit, objID string, inputParam metadata.DeleteOption) (*metadata.DeletedCount, error)
+
+	DeleteArchiveModelInstance(kit *rest.Kit, objID string, inputParam metadata.DeleteOption) error
+
 	CascadeDeleteModelInstance(kit *rest.Kit, objID string, inputParam metadata.DeleteOption) (*metadata.DeletedCount,
 		error)
+	InsertManyModelInstance(kit *rest.Kit, objID string, inputParam metadata.CreateManyModelInstance) (
+		[]uint64, error)
 }
 
 // AssociationKind association kind methods

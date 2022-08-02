@@ -1,16 +1,15 @@
 package service
 
 import (
+	"github.com/emicklei/go-restful"
 	"net/http"
 
 	"configcenter/src/common/http/rest"
-
-	"github.com/emicklei/go-restful"
 )
 
 func (s *Service) initService(web *restful.WebService) {
 
-	s.initInst(web)
+	s.initInst(web) // xxx
 	s.initCloudarea(web)
 	s.initFavourite(web)
 	s.initFindhost(web)
@@ -53,6 +52,8 @@ func (s *Service) initCloudarea(web *restful.WebService) {
 	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/delete/cloudarea/{bk_cloud_id}", Handler: s.DeletePlat})
 	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/updatemany/hosts/cloudarea_field", Handler: s.UpdateHostCloudAreaField})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/findmany/cloudarea/hostcount", Handler: s.FindCloudAreaHostCount})
+
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/hosts/delandcreatemany/{bk_obj_id}", Handler: s.DelAndCreateManyBatch})
 
 	utility.AddToRestfulWebService(web)
 

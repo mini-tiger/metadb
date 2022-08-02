@@ -61,6 +61,7 @@ func (t *txn) AutoRunTxn(ctx context.Context, h http.Header, run func() error, o
 
 	startTime := time.Now()
 
+	// xxx 生成mongodb 事务 id，存入 header ctx.kit
 	txn, err := t.NewTransaction(h, opts...)
 	if err != nil {
 		return ccErr.New(common.CCErrCommStartTransactionFailed, err.Error())

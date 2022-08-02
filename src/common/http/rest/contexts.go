@@ -75,6 +75,14 @@ func (c *Contexts) RespEntity(data interface{}) {
 	c.Response(metadata.NewSuccessResp(data))
 }
 
+func (c *Contexts) RespMap(data map[string]interface{}) {
+	if c.respStatusCode != 0 {
+		c.resp.WriteHeader(c.respStatusCode)
+	}
+	c.resp.Header().Set("Content-Type", "application/json")
+	c.ResponseMap(data)
+}
+
 func (c *Contexts) RespEntityHeader(data interface{}, headers map[string]string) {
 	if c.respStatusCode != 0 {
 		c.resp.WriteHeader(c.respStatusCode)
@@ -417,6 +425,17 @@ func (c *Contexts) RespBkError(errCode int, errMsg string) {
 }
 
 func (c *Contexts) Response(resp *metadata.Response) {
+	body, err := json.Marshal(resp)
+	if err != nil {
+		blog.ErrorfDepthf(2, "marshal json response failed, err: %v, rid: %s", err, c.Kit.Rid)
+		return
+	}
+	if _, err := c.resp.Write(body); err != nil {
+		blog.ErrorfDepthf(2, "response http request failed, err: %v, rid: %s", err, c.Kit.Rid)
+		return
+	}
+}
+func (c *Contexts) ResponseMap(resp map[string]interface{}) {
 	body, err := json.Marshal(resp)
 	if err != nil {
 		blog.ErrorfDepthf(2, "marshal json response failed, err: %v, rid: %s", err, c.Kit.Rid)

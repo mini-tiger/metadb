@@ -239,45 +239,6 @@ enableJournal: true
 ## @param configuration MongoDB(&reg;) configuration file to be used for Primary and Secondary nodes
 ## For documentation of all options, see: http://docs.mongodb.org/manual/reference/configuration-options/
 ## Example:
-## configuration: |-
-##   # where and how to store data.
-##   storage:
-##     dbPath: /bitnami/mongodb/data/db
-##     journal:
-##       enabled: true
-##     directoryPerDB: false
-##   # where to write logging data
-##   systemLog:
-##     destination: file
-##     quiet: false
-##     logAppend: true
-##     logRotate: reopen
-##     path: /opt/bitnami/mongodb/logs/mongodb.log
-##     verbosity: 0
-##   # network interfaces
-##   net:
-##     port: 27017
-##     unixDomainSocket:
-##       enabled: true
-##       pathPrefix: /opt/bitnami/mongodb/tmp
-##     ipv6: false
-##     bindIpAll: true
-##   # replica set options
-##   #replication:
-##     #replSetName: replicaset
-##     #enableMajorityReadConcern: true
-##   # process management options
-##   processManagement:
-##      fork: false
-##      pidFilePath: /opt/bitnami/mongodb/tmp/mongodb.pid
-##   # set parameter options
-##   setParameter:
-##      enableLocalhostAuthBypass: true
-##   # security options
-##   security:
-##     authorization: disabled
-##     #keyFile: /opt/bitnami/mongodb/conf/keyfile
-##
 configuration: ""
 ## @section replicaSetConfigurationSettings settings applied during runtime (not via configuration file)
 ## If enabled, these are applied by a script which is called within setup.sh
@@ -320,7 +281,8 @@ args: []
 ## extraFlags:
 ##  - "--wiredTigerCacheSizeGB=2"
 ##
-extraFlags: []
+extraFlags:
+ - "--setParameter maxTransactionLockRequestTimeoutMillis=36000000 --setParameter transactionLifetimeLimitSeconds=3600 --setParameter wiredTigerConcurrentReadTransactions=512 --setParameter wiredTigerConcurrentWriteTransactions=512"
 ## @param extraEnvVars Extra environment variables to add to MongoDB(&reg;) pods
 ## E.g:
 ## extraEnvVars:
@@ -728,8 +690,8 @@ externalAccess:
     ##   - 30002
     ##
     nodePorts: 
-      - 32027
-      - 32037
+      - 32028
+      - 32038
     ## @param externalAccess.service.domain Domain or external IP used to configure MongoDB(&reg;) advertised hostname when service type is NodePort
     ## If not specified, the container will try to get the kubernetes node external IP
     ## e.g:

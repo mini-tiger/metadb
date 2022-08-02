@@ -96,7 +96,8 @@ type CreateManyModelInstance struct {
 }
 
 type UpdateManyModelInstanceMany struct {
-	Datas []UpdateOption `json:"datas"`
+	Datas     []mapstr.MapStr `json:"datas"`
+	UniqueKey string          `json:"uniqueKey"`
 }
 
 type SetModelInstance CreateModelInstance
