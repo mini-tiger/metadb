@@ -28,10 +28,11 @@ env:
 #  pullPolicy: IfNotPresent
   pullPolicy: Always
 
+# cache coresvc 同一node提高效率
 cache:
   enabled: true
   labels:
-    - name: app.kubernetes.io/instance
+    - name: app.kubernetes.io/name
       value: redis
     - name: app.kubernetes.io/component
       value: master
