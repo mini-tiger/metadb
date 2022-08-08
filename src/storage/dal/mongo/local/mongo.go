@@ -453,6 +453,29 @@ func (f *Find) Count(ctx context.Context) (uint64, error) {
 	}
 }
 
+func (c *Collection) BulkWrite(ctx context.Context, docs []mongo.WriteModel) (*mongo.BulkWriteResult, error) {
+	mtc.collectOperCount(c.collName, insertOper)
+
+	start := time.Now()
+	defer func() {
+		mtc.collectOperDuration(c.collName, insertOper, time.Since(start))
+	}()
+
+	bulkOption := options.BulkWriteOptions{}
+	bulkOption.SetOrdered(true)
+	var result *mongo.BulkWriteResult
+	return result, c.tm.AutoRunWithTxn(ctx, c.dbc, func(ctx context.Context) error {
+		var err error
+		result, err = c.dbc.Database(c.dbname).Collection(c.collName).BulkWrite(ctx, docs, &bulkOption)
+		if err != nil {
+			mtc.collectErrorCount(c.collName, blukWriteOper)
+			return err
+		}
+
+		return nil
+	})
+}
+
 // Insert 插入数据, docs 可以为 单个数据 或者 多个数据
 func (c *Collection) Insert(ctx context.Context, docs interface{}) error {
 	mtc.collectOperCount(c.collName, insertOper)

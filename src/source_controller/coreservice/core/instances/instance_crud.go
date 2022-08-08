@@ -25,6 +25,30 @@ import (
 	"configcenter/src/storage/driver/mongodb"
 )
 
+//func (m *instanceManager) bulkWrite(kit *rest.Kit, objID string, inputParam mapstr.MapStr) (id uint64, err error) {
+//	//if objID == common.BKInnerObjIDHost {
+//	//	inputParam = metadata.ConvertHostSpecialStringToArray(inputParam)
+//	//}
+//	tableName := common.GetInstTableName(objID)
+//	id, err = mongodb.Client().NextSequence(kit.Ctx, tableName)
+//	if nil != err {
+//		return id, err
+//	}
+//	instIDFieldName := common.GetInstIDField(objID)
+//	inputParam[instIDFieldName] = id
+//	if !util.IsInnerObject(objID) {
+//		inputParam[common.BKObjIDField] = objID
+//	}
+//	ts := time.Now()
+//	inputParam.Set(common.BKOwnerIDField, kit.SupplierAccount)
+//	inputParam.Set(common.CreateTimeField, ts)
+//	inputParam.Set(common.LastTimeField, ts)
+//	var operations []mongopkg.WriteModel
+//
+//	err = mongodb.Client().Table(tableName).BulkWrite(kit.Ctx, operations)
+//	return id, err
+//}
+
 func (m *instanceManager) save(kit *rest.Kit, objID string, inputParam mapstr.MapStr) (id uint64, err error) {
 	if objID == common.BKInnerObjIDHost {
 		inputParam = metadata.ConvertHostSpecialStringToArray(inputParam)

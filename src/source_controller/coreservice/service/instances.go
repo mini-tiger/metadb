@@ -109,6 +109,40 @@ func (s *coreService) InsertManyModelInstances(ctx *rest.Contexts) {
 	ctx.RespEntityWithError(map[string]interface{}{"success": len(ids)}, err)
 }
 
+func (s *coreService) UpdateManyModelInstances(ctx *rest.Contexts) {
+	inputData := metadata.CreateManyModelInstance{}
+	if err := ctx.DecodeInto(&inputData); nil != err {
+		ctx.RespAutoError(err)
+		return
+	}
+	objectID := ctx.Request.PathParameter("bk_obj_id")
+	dataResult, err := s.core.InstanceOperation().UpdateManyModelInstance(ctx.Kit, objectID, inputData)
+	if err != nil {
+		blog.Errorf("UpdateManyModelInstances err:%v", err)
+		ctx.RespEntityWithError(dataResult, err)
+		return
+	}
+
+	//ids := make([]uint64, 0, len(dataResult.Created))
+	//for _, create := range dataResult.CreateManyInfoResult.Created {
+	//	ids = append(ids, create.ID)
+	//}
+	//sc := &cache.SendCache{
+	//	Cond:     mapstr.MapStr{"bk_inst_id": mapstr.MapStr{common.BKDBIN: ids}},
+	//	Core:     s.core,
+	//	ObjectID: objectID,
+	//}
+	//
+	//sc.CopyKit(ctx.Kit)
+	//
+	//if err == nil {
+	//
+	//	cache.SendCacheChan <- sc
+	//
+	//}
+	ctx.RespEntityWithError(dataResult, err)
+}
+
 func (s *coreService) CreateManyModelInstances(ctx *rest.Contexts) {
 	//fmt.Println(ctx.Request.Request.Method)
 	inputData := metadata.CreateManyModelInstance{}

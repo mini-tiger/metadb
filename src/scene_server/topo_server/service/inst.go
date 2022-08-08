@@ -771,6 +771,42 @@ func (s *Service) SearchInstByAssociation(ctx *rest.Contexts) {
 	ctx.RespEntity(result)
 }
 
+func (s *Service) UpdateManyInstByAssociation(ctx *rest.Contexts) {
+	data := make(map[string]interface{}, 0)
+	if err := ctx.DecodeInto(&data); err != nil {
+		ctx.RespAutoError(err)
+		return
+	}
+	objID := ctx.Request.PathParameter("bk_obj_id")
+
+	ctx.SetReadPreference(common.SecondaryPreferredMode)
+	var result mapstr.MapStr
+	var head map[string]string
+	var err error
+	txnErr := s.Engine.CoreAPI.CoreService().Txn().AutoRunTxn(ctx.Kit.Ctx, ctx.Kit.Header, func() error {
+		//var header http.Header
+		result, _, err = s.Core.InstOperation().UpdateManyOriginInst(ctx.Kit, objID, data)
+		//fmt.Println(err)
+		//fmt.Println(result)
+		if nil != err {
+			blog.Errorf("[api-inst] failed to updateMany the objects(%s), error info is %s, rid: %s", ctx.Request.PathParameter("bk_obj_id"), err.Error(), ctx.Kit.Rid)
+			//ctx.RespAutoError(err)
+			return err
+		}
+		head = make(map[string]string, 1)
+		//if header.Get("iscache")
+		//head["iscache"] = header.Get("iscache")
+		//ctx.RespEntityHeader(result, head)
+		return nil
+	})
+
+	if txnErr != nil {
+		ctx.RespAutoError(txnErr)
+		return
+	}
+	ctx.RespEntityHeader(result, head)
+}
+
 // SearchInstByAssociation search inst by the association inst
 func (s *Service) UpdateInstByAssociationCache(ctx *rest.Contexts) {
 	data := make(map[string]interface{}, 0)

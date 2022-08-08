@@ -137,6 +137,21 @@ func (inst *instance) UpdateInstanceCache(ctx context.Context, h http.Header, ob
 	return
 }
 
+func (inst *instance) UpdateManyInstance(ctx context.Context, h http.Header, objID string,
+	input mapstr.MapStr) (resp *metadata.ResponseDataMapStr, header http.Header, err error) {
+	resp = new(metadata.ResponseDataMapStr)
+	subPath := "/updatemany/model/%s/instance"
+
+	err, header = inst.client.Post().
+		WithContext(ctx).
+		Body(input).
+		SubResourcef(subPath, objID).
+		WithHeaders(h).
+		Do().
+		IntoBodyHeader(resp)
+	return
+}
+
 func (inst *instance) DeleteInstance(ctx context.Context, h http.Header, objID string, input *metadata.DeleteOption) (resp *metadata.DeletedOptionResult, err error) {
 	resp = new(metadata.DeletedOptionResult)
 	subPath := "/delete/model/%s/instance"

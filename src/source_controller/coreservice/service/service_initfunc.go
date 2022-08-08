@@ -105,8 +105,12 @@ func (s *coreService) initModelInstances(web *restful.WebService) {
 		Language: s.engine.Language,
 	})
 
+	//xxx 模型 要有 唯一检验列，属性值不为空(必填列)
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/updatemany/model/{bk_obj_id}/instance", Handler: s.UpdateManyModelInstances})
+
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/create/model/{bk_obj_id}/instance", Handler: s.CreateOneModelInstance})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/createmany/model/{bk_obj_id}/instance", Handler: s.CreateManyModelInstances})
+
 	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/model/{bk_obj_id}/instance", Handler: s.UpdateModelInstances})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/read/model/{bk_obj_id}/instances", Handler: s.SearchModelInstances})
 	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/delete/model/{bk_obj_id}/instance", Handler: s.DeleteModelInstances})

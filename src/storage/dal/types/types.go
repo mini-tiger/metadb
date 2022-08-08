@@ -15,6 +15,7 @@ package types
 import (
 	"context"
 	"errors"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Errors defines
@@ -47,6 +48,7 @@ type Table interface {
 	// UpdateMultiModel  data based on operators.
 	UpdateMultiModel(ctx context.Context, filter Filter, updateModel ...ModeUpdate) error
 
+	BulkWrite(ctx context.Context, docs []mongo.WriteModel) (*mongo.BulkWriteResult, error)
 	// Delete 删除数据
 	Delete(ctx context.Context, filter Filter) error
 

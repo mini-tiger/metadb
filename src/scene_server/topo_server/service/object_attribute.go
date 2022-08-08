@@ -13,6 +13,9 @@
 package service
 
 import (
+	"configcenter/src/common/errors"
+	"configcenter/src/common/json"
+	"fmt"
 	"strconv"
 
 	"configcenter/src/common"
@@ -22,6 +25,126 @@ import (
 	"configcenter/src/common/mapstr"
 	"configcenter/src/common/metadata"
 )
+
+// CreateObjectAttribute create a new object attribute
+func (s *Service) CreateManyObjectAttribute(ctx *rest.Contexts) {
+	datas := []mapstr.MapStr{}
+	if err := ctx.DecodeInto(&datas); err != nil {
+		ctx.RespAutoError(err)
+		return
+	}
+	//fmt.Println(datas)
+	if len(datas) == 0 {
+		//blog.Errorf("create biz custom field, but parse biz ID failed, error: %s, rid: %s", err, ctx.Kit.Rid)
+		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.CCErrCommParamsInvalid))
+		return
+	}
+	dataWithModelBizIDs := make([]*MapStrWithModelBizID, 0, len(datas))
+	for _, value := range datas {
+		bytes, err := value.ToJSON()
+		if err != nil {
+			blog.Errorf("rid: %s, Map ToJson request body failed, err: %v, body: %s", ctx.Kit.Rid, err, string(bytes))
+			//blog.Errorf("create biz custom field, but parse biz ID failed, error: %s, rid: %s", err, ctx.Kit.Rid)
+			ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJsonDecode))
+			return
+		}
+		tmpStruct := new(MapStrWithModelBizID)
+		err = json.Unmarshal(bytes, tmpStruct)
+		if err != nil {
+			blog.Errorf("rid: %s, unmarshal request body failed, err: %v, body: %s", ctx.Kit.Rid, err, string(bytes))
+			//blog.Errorf("create biz custom field, but parse biz ID failed, error: %s, rid: %s", err, ctx.Kit.Rid)
+			ctx.RespAutoError(ctx.Kit.CCError.Error(common.CCErrCommJSONUnmarshalFailed))
+			return
+		}
+		dataWithModelBizIDs = append(dataWithModelBizIDs, tmpStruct)
+	}
+	//fmt.Println(dataWithModelBizIDs)
+	//data := dataWithModelBizID.Data
+	//modelBizID := dataWithModelBizID.Datas[0].ModelBizID
+
+	// do not support adding preset attribute by api
+	//data.Set(common.BKIsPre, false)
+	//
+
+	isBizCustomField := false
+	//// adapt input path param with bk_biz_id
+	//if bizIDStr := ctx.Request.PathParameter(common.BKAppIDField); bizIDStr != "" {
+	//	bizIDStr := ctx.Request.PathParameter(common.BKAppIDField)
+	//	bizID, err := strconv.ParseInt(bizIDStr, 10, 64)
+	//	if err != nil {
+	//		blog.Errorf("create biz custom field, but parse biz ID failed, error: %s, rid: %s", err, ctx.Kit.Rid)
+	//		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
+	//		return
+	//	}
+	//	if bizID == 0 {
+	//		blog.Errorf("create biz custom field, but biz ID is 0, rid: %s", ctx.Kit.Rid)
+	//		ctx.RespAutoError(ctx.Kit.CCError.CCErrorf(common.CCErrCommParamsInvalid, common.BKAppIDField))
+	//		return
+	//	}
+	//	modelBizID = bizID
+	//	data.Set(common.BKAppIDField, modelBizID)
+	//	isBizCustomField = true
+	//}
+	//
+	var attrInfo []*metadata.ObjAttDes = make([]*metadata.ObjAttDes, 0, len(dataWithModelBizIDs))
+	txnErr := s.Engine.CoreAPI.CoreService().Txn().AutoRunTxn(ctx.Kit.Ctx, ctx.Kit.Header, func() error {
+
+		var data mapstr.MapStr
+		var modelBizID int64
+
+		condSlice := make([]int64, 0, len(dataWithModelBizIDs))
+		for _, objdata := range dataWithModelBizIDs {
+			data = objdata.Data
+			modelBizID = objdata.ModelBizID
+			data.Set(common.BKIsPre, false)
+			attr, err := s.Core.AttributeOperation().CreateObjectAttribute(ctx.Kit, data, modelBizID)
+
+			if nil != err {
+				//return err
+				//var code int
+				//var errMsg string
+				t, yes := err.(errors.CCErrorCoder)
+				if yes {
+
+					return errors.NewCCError(t.GetCode(), fmt.Sprintf("data:%v,Error:%s", data, t.Error()))
+				}
+				return err
+			}
+
+			//fmt.Println(attr)
+			attribute := attr.Attribute()
+			condSlice = append(condSlice, attribute.ID)
+		}
+
+		var err error
+		cond := condition.CreateCondition()
+		cond.Field("id").In(condSlice)
+		attrInfo, err = s.Core.AttributeOperation().FindObjectAttributeWithDetail(ctx.Kit, cond, modelBizID)
+		if err != nil {
+			blog.Errorf("create object attribute success, but get attributes detail failed, err: %v, rid: %s", err, ctx.Kit.Rid)
+			return ctx.Kit.CCError.CCError(common.CCErrorTopoSearchModelAttriFailedPleaseRefresh)
+		}
+		if len(attrInfo) <= 0 {
+			blog.Errorf("create object attribute success, but get attributes detail failed, err: %v, rid: %s", err, ctx.Kit.Rid)
+			return ctx.Kit.CCError.CCError(common.CCErrorTopoSearchModelAttriFailedPleaseRefresh)
+		}
+
+		if isBizCustomField {
+			for i, _ := range attrInfo {
+				attrInfo[i].BizID = modelBizID
+			}
+
+		}
+		return nil
+	})
+
+	if txnErr != nil {
+		ctx.RespAutoError(txnErr)
+		return
+	}
+
+	ctx.RespEntity(attrInfo)
+}
 
 // CreateObjectAttribute create a new object attribute
 func (s *Service) CreateObjectAttribute(ctx *rest.Contexts) {
