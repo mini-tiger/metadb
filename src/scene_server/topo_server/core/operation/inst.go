@@ -56,6 +56,7 @@ type InstOperationInterface interface {
 	// cache
 	FindOriginInstCache(kit *rest.Kit, objID string, cond mapstr.MapStr) (*metadata.InstResult, http.Header, errors.CCError)
 	UpdateOriginInstCache(kit *rest.Kit, objID string, cond mapstr.MapStr) (mapstr.MapStr, http.Header, errors.CCError)
+	UpdateManyOriginInst(kit *rest.Kit, objID string, cond mapstr.MapStr) (mapstr.MapStr, http.Header, errors.CCError)
 }
 
 // NewInstOperation create a new inst operation instance
@@ -129,7 +130,26 @@ func (c *commonInst) UpdateOriginInstCache(kit *rest.Kit, objID string, cond map
 	}
 
 	if !rsp.Result {
-		blog.Errorf("[operation-inst] failed to delete the object(%s) inst by the condition(%#v), err: %s, rid: %s", objID, cond, rsp.ErrMsg, kit.Rid)
+		blog.Errorf("[operation-inst] failed to update the object(%s) inst by the condition(%#v), err: %s, rid: %s", objID, cond, rsp.ErrMsg, kit.Rid)
+		return nil, header, kit.CCError.New(rsp.Code, rsp.ErrMsg)
+	}
+	//return &metadata.UpdateCacheInstResult{BaseResp: rsp.BaseResp, Data: rsp.Data}, header, nil
+	return rsp.Data, header, nil
+
+}
+
+func (c *commonInst) UpdateManyOriginInst(kit *rest.Kit, objID string, cond mapstr.MapStr) (mapstr.MapStr, http.Header, errors.CCError) {
+
+	rsp, header, err := c.clientSet.CoreService().Instance().UpdateManyInstance(kit.Ctx, kit.Header, objID, cond)
+
+	//return nil
+	if nil != err {
+		blog.Errorf("[operation-inst] failed to request object controller, err: %s, rid: %s", err.Error(), kit.Rid)
+		return nil, header, kit.CCError.Error(common.CCErrCommHTTPDoRequestFailed)
+	}
+
+	if !rsp.Result {
+		blog.Errorf("[operation-inst] failed to updatemany the object(%s) inst by the condition(%#v), err: %s, rid: %s", objID, cond, rsp.ErrMsg, kit.Rid)
 		return nil, header, kit.CCError.New(rsp.Code, rsp.ErrMsg)
 	}
 	//return &metadata.UpdateCacheInstResult{BaseResp: rsp.BaseResp, Data: rsp.Data}, header, nil

@@ -119,8 +119,11 @@ type InstanceOperation interface {
 
 	CascadeDeleteModelInstance(kit *rest.Kit, objID string, inputParam metadata.DeleteOption) (*metadata.DeletedCount,
 		error)
+	//
 	InsertManyModelInstance(kit *rest.Kit, objID string, inputParam metadata.CreateManyModelInstance) (
 		[]uint64, error)
+	UpdateManyModelInstance(kit *rest.Kit, objID string, inputParam metadata.CreateManyModelInstance) (
+		*metadata.UpdateManyDataResult, error)
 }
 
 // AssociationKind association kind methods

@@ -80,7 +80,8 @@ func (s *syncCacheObj) matchUniqueDes() {
 	var pipeline []operation.M
 	for _, obj := range s.objList {
 		pipeline = []operation.M{
-			{"$match": operation.M{"must_check": true, "bk_supplier_account": "0"}},
+			//{"$match": operation.M{"must_check": true, "bk_supplier_account": "0"}}, // 属性为空时检验
+			{"$match": operation.M{"must_check": false, "bk_supplier_account": "0"}}, // 属性为空时检验
 			{"$unwind": "$keys"},
 			{"$project": operation.M{"key_id": "$keys.key_id", "bk_obj_id": "$bk_obj_id"}},
 			{"$lookup": operation.M{"from": "cc_ObjAttDes", "localField": "key_id", "foreignField": "id", "as": "AttDes"}},

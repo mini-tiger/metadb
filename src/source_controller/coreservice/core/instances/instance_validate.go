@@ -13,7 +13,9 @@
 package instances
 
 import (
+	"configcenter/src/source_controller/coreservice/core/operation"
 	stderr "errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -232,6 +234,64 @@ func (m *instanceManager) validCreateInstanceData(kit *rest.Kit, objID string, i
 
 	return valid.validCreateUnique(kit, instanceData, m)
 }
+func (m *instanceManager) validSimplifyCreateInstanceData(kit *rest.Kit, objID string, instanceData mapstr.MapStr, valid *validator) error {
+	for _, key := range valid.requireFields {
+		if key != common.BKInstNameField { // skip bk_inst_name
+
+			if _, ok := instanceData[key]; !ok {
+				blog.Errorf("field [%s] in required for model [%s], input data: %+v, rid: %s", key, objID, instanceData, kit.Rid)
+				return valid.errIf.Errorf(common.CCErrCommParamsNeedSet, key)
+			}
+		}
+	}
+	// 填充数据
+	FillLostedFieldValue(kit.Ctx, instanceData, valid.propertySlice)
+
+	for key, val := range instanceData {
+		if key == common.BKObjIDField {
+			// common instance always has no property bk_obj_id, but this field need save to db
+			blog.V(9).Infof("skip verify filed: %s, rid: %s", key, kit.Rid)
+			continue
+		}
+		if util.InStrArr(createIgnoreKeys, key) {
+			// ignore the key field
+			continue
+		}
+		// 删除不在模型中的key
+		property, ok := valid.properties[key]
+		if !ok {
+			delete(instanceData, key)
+			continue
+		}
+		if value, ok := val.(string); ok {
+			val = strings.TrimSpace(value)
+			instanceData[key] = val
+		}
+		// 检验数据类型
+		rawErr := property.Validate(kit.Ctx, val, key)
+		if rawErr.ErrCode != 0 {
+			blog.Errorf("validCreateInstanceData failed, key: %s, value: %s, err: %s, rid: %s", key, val, kit.CCError.Error(rawErr.ErrCode), kit.Rid)
+			return rawErr.ToCCError(kit.CCError)
+		}
+	}
+
+	if err := m.changeStringToTime(instanceData, valid.propertySlice); err != nil {
+		blog.Errorf("there is an error in converting the time type string to the time type, err: %s, rid: %s", err, kit.Rid)
+		return err
+	}
+
+	// module instance's name must coincide with template
+	//if objID == common.BKInnerObjIDModule {
+	//	if err := m.validateModuleCreate(kit, instanceData, valid); err != nil {
+	//		if blog.V(9) {
+	//			blog.InfoJSON("validateModuleCreate failed, module: %s, err: %s, rid: %s", instanceData, err, kit.Rid)
+	//		}
+	//		return err
+	//	}
+	//}
+
+	return nil
+}
 
 func (m *instanceManager) validateModuleCreate(kit *rest.Kit, instanceData mapstr.MapStr, valid *validator) error {
 	svcTplIDIf, exist := instanceData[common.BKServiceTemplateIDField]
@@ -440,6 +500,53 @@ func (m *instanceManager) changeStringToTime(valData mapstr.MapStr, properties [
 		return stderr.New("can not convert value from string type to time type")
 	}
 	return nil
+}
+
+// getValidatorsFromInstances get validators from instances, returns the mapping of instance index to its validator
+func (m *instanceManager) getSimplifyValidatorsFromInstances(kit *rest.Kit, objID string, instanceData []mapstr.MapStr,
+	validTye string) ([]*validator, error) {
+
+	// xxx 默认biz 业务ID为0
+	bizIDs := make([]int64, 1)
+	bizValidatorMap, err := NewValidators(kit, m.dependent, objID, bizIDs, m.language)
+	if err != nil {
+		blog.Errorf("new validators failed, err: %v, objID: %s, bizIDs: %v, rid: %s", err, objID, bizIDs, kit.Rid)
+		return nil, err
+	}
+	instLen := 1
+	instValidators := make([]*validator, instLen)
+	for index, bizID := range bizIDs {
+		instValidators[index] = bizValidatorMap[bizID]
+	}
+	return instValidators, nil
+}
+
+func (m *instanceManager) getObjUniqueFields(kit *rest.Kit, objID string) (map[string]interface{}, error) {
+
+	pipeline := []operation.M{
+		//{"$match": operation.M{"must_check": true, "bk_supplier_account": "0"}}, // 属性为空时检验
+		{"$match": operation.M{"must_check": false, "bk_supplier_account": "0"}}, // 属性为空时检验
+		{"$unwind": "$keys"},
+		{"$project": operation.M{"key_id": "$keys.key_id", "bk_obj_id": "$bk_obj_id"}},
+		{"$lookup": operation.M{"from": "cc_ObjAttDes", "localField": "key_id", "foreignField": "id", "as": "AttDes"}},
+		{"$unwind": "$AttDes"},
+		{"$match": operation.M{"AttDes.bk_property_id": operation.M{"$ne": "bk_inst_name"}}}, // 不使用 默认实例
+		{"$project": operation.M{"_id": 0, "key_id": "$key_id", "bk_obj_id": "$bk_obj_id", "bk_property_id": "$AttDes.bk_property_id"}},
+		{"$sort": operation.M{"key_id": 1}},
+		{"$group": operation.M{"_id": "$bk_obj_id", "first_unique": operation.M{"$first": "$bk_property_id"}}}, //排序后 取第一个 唯一字段
+		{"$match": operation.M{"_id": objID}},
+		{"$project": operation.M{"_id": 0, "first_unique": 1}},
+	}
+	var result map[string]interface{}
+	if err := mongodb.Client().Table(common.BKTableNameObjUnique).AggregateOne(kit.Ctx, pipeline, &result); err != nil {
+		blog.Errorf("getObjUniqueFields failed, err: %v, objID: %s, rid: %s", err, objID, kit.Rid)
+		return nil, err
+	}
+	if len(result) == 0 {
+		blog.Errorf("getObjUniqueFields , err: not found UniqueField, objID: %s, rid: %s", objID, kit.Rid)
+		return nil, fmt.Errorf("getObjUniqueFields , err: not found UniqueField, objID: %s", objID)
+	}
+	return result, nil
 }
 
 // getValidatorsFromInstances get validators from instances, returns the mapping of instance index to its validator

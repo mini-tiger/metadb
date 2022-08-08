@@ -58,6 +58,7 @@ type oper string
 
 const (
 	findOper      oper = "find"
+	blukWriteOper oper = "blukWrite"
 	insertOper    oper = "insert"
 	updateOper    oper = "update"
 	upsertOper    oper = "upsert"

@@ -394,24 +394,24 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			OwnerID:  ownerID,
 			LastTime: metadata.Now(),
 		},
-		{
-			ID:        39,
-			ObjID:     "datacenter",
-			MustCheck: false,
-			Keys: []metadata.UniqueKey{
-				{
-					Kind: metadata.UniqueKeyKindProperty,
-					ID:   248,
-				},
-			},
-			Ispre:    false,
-			OwnerID:  ownerID,
-			LastTime: metadata.Now(),
-		},
+		//{
+		//	ID:        39,
+		//	ObjID:     "datacenter",
+		//	MustCheck: false,
+		//	Keys: []metadata.UniqueKey{
+		//		{
+		//			Kind: metadata.UniqueKeyKindProperty,
+		//			ID:   248,
+		//		},
+		//	},
+		//	Ispre:    false,
+		//	OwnerID:  ownerID,
+		//	LastTime: metadata.Now(),
+		//},
 		{
 			ID:        16,
 			ObjID:     "datacenter",
-			MustCheck: true,
+			MustCheck: false,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
@@ -439,7 +439,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 		{
 			ID:        17,
 			ObjID:     "crm_dim_product",
-			MustCheck: true,
+			MustCheck: false,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
@@ -450,20 +450,20 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			OwnerID:  ownerID,
 			LastTime: metadata.Now(),
 		},
-		{
-			ID:        18,
-			ObjID:     "crm_dim_product",
-			MustCheck: false,
-			Keys: []metadata.UniqueKey{
-				{
-					Kind: metadata.UniqueKeyKindProperty,
-					ID:   257,
-				},
-			},
-			Ispre:    false,
-			OwnerID:  ownerID,
-			LastTime: metadata.Now(),
-		},
+		//{
+		//	ID:        18,
+		//	ObjID:     "crm_dim_product",
+		//	MustCheck: false,
+		//	Keys: []metadata.UniqueKey{
+		//		{
+		//			Kind: metadata.UniqueKeyKindProperty,
+		//			ID:   257,
+		//		},
+		//	},
+		//	Ispre:    false,
+		//	OwnerID:  ownerID,
+		//	LastTime: metadata.Now(),
+		//},
 	}
 	return dataRows
 }

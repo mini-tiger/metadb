@@ -31,8 +31,10 @@ func main() {
 		Header: header,
 	}
 	cm.GetData(10000)
-	res := cm.CreateCoreMany(fmt.Sprintf("http://%s:%d/api/v3/createmany/model/datacenter/instance", host, corePort))
+	//res := cm.CreateCoreMany(fmt.Sprintf("http://%s:%d/api/v3/createmany/model/datacenter/instance", host, corePort))
 	//res := cm.CreateApiHostMany(fmt.Sprintf("http://%s:%d/api/v3/createmany/datacenter", host, apiPort))
 	//res := cm.CreateApiHostMany(fmt.Sprintf("http://%s:%d/host/v3/createmany/datacenter", host, hostPort))
+
+	res := cm.CreateCoreMany(fmt.Sprintf("http://%s:%d/api/v3/updatemany/model/datacenter/instance", host, corePort))
 	fmt.Println(string(res))
 }

@@ -264,6 +264,14 @@ type CreateOneDataResult struct {
 	Created CreatedDataResult `json:"created"`
 }
 
+type UpdateManyDataResult struct {
+	InsertedCount int64
+	MatchedCount  int64
+	ModifiedCount int64
+	DeletedCount  int64
+	UpsertedCount int64
+}
+
 // SearchResp common search response
 type SearchResp struct {
 	BaseResp `json:",inline"`

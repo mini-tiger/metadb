@@ -13,8 +13,11 @@
 package instances
 
 import (
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"strconv"
 	"strings"
+	"time"
 
 	"configcenter/src/apimachinery"
 	"configcenter/src/common"
@@ -131,6 +134,108 @@ func (m *instanceManager) CreateManyModelInstance(kit *rest.Kit, objID string,
 	return dataResult, nil
 }
 
+func (m *instanceManager) UpdateManyModelInstance(kit *rest.Kit, objID string,
+	inputParam metadata.CreateManyModelInstance) (*metadata.UpdateManyDataResult, error) {
+
+	dataResult := new(metadata.UpdateManyDataResult)
+	if len(inputParam.Datas) == 0 {
+		return dataResult, nil
+	}
+
+	instValidators, err := m.getSimplifyValidatorsFromInstances(kit, objID, inputParam.Datas, common.ValidCreate)
+	if err != nil {
+		blog.Errorf("get inst(%#v) validators failed, err: %v, obj: %s, rid:%s", err, objID, inputParam.Datas, kit.Rid)
+		return nil, err
+	}
+	unqiueMap, err := m.getObjUniqueFields(kit, objID)
+	if err != nil {
+		blog.Errorf("getObjUniqueFields err: %v, obj: %s, rid:%s", err, objID, kit.Rid)
+		return nil, err
+	}
+	//fmt.Println(unqiueMap)
+	var uniqueField string
+	var ufi interface{}
+	var ok bool
+	if ufi, ok = unqiueMap["first_unique"]; !ok {
+		blog.Errorf("getObjUniqueFields err: %v, obj: %s, rid:%s", "first_unique not found", objID, kit.Rid)
+		return nil, err
+	} else {
+		uniqueField = ufi.(string)
+	}
+
+	//fmt.Println(uniqueField)
+	var docs []mongo.WriteModel = make([]mongo.WriteModel, 0, len(inputParam.Datas))
+	validator := instValidators[0]
+	instIDFieldName := common.GetInstIDField(objID)
+	ids, err := mongodb.Client().NextSequences(kit.Ctx, common.BKTableNameBaseInst, len(inputParam.Datas))
+	if err != nil {
+		blog.Errorf("get next Sequences id failed, err: %s", err.Error())
+		return nil, err
+	}
+	ts := time.Now()
+	for index, item := range inputParam.Datas {
+		if item == nil {
+			blog.ErrorJSON("the model instance data can't be empty, input data: %s rid: %s", inputParam.Datas, kit.Rid)
+			return dataResult, kit.CCError.Errorf(common.CCErrCommInstDataNil, "modelInstance")
+		}
+		item.Set(common.BKOwnerIDField, kit.SupplierAccount)
+
+		if validator == nil {
+			blog.Errorf("get validator failed, objID: %s, inst: %#v, rid: %s", err, objID, item, kit.Rid)
+			return dataResult, kit.CCError.CCErrorf(common.CCErrCommNotFound)
+		}
+
+		if !item.Exists(common.BKInstNameField) {
+			item.Set(common.BKInstNameField, strconv.FormatUint(ids[index], 10))
+		}
+
+		err = m.validSimplifyCreateInstanceData(kit, objID, item, validator)
+		if nil != err {
+			blog.Errorf("valid create instance data(%#v) failed, err: %v, obj: %s, rid: %s", err, item, objID, kit.Rid)
+			return dataResult, err
+		}
+		if _, ok = item[uniqueField]; !ok {
+			blog.Errorf("err:[%s %s]  data:%v  obj: %s, rid: %s", "not found uniqueKey", uniqueField, item, objID, kit.Rid)
+			return dataResult, err
+		}
+
+		item[instIDFieldName] = ids[index]
+		item[common.BKOwnerIDField] = kit.SupplierAccount
+		item["bk_obj_id"] = objID
+
+		//inputParam.Set(common.BKOwnerIDField, kit.SupplierAccount)
+		item.Set(common.CreateTimeField, ts)
+		item.Set(common.LastTimeField, ts)
+
+		var upsert bool = true
+		op := &mongo.ReplaceOneModel{
+			Upsert:      &upsert,
+			Filter:      bson.M{uniqueField: item[uniqueField]},
+			Replacement: item.ToMapInterface(),
+		}
+		//op.SetFilter(bson.M{"name": userA.Name})
+		//op.SetReplacement(userB)
+		//op.SetUpsert(true)
+		docs = append(docs, op)
+
+	}
+	result, err := mongodb.Client().Table(common.BKTableNameBaseInst).BulkWrite(kit.Ctx, docs)
+	//dataResult.Created = append(dataResult.Created, metadata.CreatedDataResult{
+	//	ID: id,
+	//})
+	//fmt.Printf("%+v\n", result)
+	if err != nil {
+		blog.Errorf("mongodb BulkWrite Err:%v,Obj:%s\n", err, objID)
+		return dataResult, err
+	}
+	dataResult.InsertedCount = result.InsertedCount
+	dataResult.MatchedCount = result.MatchedCount
+	dataResult.UpsertedCount = result.UpsertedCount
+	dataResult.ModifiedCount = result.ModifiedCount
+	dataResult.DeletedCount = result.DeletedCount
+	return dataResult, nil
+}
+
 // InsertManyModelInstance create model instances
 func (m *instanceManager) InsertManyModelInstance(kit *rest.Kit, objID string,
 	inputParam metadata.CreateManyModelInstance) ([]uint64, error) {
@@ -141,7 +246,7 @@ func (m *instanceManager) InsertManyModelInstance(kit *rest.Kit, objID string,
 	}
 	ids, err := mongodb.Client().NextSequences(kit.Ctx, common.BKTableNameBaseInst, len(inputParam.Datas))
 	if err != nil {
-		blog.Errorf("get next audit log id failed, err: %s", err.Error())
+		blog.Errorf("get next Sequences id failed, err: %s", err.Error())
 		return ids, err
 	}
 	instIDFieldName := common.GetInstIDField(objID)

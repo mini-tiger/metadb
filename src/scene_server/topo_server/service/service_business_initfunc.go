@@ -58,6 +58,8 @@ func (s *Service) initBusinessObjectAttribute(web *restful.WebService) {
 		ErrorIf:  s.Engine.CCErr,
 		Language: s.Engine.Language,
 	})
+	// new
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/createmany/objectattr", Handler: s.CreateManyObjectAttribute})
 
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/create/objectattr", Handler: s.CreateObjectAttribute})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/create/objectattr/biz/{bk_biz_id}", Handler: s.CreateObjectAttribute})
@@ -157,6 +159,8 @@ func (s *Service) initBusinessAssociation(web *restful.WebService) {
 	// cache
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/find/instassociation/object/{bk_obj_id}/cache", Handler: s.SearchInstByAssociationCache})
 	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/instance/object/{bk_obj_id}/cache", Handler: s.UpdateInstByAssociationCache})
+	// 不用传bk_inst_id bk_inst_name ,不支持cache
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/updatemany/instance/object/{bk_obj_id}", Handler: s.UpdateManyInstByAssociation})
 
 	// ATTENTION: the following methods is not recommended
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/find/insttopo/object/{bk_obj_id}/inst/{inst_id}", Handler: s.SearchInstChildTopo})
