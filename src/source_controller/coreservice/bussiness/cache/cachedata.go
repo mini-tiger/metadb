@@ -23,7 +23,7 @@ var topCtx context.Context = context.Background()
 var SendCacheChan chan *SendCache = make(chan *SendCache, 2048)
 
 //const redisdataprefix = "cc:objdata:%s"
-const Rediskeyprefix = "cc:objdata:%s:%s"
+const Rediskeyprefix = "cc:objdata:%s:%s" // objid ,唯一字段值
 const redisTimeoutSec = 10
 const mongoWriteTimeoutSec = 60 * 10
 

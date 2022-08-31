@@ -123,23 +123,27 @@ func (s *coreService) UpdateManyModelInstances(ctx *rest.Contexts) {
 		return
 	}
 
-	//ids := make([]uint64, 0, len(dataResult.Created))
-	//for _, create := range dataResult.CreateManyInfoResult.Created {
-	//	ids = append(ids, create.ID)
-	//}
-	//sc := &cache.SendCache{
-	//	Cond:     mapstr.MapStr{"bk_inst_id": mapstr.MapStr{common.BKDBIN: ids}},
-	//	Core:     s.core,
-	//	ObjectID: objectID,
-	//}
-	//
-	//sc.CopyKit(ctx.Kit)
-	//
-	//if err == nil {
-	//
-	//	cache.SendCacheChan <- sc
-	//
-	//}
+	sc := &cache.SendCache{
+		Core:     s.core,
+		ObjectID: objectID,
+	}
+	sc.IsCache()
+
+	if sc.Iscache {
+		//inputCopy := inputata.Clone()
+		datas := &metadata.QueryResult{
+			Count: uint64(len(inputData.Datas)),
+			Info:  inputData.Datas,
+		}
+		err, _ := sc.DeleteCache(datas)
+		//fmt.Println(dataResult)
+		//fmt.Println(err)
+		if err != nil {
+			blog.Errorf("UpdateManyModelInstances err:%v", err)
+
+		}
+
+	}
 	ctx.RespEntityWithError(dataResult, err)
 }
 

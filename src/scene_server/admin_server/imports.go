@@ -138,5 +138,5 @@ import (
 	// metadb data
 	_ "configcenter/src/scene_server/admin_server/upgrader/y3.9.202203171605"
 	// 21vianet data
-	_ "configcenter/src/scene_server/admin_server/upgrader/y3.9.202206200944"
+	//_ "configcenter/src/scene_server/admin_server/upgrader/y3.9.202206200944"
 )

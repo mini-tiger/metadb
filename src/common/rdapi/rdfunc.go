@@ -85,10 +85,17 @@ func RequestLogFilter() func(req *restful.Request, resp *restful.Response, fchai
 	return func(req *restful.Request, resp *restful.Response, fchain *restful.FilterChain) {
 		header := req.Request.Header
 		body, _ := util.PeekRequest(req.Request)
-		blog.Infof("code: %s, user: %s, rip: %s, uri: %s, body: %s, rid: %s",
-			header.Get("Bk-App-Code"), header.Get("Bk_user"), header.Get("X-Real-Ip"),
-			req.Request.RequestURI, body, util.GetHTTPCCRequestID(header))
-
+		//blog.Infof("code: %s, user: %s, rip: %s, uri: %s, body: %s, rid: %s",
+		//	header.Get("Bk-App-Code"), header.Get("Bk_user"), header.Get("X-Real-Ip"),
+		//	req.Request.RequestURI, body, util.GetHTTPCCRequestID(header))
+		//fmt.Printf("%+v\n", req.Request)
+		var rip string = header.Get("X-Real-Ip")
+		if rip == "" {
+			rip = req.Request.RemoteAddr
+		}
+		blog.Infof("Access :[%s] Host:[%s] method: [%s], rip: [%s], user: [%s],http_blueking_supplier_id: %s  body: %s, rid: %s",
+			req.Request.RequestURI, req.Request.Host, req.Request.Method, rip, header.Get("Bk_user"),
+			header.Get("HTTP_BLUEKING_SUPPLIER_ID"), body, util.GetHTTPCCRequestID(header))
 		fchain.ProcessFilter(req, resp)
 		return
 	}
