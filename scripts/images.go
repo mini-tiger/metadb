@@ -28,7 +28,9 @@ var (
 	// dir: src/bin/build/
 	validDir = map[string]struct{}{"cmdb_adminserver": struct{}{}, "cmdb_webserver": struct{}{},
 		"cmdb_apiserver": struct{}{}, "cmdb_coreservice": struct{}{}, "cmdb_toposerver": struct{}{},
-		"cmdb_hostserver": struct{}{}, "cmdb_operationserver": struct{}{},
+		"cmdb_hostserver": struct{}{}, "cmdb_operationserver": struct{}{}, "cmdb_cacheservice": struct{}{},
+		"cmdb_cloudserver": struct{}{}, "cmdb_eventserver": struct{}{}, "cmdb_procserver": struct{}{},
+		"cmdb_taskserver": struct{}{},
 	}
 
 	//dockerTmp = "Dockerfile_tmp"

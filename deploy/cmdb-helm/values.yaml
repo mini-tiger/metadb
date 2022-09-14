@@ -19,6 +19,16 @@ apps:
     nodePort: 32357
   - name: operationserver
     port: 60011
+  - name: cacheserver
+    port: 50010
+  - name: cloudserver
+    port: 60013
+  - name: eventserver
+    port: 60009
+  - name: procserver
+    port: 60003
+  - name: taskserver
+    port: 60012
 
 image:
   repository: harbor.dev.21vianet.com/cmdb/
