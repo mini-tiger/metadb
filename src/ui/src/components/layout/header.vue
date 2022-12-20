@@ -2,7 +2,7 @@
   <header class="header-layout" v-test-id.global="'header'">
     <div class="logo">
       <router-link class="logo-link" to="/index">
-        {{$t('蓝鲸配置平台')}}
+        {{$t('配置平台')}}
       </router-link>
     </div>
     <nav class="header-nav" v-test-id.global="'headerNav'">
@@ -111,7 +111,7 @@
 </script>
 
 <style lang="scss" scoped>
-    .header-layout {
+.header-layout {
         position: relative;
         display: flex;
         height: 58px;
@@ -127,10 +127,11 @@
             height: 58px;
             line-height: 58px;
             margin-left: 23px;
-            padding-left: 38px;
+            padding-left: 90px;
             color: #fff;
             font-size: 16px;
-            background: url("../../assets/images/logo.svg") no-repeat 0 center;
+            background: url("../../assets/images/世纪互联logo-彩色.png") no-repeat 0 center;
+            background-size: 100px 50px;
         }
     }
     .header-nav {
