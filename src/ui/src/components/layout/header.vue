@@ -130,7 +130,7 @@
             padding-left: 90px;
             color: #fff;
             font-size: 16px;
-            background: url("../../assets/images/世纪互联logo-彩色.png") no-repeat 0 center;
+            background: url("../../assets/images/shijihulianLogo.png") no-repeat 0 center;
             background-size: 100px 50px;
         }
     }
