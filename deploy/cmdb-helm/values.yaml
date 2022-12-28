@@ -8,7 +8,7 @@ apps:
   - name: apiserver
     port: 8080
     nodePort: 31921
-  - name: coreservice
+  - name: coreserver
     port: 50009
     nodePort: 32001
     cacheAffinity: true

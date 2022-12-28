@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	currentFileName, rootDir, dockerDir, tmpDir, binaryDir string // images.go 路径
+	currentFileName, rootDir, dockerDir, webCompressionPath, tmpDir, binaryDir string // images.go 路径
 
 	branch = "metadb-tj" //#"3.9.39.x"
 
@@ -34,6 +34,7 @@ var (
 	}
 
 	//dockerTmp = "Dockerfile_tmp"
+
 	harbor             = "harbor.dev.21vianet.com/cmdb/"
 	github             = "meta42/"
 	ver                = "latest"
@@ -61,6 +62,7 @@ func init() {
 	//fmt.Println(CurrentFileName)
 	rootDir = filepath.Dir(filepath.Dir(currentFileName))
 	dockerDir = path.Join(rootDir, "DockerFile")
+	webCompressionPath = path.Join(dockerDir, "web.tar.gz")
 	tmpDir = path.Join(dockerDir, "tmp")
 	binaryDir = path.Join(rootDir, "src", "bin", "build", branch)
 
@@ -70,6 +72,11 @@ func init() {
 	if !IsDir(tmpDir) {
 		os.MkdirAll(tmpDir, os.ModePerm)
 	}
+	err := RunCommand("docker pull harbor.dev.21vianet.com/taojun/python2.7-debug-tz:latest")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 }
 
 func RunCommand(command string) error {
@@ -143,7 +150,7 @@ func main() {
 				}
 				if strings.Contains(subDir.Name(), "webserver") {
 					log.Printf("copy %s %s\n", "web.tar.gz", destDir)
-					err = binaryFileDirCopy(path.Join(dockerDir, "allinOne", "web.tar.gz"), path.Join(tmpDir, "web.tar.gz"), false)
+					err = binaryFileDirCopy(webCompressionPath, path.Join(tmpDir, "web.tar.gz"), false)
 					if err != nil {
 						log.Fatalln(err)
 					}
