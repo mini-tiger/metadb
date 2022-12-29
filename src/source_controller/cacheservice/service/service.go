@@ -91,6 +91,7 @@ func (s *cacheService) SetConfig(cfg options.Config, engine *backbone.Engine, er
 		return dbErr
 	}
 
+	// xxx redis
 	c, cacheErr := cacheop.NewCache(event, loopW, engine.ServiceManageInterface, watchDB)
 	if cacheErr != nil {
 		blog.Errorf("new cache instance failed, err: %v", cacheErr)
@@ -110,6 +111,7 @@ func (s *cacheService) SetConfig(cfg options.Config, engine *backbone.Engine, er
 		return dbErr
 	}
 
+	// watcher mongo
 	flowErr := flow.NewEvent(watcher, engine.ServiceManageInterface, watchDB, ccDB)
 	if flowErr != nil {
 		blog.Errorf("new watch event failed, err: %v", flowErr)

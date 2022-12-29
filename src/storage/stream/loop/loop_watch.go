@@ -292,6 +292,7 @@ func (lw *LoopsWatch) tryLoopWithBatch(ctxWithCancel context.Context,
 		blog.Infof("%s job, received %s batch %d events, first op-time: %s rid: %s.", opts.Name, opts.WatchOpt.Collection,
 			len(batchEvents), first.ClusterTime.String(), first.ID())
 
+		//xxx write mongo redis
 		retry := opts.EventHandler.DoBatch(batchEvents)
 		if retry {
 

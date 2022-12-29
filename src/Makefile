@@ -28,6 +28,13 @@ linux:
 	@#cd $(SCRIPT_DIR) && python ./generate.py -t '$(BIN_PATH)' -i '${IMAGE}' -o '$(BIN_PATH)/docker'
 	@#echo -e "\033[34mbuilding web... \033[0m"
 	@#cd $(SOURCE_ROOT)/ui && bash ./build.sh ${NPM} ${BIN_PATH}
+
+
+.PHONY:deploy
+deploy:
+	@echo ""
+	@echo -e "\033[34mdeploy server... \033[0m"
+	@#rm -rf "./ui/node_modules"
 	@cd  $(SCRIPT_DIR) && go run images.go
 
 .PHONY:server

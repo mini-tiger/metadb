@@ -159,6 +159,7 @@ func (s *Service) initBusinessAssociation(web *restful.WebService) {
 	// cache
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/find/instassociation/object/{bk_obj_id}/cache", Handler: s.SearchInstByAssociationCache})
 	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/instance/object/{bk_obj_id}/cache", Handler: s.UpdateInstByAssociationCache})
+	utility.AddHandler(rest.Action{Verb: http.MethodPut, Path: "/update/instance/object/{bk_obj_id}/unique", Handler: s.UpdateInstByAssociationUnique})
 	// 不用传bk_inst_id bk_inst_name ,不支持cache
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/updatemany/instance/object/{bk_obj_id}", Handler: s.UpdateManyInstByAssociation})
 

@@ -110,6 +110,7 @@ func (s *cacheService) initCache(web *restful.WebService) {
 		Path:    "/find/cache/event/latest",
 		Handler: s.GetLatestEvent,
 	})
+	// event 组件调用此接口
 	utility.AddHandler(rest.Action{
 		Verb:    http.MethodPost,
 		Path:    "/findmany/cache/event/node/with_start_from",

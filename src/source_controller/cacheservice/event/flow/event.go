@@ -67,7 +67,7 @@ func NewEvent(watch stream.LoopInterface, isMaster discovery.ServiceManageInterf
 		blog.Errorf("run set_template event flow failed, err: %v", err)
 		return err
 	}
-
+	// xxx
 	if err := e.runObjectBase(context.Background()); err != nil {
 		blog.Errorf("run object base event flow failed, err: %v", err)
 		return err

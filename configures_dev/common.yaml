@@ -86,9 +86,12 @@ webServer:
     agentAppUrl: http://127.0.0.1/console/?app=bk_agent_setup
     #权限模式，web页面使用，可选值: internal, iam
     authscheme: internal
+#    authscheme: iam
   login:
     #登录模式
     version: skip-login
+#     version: opensource
+#     version: blueking
 # operation_server专属配置
 operationServer:
   timer:

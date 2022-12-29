@@ -137,6 +137,21 @@ func (inst *instance) UpdateInstanceCache(ctx context.Context, h http.Header, ob
 	return
 }
 
+func (inst *instance) UpdateInstanceUnique(ctx context.Context, h http.Header, objID string,
+	input mapstr.MapStr) (resp *metadata.ResponseDataMapStr, header http.Header, err error) {
+	resp = new(metadata.ResponseDataMapStr)
+	subPath := "/update/model/%s/instance/unique"
+
+	err, header = inst.client.Put().
+		WithContext(ctx).
+		Body(input).
+		SubResourcef(subPath, objID).
+		WithHeaders(h).
+		Do().
+		IntoBodyHeader(resp)
+	return
+}
+
 func (inst *instance) UpdateManyInstance(ctx context.Context, h http.Header, objID string,
 	input mapstr.MapStr) (resp *metadata.ResponseDataMapStr, header http.Header, err error) {
 	resp = new(metadata.ResponseDataMapStr)

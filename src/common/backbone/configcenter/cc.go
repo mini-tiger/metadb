@@ -281,8 +281,11 @@ func (c *CC) sync() {
 	blog.Infof("start sync config from config center.")
 	c.syncProc()
 	c.syncExtra()
+
 	c.syncMongodb()
+
 	//c.syncRedis()
+
 	c.syncLang()
 	c.syncErr()
 	go func() {

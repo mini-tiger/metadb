@@ -72,10 +72,11 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 	if err != nil {
 		return err
 	}
-	taskSrv.Config.Redis, err = engine.WithRedis()
-	if err != nil {
-		return err
-	}
+	//taskSrv.Config.Redis, err = engine.WithRedis()
+	taskSrv.Config.Redis = engine.RedisConf
+	//if err != nil {
+	//	return err
+	//}
 	cacheDB, err := redis.NewFromConfig(taskSrv.Config.Redis)
 	if err != nil {
 		blog.Errorf("new redis client failed, err: %s", err.Error())

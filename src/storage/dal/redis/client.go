@@ -28,7 +28,7 @@ type Client interface {
 	GetMany(ctx context.Context, keys []string) SliceResult
 	SetMany(ctx context.Context, data map[string]interface{}) StatusResult
 	DelMany(ctx context.Context, keys []string) IntResult
-
+	SetManyExpiration(ctx context.Context, data map[string]interface{}, duration time.Duration)
 	Commands
 }
 
@@ -68,7 +68,13 @@ func (c *client) GetMany(ctx context.Context, keys []string) SliceResult {
 	return c.MGet(ctx, params...)
 
 }
-
+func (c *client) SetManyExpiration(ctx context.Context, data map[string]interface{}, expiration time.Duration) {
+	//params := make([]interface{}, 0, len(data)*2)
+	for key, _ := range data {
+		c.cli.Expire(key, expiration)
+	}
+	//return
+}
 func (c *client) SetMany(ctx context.Context, data map[string]interface{}) StatusResult {
 	params := make([]interface{}, 0, len(data)*2)
 	for k, v := range data {

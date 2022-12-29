@@ -101,6 +101,7 @@ func redisCrudChan() {
 					} else {
 						blog.Infof("update redis chan obj:%s unique:%s ", data.ObjID, data.Unique)
 					}
+					RedisInter.SetManyExpiration(topCtx, data.CacheSaveData, time.Duration(24*time.Hour))
 				}()
 			}
 			if data.Type == Delete {

@@ -15,6 +15,7 @@ package model
 import (
 	"configcenter/src/common/http/rest"
 	"configcenter/src/common/metadata"
+	"configcenter/src/source_controller/coreservice/bussiness/cache"
 )
 
 type modelAttrUnique struct {
@@ -25,6 +26,9 @@ func (m *modelAttrUnique) CreateModelAttrUnique(kit *rest.Kit, objID string, dat
 	if err != nil {
 		return nil, err
 	}
+	go func() {
+		cache.CacheMapChan <- struct{}{}
+	}()
 	return &metadata.CreateOneDataResult{Created: metadata.CreatedDataResult{ID: id}}, nil
 }
 
@@ -33,6 +37,9 @@ func (m *modelAttrUnique) UpdateModelAttrUnique(kit *rest.Kit, objID string, id 
 	if err != nil {
 		return nil, err
 	}
+	go func() {
+		cache.CacheMapChan <- struct{}{}
+	}()
 	return &metadata.UpdatedCount{Count: 1}, nil
 }
 
@@ -41,6 +48,9 @@ func (m *modelAttrUnique) DeleteModelAttrUnique(kit *rest.Kit, objID string, id 
 	if err != nil {
 		return nil, err
 	}
+	go func() {
+		cache.CacheMapChan <- struct{}{}
+	}()
 	return &metadata.DeletedCount{Count: 1}, nil
 }
 

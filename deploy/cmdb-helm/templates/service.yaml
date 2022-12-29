@@ -8,6 +8,8 @@ metadata:
   name: {{ .name }}-svc
   labels: 
     app: {{ .name }}-svc
+  annotations:
+    timestamp: {{ now | quote }}
 spec: 
   ports: 
   - port: {{ .port }}

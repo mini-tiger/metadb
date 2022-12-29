@@ -57,12 +57,22 @@ func (m *user) LoginUser(c *gin.Context, config map[string]string, isMultiOwner 
 		blog.Warnf("save session failed, err: %s, rid: %s", err.Error(), rid)
 	}
 
-	cookieUser, err := c.Cookie(common.BKUser)
+	//cookieUser, err := c.Cookie(common.BKUser)
+
+	// xxx modify
+	c.SetCookie(common.BKHTTPOwnerID, common.BKDefaultOwnerID, 0, "/", "", false, false)
+	//fmt.Println(c.Cookie(common.BKHTTPOwnerID))
+	cookieUser, err := c.Cookie(common.BKHTTPOwnerID)
+	session.Set(cookieUser, time.Now().Unix())
+	session.Save()
+	//
+
 	if "" == cookieUser || nil != err {
 		blog.Errorf("login user not found, rid: %s", rid)
 		return nil, false
 	}
 
+	//session.Get()
 	loginTime, ok := session.Get(cookieUser).(int64)
 	if !ok {
 		blog.Errorf("login time not int64, rid: %s", rid)
