@@ -1,6 +1,12 @@
 #!/bin/bash
 
-docker network create --driver=bridge work-net-dev
+#docker network create --driver=bridge work-net-dev
+docker network create \
+  --driver=bridge \
+  --subnet=172.30.0.0/16 \
+  --ip-range=172.30.5.0/24 \
+  --gateway=172.30.5.254 \
+  work-net-dev
 mkdir  /home/taojun/mongors/data1 -p
 mkdir  /home/taojun/mongors/data2
 mkdir  /home/taojun/mongors/data3

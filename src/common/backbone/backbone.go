@@ -202,6 +202,7 @@ func NewBackbone(ctx context.Context, input *BackboneParameter, redisConf redis.
 	//	engine.RedisConf = redisConf
 	//}
 
+	engine.RedisConf = redisConf
 	engine.RedisClient = redisClient
 	//xxx  redis服务注册
 	engine.SvcDisc, err = NewServiceRegister(redisClient)

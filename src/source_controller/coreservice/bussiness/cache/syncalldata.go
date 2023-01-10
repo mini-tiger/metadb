@@ -76,4 +76,8 @@ func ObjAllDataFind(obj, unique string) (err error, redisSetMap map[string]inter
 
 func writeRedis(redisSetMap map[string]interface{}) {
 	RedisInter.SetMany(context.Background(), redisSetMap)
+	go func() {
+		RedisInter.SetManyExpiration(topCtx, redisSetMap, time.Duration(24*time.Hour))
+	}()
+
 }

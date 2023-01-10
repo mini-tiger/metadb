@@ -91,6 +91,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		return nil
 	}
 
+	// 启动Watch
 	err = cacheService.SetConfig(*cacheSvr.Config, engine, engine.CCErr, engine.Language)
 	if err != nil {
 		return err
@@ -118,7 +119,9 @@ func initResource(cacheSvr *CacheServer) error {
 		return err
 	}
 
-	cacheSvr.Config.Redis, err = cacheSvr.Core.WithRedis()
+	//cacheSvr.Config.Redis, err = cacheSvr.Core.WithRedis()
+
+	cacheSvr.Config.Redis = cacheSvr.Core.RedisConf
 	if err != nil {
 		return err
 	}

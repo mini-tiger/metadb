@@ -37,7 +37,7 @@ type InstanceClientInterface interface {
 	// cache
 	ReadInstanceCache(ctx context.Context, h http.Header, objID string, input mapstr.MapStr) (resp *metadata.QueryConditionResult, header http.Header, err error)
 	UpdateInstanceCache(ctx context.Context, h http.Header, objID string, input mapstr.MapStr) (resp *metadata.ResponseDataMapStr, header http.Header, err error)
-
+	UpdateInstanceUnique(ctx context.Context, h http.Header, objID string, input mapstr.MapStr) (resp *metadata.ResponseDataMapStr, header http.Header, err error)
 	UpdateManyInstance(ctx context.Context, h http.Header, objID string, input mapstr.MapStr) (resp *metadata.ResponseDataMapStr, header http.Header, err error)
 
 	InsertManyInstance(ctx context.Context, h http.Header, objID string, input *metadata.CreateManyModelInstance) (resp *metadata.DelAndCreatedManyOptionResult, err error)

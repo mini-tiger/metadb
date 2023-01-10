@@ -244,6 +244,7 @@ func (f *Flow) doBatch(es []*types.Event) (retry bool) {
 
 		// if hit cursor conflict, the former cursor node's detail will be overwrite by the later one, so it
 		// is not needed to remove the overlapped cursor node's detail again.
+		// xxx write redis
 		pipe.Set(f.key.DetailKey(currentCursor), string(detailBytes), time.Duration(f.key.TTLSeconds())*time.Second)
 	}
 
@@ -293,6 +294,7 @@ func (f *Flow) doBatch(es []*types.Event) (retry bool) {
 		chainNodes = pickedChainNodes
 	}
 
+	//xxx write mongo
 	retry, err = f.doInsertEvents(chainNodes, lastTokenData, rid)
 	if err != nil {
 		return retry

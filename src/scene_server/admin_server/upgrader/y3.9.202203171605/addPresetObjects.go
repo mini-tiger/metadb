@@ -592,25 +592,25 @@ func getPropertyGroupData(ownerID string) []*metadata.Group {
 
 	dataRows := []*metadata.Group{
 		//netdata
-		&metadata.Group{BizID: 0, ObjectID: "water_cooled_chiller", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 18},
-		&metadata.Group{BizID: 0, ObjectID: "low_voltage_switchgear", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 36},
+		&metadata.Group{BizID: 0, ObjectID: "water_cooled_chiller", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 18},
+		&metadata.Group{BizID: 0, ObjectID: "low_voltage_switchgear", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 36},
 		&metadata.Group{BizID: 0, ObjectID: "water_cooled_chiller", GroupID: "1b4717fe-7e71-4fd9-a725-70d454b80803", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 37},
 
 		&metadata.Group{BizID: 0, ObjectID: "low_voltage_switchgear", GroupID: "1b99731e-bbb3-4258-b7fc-2cc3be29185b", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 38},
 
-		&metadata.Group{BizID: 0, ObjectID: "idc", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 39},
-		&metadata.Group{BizID: 0, ObjectID: "building", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 40},
+		&metadata.Group{BizID: 0, ObjectID: "idc", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 39},
+		&metadata.Group{BizID: 0, ObjectID: "building", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 40},
 
-		&metadata.Group{BizID: 0, ObjectID: "refrigeration_pump", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 41},
+		&metadata.Group{BizID: 0, ObjectID: "refrigeration_pump", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 41},
 		&metadata.Group{BizID: 0, ObjectID: "refrigeration_pump", GroupID: "18746577-f5f5-4b8f-972f-82d24a3a5139", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 42},
 
-		&metadata.Group{BizID: 0, ObjectID: "floor", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 43},
-		&metadata.Group{BizID: 0, ObjectID: "modular_UPS", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 44},
-		&metadata.Group{BizID: 0, ObjectID: "room", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 45},
+		&metadata.Group{BizID: 0, ObjectID: "floor", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 43},
+		&metadata.Group{BizID: 0, ObjectID: "modular_UPS", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 44},
+		&metadata.Group{BizID: 0, ObjectID: "room", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 45},
 
 		&metadata.Group{BizID: 0, ObjectID: "modular_UPS", GroupID: "fc2a4990-5750-4cbe-b402-081864185a7c", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 46},
-		&metadata.Group{BizID: 0, ObjectID: "line", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 47},
-		&metadata.Group{BizID: 0, ObjectID: "cabinet", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 48},
+		&metadata.Group{BizID: 0, ObjectID: "line", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 47},
+		&metadata.Group{BizID: 0, ObjectID: "cabinet", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 48},
 		//app
 		//&metadata.Group{ObjectID: common.BKInnerObjIDApp, GroupID: mCommon.BaseInfo, GroupName: mCommon.BaseInfoName, GroupIndex: 1, OwnerID: ownerID, IsDefault: true},
 		//&metadata.Group{ObjectID: common.BKInnerObjIDApp, GroupID: mCommon.AppRole, GroupName: mCommon.AppRoleName, GroupIndex: 2, OwnerID: ownerID, IsDefault: true},

@@ -282,9 +282,10 @@ func (s *EventPusher) run() {
 			s.pusherHandleTotal.WithLabelValues("ExpireEventNum").Inc()
 			continue
 		}
-
 		// send message to subscriber.
 		cost = time.Now()
+
+		//xxx send http
 		err := s.push(dist)
 		s.pusherHandleDuration.WithLabelValues("SendSubscriberEvent").Observe(time.Since(cost).Seconds())
 

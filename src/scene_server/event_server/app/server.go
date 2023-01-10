@@ -13,6 +13,7 @@
 package app
 
 import (
+	"configcenter/src/common/types"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -78,13 +79,21 @@ type EventServer struct {
 // NewEventServer creates a new EventServer object.
 func NewEventServer(ctx context.Context, op *options.ServerOption) (*EventServer, error) {
 	// build server info.
-	//svrInfo, err := types.NewServerInfo(op.ServConf)
-	//if err != nil {
-	//	return nil, fmt.Errorf("build server info, %+v", err)
-	//}
+	svrInfo, err := types.NewServerInfo(op.ServConf)
+	if err != nil {
+		return nil, fmt.Errorf("build server info, %+v", err)
+	}
 
 	// new EventServer instance.
 	newEventServer := &EventServer{ctx: ctx}
+
+	input := &backbone.BackboneParameter{
+		ConfigUpdate: newEventServer.OnHostConfigUpdate,
+		ConfigPath:   op.ServConf.ExConfig,
+		Regdiscv:     op.ServConf.RegDiscover,
+		SrvInfo:      svrInfo,
+	}
+	redisConf := backbone.RedisConfGenerate(op.ServConf.Register)
 
 	//engine, err := backbone.NewBackbone(ctx, &backbone.BackboneParameter{
 	//	ConfigUpdate: newEventServer.OnHostConfigUpdate,
@@ -92,12 +101,11 @@ func NewEventServer(ctx context.Context, op *options.ServerOption) (*EventServer
 	//	Regdiscv:     op.ServConf.RegDiscover,
 	//	SrvInfo:      svrInfo,
 	//})
-	//
-	//if err != nil {
-	//	return nil, fmt.Errorf("build backbone, %+v", err)
-	//}
+	engine, err := backbone.NewBackbone(ctx, input, redisConf)
+	if err != nil {
+		return nil, fmt.Errorf("build backbone, %+v", err)
+	}
 
-	engine := &backbone.Engine{}
 	// set global cc errors.
 	errors.SetGlobalCCError(engine.CCErr)
 
@@ -178,8 +186,10 @@ func (es *EventServer) initConfigs() error {
 	}
 
 	// cc redis.
-	es.config.Redis, err = es.engine.WithRedis()
-	if err != nil {
+	//es.config.Redis, err = es.engine.WithRedis()
+	es.config.Redis = es.engine.RedisConf
+
+	if &es.config.Redis == nil {
 		return fmt.Errorf("init cc redis configs, %+v", err)
 	}
 
@@ -269,7 +279,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 	if err != nil {
 		return fmt.Errorf("create new eventserver, %+v", err)
 	}
-
+	//eventServer.config.Redis = eventServer.engine.RedisConf
 	// run new event server.
 	if err := eventServer.Run(); err != nil {
 		return err

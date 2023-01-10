@@ -290,6 +290,7 @@ func (h *EventHandler) popEvent() (*metadata.EventInst, error) {
 	cost := time.Now()
 	err := h.cache.BRPopLPush(h.ctx, etypes.EventCacheEventQueueKey,
 		etypes.EventCacheEventQueueDuplicateKey, defaultTransTimeout).Scan(&eventStr)
+
 	h.eventHandleDuration.WithLabelValues("PopNewEvent").Observe(time.Since(cost).Seconds())
 
 	if err != nil {
@@ -334,7 +335,7 @@ func (h *EventHandler) sendToPusher(subid int64, dist *metadata.DistInst) error 
 		newPusher := NewEventPusher(h.ctx, h.engine, subid, h.cache, h.distributer,
 			h.pusherHandleTotal, h.pusherHandleDuration)
 
-		// run new pusher.
+		//xxx run new pusher.
 		newPusher.Run()
 		h.pushers[subid] = newPusher
 	}

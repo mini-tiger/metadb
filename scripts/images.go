@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	currentFileName, rootDir, dockerDir, tmpDir, binaryDir string // images.go 路径
+	currentFileName, rootDir, dockerDir, webCompressionPath, tmpDir, binaryDir, helm_path string // images.go 路径
 
 	branch = "metadb-tj" //#"3.9.39.x"
 
@@ -28,21 +28,23 @@ var (
 	// dir: src/bin/build/
 	validDir = map[string]struct{}{"cmdb_adminserver": struct{}{}, "cmdb_webserver": struct{}{},
 		"cmdb_apiserver": struct{}{}, "cmdb_coreservice": struct{}{}, "cmdb_toposerver": struct{}{},
-		"cmdb_hostserver": struct{}{}, "cmdb_operationserver": struct{}{},
+		"cmdb_hostserver": struct{}{}, "cmdb_operationserver": struct{}{}, "cmdb_cacheservice": struct{}{},
+		"cmdb_cloudserver": struct{}{}, "cmdb_eventserver": struct{}{}, "cmdb_procserver": struct{}{},
+		"cmdb_taskserver": struct{}{},
 	}
 
 	//dockerTmp = "Dockerfile_tmp"
+
 	harbor             = "harbor.dev.21vianet.com/cmdb/"
 	github             = "meta42/"
 	ver                = "latest"
 	kubeconfig         = "/smb/50.25kubeconfig"
 	helm_ns            = "cmdbv3"
 	helm_uninstall_cmd = fmt.Sprintf("helm --kubeconfig=%s uninstall -n %s cmdb", kubeconfig, helm_ns)
-	helm_path          string
 	helm_install_cmd   = fmt.Sprintf("helm --kubeconfig=%s install -n %s cmdb -f values.yaml .", kubeconfig, helm_ns)
 	helm_upgrade_cmd   = fmt.Sprintf("helm --kubeconfig=%s upgrade -n %s cmdb --history-max 3 -f values.yaml .", kubeconfig, helm_ns)
 	t1                 = time.Now()
-	version            = fmt.Sprintf("%d%d%d_%d%d%d", t1.Year(), t1.Month(), t1.Day(), t1.Hour(), t1.Minute(), t1.Second())
+	version            = fmt.Sprintf("%d-%d-%d_%d%d%d", t1.Year(), t1.Month(), t1.Day(), t1.Hour(), t1.Minute(), t1.Second())
 )
 
 // 判断所给路径是否为文件夹
@@ -58,7 +60,9 @@ func init() {
 	_, currentFileName, _, _ = runtime.Caller(0)
 	//fmt.Println(CurrentFileName)
 	rootDir = filepath.Dir(filepath.Dir(currentFileName))
+
 	dockerDir = path.Join(rootDir, "DockerFile")
+	webCompressionPath = path.Join(dockerDir, "web.tar.gz")
 	tmpDir = path.Join(dockerDir, "tmp")
 	binaryDir = path.Join(rootDir, "src", "bin", "build", branch)
 
@@ -68,6 +72,11 @@ func init() {
 	if !IsDir(tmpDir) {
 		os.MkdirAll(tmpDir, os.ModePerm)
 	}
+	err := RunCommand("docker pull harbor.dev.21vianet.com/taojun/python2.7-debug-tz:latest")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 }
 
 func RunCommand(command string) error {
@@ -113,6 +122,7 @@ func main() {
 	var err error
 	listDir, _ := ioutil.ReadDir(binaryDir)
 	var srcDir, destDir string
+
 	for _, subDir := range listDir {
 		//fmt.Println(subDir)
 		if subDir.IsDir() {
@@ -141,7 +151,7 @@ func main() {
 				}
 				if strings.Contains(subDir.Name(), "webserver") {
 					log.Printf("copy %s %s\n", "web.tar.gz", destDir)
-					err = binaryFileDirCopy(path.Join(dockerDir, "allinOne", "web.tar.gz"), path.Join(tmpDir, "web.tar.gz"), false)
+					err = binaryFileDirCopy(webCompressionPath, path.Join(tmpDir, "web.tar.gz"), false)
 					if err != nil {
 						log.Fatalln(err)
 					}
@@ -153,6 +163,7 @@ func main() {
 					WebServer:   false,
 					AppName:     subDir.Name(),
 					HarborUri:   "",
+					ImageTag:    version,
 				}
 				_ = sv.Entry()
 			}
@@ -165,6 +176,12 @@ func main() {
 	//std, stderr := RunCommandStd(helm_uninstall_cmd)
 	//log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
 
+	// helm values.yaml.tpl
+	err = createFile(path.Join(helm_path, "values.yaml"), path.Join(helm_path, "values.yaml.tpl"),
+		map[string]interface{}{"version": version})
+	if err != nil {
+		log.Fatalln(err)
+	}
 	log.Printf("chdir %s\n", helm_path)
 	err = os.Chdir(helm_path)
 	if err != nil {
@@ -217,6 +234,7 @@ type TplVariables struct {
 	//ExtraCommand2 string
 	AppName   string
 	HarborUri string
+	ImageTag  string
 }
 
 func (sv *TplVariables) Entry() (err error) {
@@ -245,7 +263,11 @@ func (sv *TplVariables) Entry() (err error) {
 	if err != nil {
 		log.Println(err)
 	}
-
+	log.Println("Local Clean dockerImage")
+	err = sv.cleanDockerImage()
+	if err != nil {
+		log.Println(err)
+	}
 	//log.Println("push dockerImage To dockerhub")
 	//err = sv.pushDockerHubImage()
 	//if err != nil {
@@ -256,7 +278,7 @@ func (sv *TplVariables) Entry() (err error) {
 
 func (t *TplVariables) generateDockerImage() error {
 	var cmdstr string
-	t.HarborUri = fmt.Sprintf("%s%s:%s", harbor, t.AppName, ver)
+	t.HarborUri = fmt.Sprintf("%s%s:%s", harbor, t.AppName, t.ImageTag)
 	//log.Printf("%s\n", t.HarborUri)
 	cmdstr = fmt.Sprintf("pushd %s && docker build --no-cache -f Dockerfile -t %s . && popd", tmpDir, t.HarborUri)
 
@@ -266,6 +288,14 @@ func (t *TplVariables) pushDockerImage() error {
 	var cmdstr string
 	//log.Printf("%s\n", t.HarborUri)
 	cmdstr = fmt.Sprintf("docker push %s ", t.HarborUri)
+
+	return RunCommand(cmdstr)
+}
+
+func (t *TplVariables) cleanDockerImage() error {
+	var cmdstr string
+	//log.Printf("%s\n", t.HarborUri)
+	cmdstr = fmt.Sprintf("docker rmi %s ", t.HarborUri)
 
 	return RunCommand(cmdstr)
 }

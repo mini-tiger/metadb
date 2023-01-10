@@ -17,6 +17,8 @@ import (
 **/
 
 var CacheObjMap *utils.SafeMap
+var cacheMapTicker *time.Ticker
+var CacheMapChan chan struct{} = make(chan struct{}, 0)
 
 type syncCacheObj struct {
 	objList        []string
@@ -28,25 +30,47 @@ func init() {
 }
 
 func SyncObjCache() {
+	cacheMapTicker = time.NewTicker(time.Hour * 1)
+	// 初始化 objcachemap
+	SyncObjCacheMap()
+
+	// crontab objcachemap
 	go func() {
 		for {
-			ts := new(syncCacheObj)
-			ts.sync()
-			ts.writeCachemap()
-			blog.Errorf("sync cacheObj plan current:%v", CacheObjMap.M)
-			time.Sleep(time.Hour * 1)
+			select {
+			case <-cacheMapTicker.C:
+				SyncObjCacheMap()
+			}
 		}
 	}()
 
+	// wait chan<-
+	go func() {
+		for {
+			select {
+			case <-CacheMapChan:
+				SyncObjCacheMap()
+			}
+		}
+	}()
+
+}
+
+func SyncObjCacheMap() {
+	ts := new(syncCacheObj)
+	ts.sync()
+	ts.writeCachemap()
+	blog.Errorf("sync cacheObj plan current:%v", CacheObjMap.M)
 }
 
 func (s *syncCacheObj) filterCacheObj(ctx context.Context) (err error) {
 
 	var result []map[string]interface{}
 	//var result1 []interface{}
-	err = mongodb.Client().Table(common.BKTableNameObjDes).Find(operation.M{"iscache": true}).
+	//err = mongodb.Client().Table(common.BKTableNameObjDes).Find(operation.M{"iscache": true}).
+	//Fields("bk_obj_id").All(ctx, &result)
+	err = mongodb.Client().Table(common.BKTableNameObjDes).Find(operation.M{}).
 		Fields("bk_obj_id").All(ctx, &result)
-
 	//if err != nil {
 	//	return err, result
 	//}
@@ -94,7 +118,7 @@ func (s *syncCacheObj) matchUniqueDes() {
 		}
 		var result map[string]interface{}
 		if err := mongodb.Client().Table(common.BKTableNameObjUnique).AggregateOne(context.Background(), pipeline, &result); err != nil {
-			blog.Errorf("sync obj :%v err:%v", obj, err)
+			//blog.Errorf("sync obj :%v err:%v", obj, err)
 			continue
 		}
 		if len(result) == 0 {

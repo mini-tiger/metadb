@@ -100,6 +100,10 @@ type UpdateManyModelInstanceMany struct {
 	UniqueKey string          `json:"uniqueKey"`
 }
 
+type UpdateManyModelInstanceManyUnique struct {
+	Datas []mapstr.MapStr `json:"datas"`
+}
+
 type SetModelInstance CreateModelInstance
 type SetManyModelInstance CreateManyModelInstance
 
