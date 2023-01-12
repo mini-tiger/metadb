@@ -5,7 +5,8 @@
 * [主机查询](host_search.md)
 * [主机查询历史](host_search_his.md)
 * [主机收藏](host_favorites.md)
-* [自定义API](host_custom_api.md)
+
+[//]: # (* [自定义API]&#40;host_custom_api.md&#41;)
 
 #### 对象资源操类
 * [对象模型分类](object_model_classify.md)
@@ -24,7 +25,8 @@
 #### 用户与系统行为类
 * [操作审计](operation_audit.md)
 * [用户行为记录](user_costum.md)
-* [权限管理](user_privilege.md)
+
+[//]: # (* [权限管理]&#40;user_privilege.md&#41;)
 * [事件订阅](event_sub.md)
 
 #### 新增类型
