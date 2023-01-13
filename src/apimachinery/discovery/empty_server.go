@@ -27,3 +27,6 @@ func (es *emptyServer) GetServers() ([]string, error) {
 func (es *emptyServer) GetServersChan() chan []string {
 	return make(chan []string, 20)
 }
+func (s *emptyServer) GetRandomServer() (string, error) {
+	return "", nil
+}

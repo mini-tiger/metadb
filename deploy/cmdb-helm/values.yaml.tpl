@@ -3,8 +3,13 @@ apps:
     port: 60004
     nodePort: 30970
   - name: webserver
-    port: 8090
-    nodePort: 32162
+    ports:
+      - name: http
+        port: 8090
+        nodePort: 32162
+      - name: extend
+        port: 8081
+        nodePort: 32163
   - name: apiserver
     port: 8080
     nodePort: 31921

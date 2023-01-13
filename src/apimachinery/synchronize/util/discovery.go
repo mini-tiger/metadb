@@ -28,6 +28,7 @@ type SynchronizeConfigServ struct {
 type SynchronizeServDiscoveryInterace interface {
 	GetServers() ([]string, error)
 	GetServersChan() chan []string
+	GetRandomServer() (string, error)
 }
 
 var (
@@ -77,4 +78,8 @@ func (s *synchronizeConfig) GetServers() ([]string, error) {
 
 func (s *synchronizeConfig) GetServersChan() chan []string {
 	return nil
+}
+
+func (s *synchronizeConfig) GetRandomServer() (string, error) {
+	return "", nil
 }

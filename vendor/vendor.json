@@ -3,10 +3,76 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "kmu0iah3XQFqFJXDEvJAvXXyxzw=",
+			"path": "github.com/Azure/go-ntlmssp",
+			"revision": "754e69321358ada85ce213a4ec971d3e4d1bfdf7",
+			"revisionTime": "2022-11-28T19:35:59Z"
+		},
+		{
+			"checksumSHA1": "t65Rsf8k9i5ApQcg4i0HzCYSITI=",
+			"path": "github.com/KyleBanks/depth",
+			"revision": "5ba21c0383fd30d02fbd92d5f8e50ec8dd99d761",
+			"revisionTime": "2021-12-10T10:25:21Z"
+		},
+		{
+			"checksumSHA1": "d+ttDITmTOaolaafSB0ZskjZ2JY=",
+			"path": "github.com/go-asn1-ber/asn1-ber",
+			"revision": "71130c8caa28c7b6a8f66a46934ca6d8268d7762",
+			"revisionTime": "2022-04-06T00:54:15Z"
+		},
+		{
+			"checksumSHA1": "LvtdVEVTXdGz9aY24qLzch56wV0=",
+			"path": "github.com/go-ldap/ldap",
+			"revision": "0e43630234df9d68e2ccd1bc19f6a781f2ddf315",
+			"revisionTime": "2022-12-12T20:07:39Z"
+		},
+		{
+			"checksumSHA1": "Oeca7Ys1AEOwLTuPaWwRv33jI1Q=",
+			"path": "github.com/go-openapi/jsonpointer",
+			"revision": "2446e21cad36eee826e1c2380f0ff747074a2faa",
+			"revisionTime": "2020-11-15T17:03:58Z"
+		},
+		{
+			"checksumSHA1": "0MDNaYPTdrx7rxl8BmlqjtncM/s=",
+			"path": "github.com/go-openapi/jsonreference",
+			"revision": "c5db5582e080fbeae80be42f42881230a8caebf6",
+			"revisionTime": "2022-04-08T01:52:49Z"
+		},
+		{
+			"checksumSHA1": "T+OPTDzUsSdNfva7YZpg+2osPi0=",
+			"path": "github.com/go-openapi/jsonreference/internal",
+			"revision": "c5db5582e080fbeae80be42f42881230a8caebf6",
+			"revisionTime": "2022-04-08T01:52:49Z"
+		},
+		{
+			"checksumSHA1": "Y36v9dab0qq47mJ9Q/SN4aWRk+Q=",
+			"path": "github.com/go-openapi/spec",
+			"revision": "c82289c384be80cce94c5865c481526618853bd8",
+			"revisionTime": "2022-08-13T21:58:29Z"
+		},
+		{
+			"checksumSHA1": "15ozFt51ZSRMl4QaCt3vd7nxmc0=",
+			"path": "github.com/go-openapi/swag",
+			"revision": "0579829e66fde26b27d401921afb73704c4d463d",
+			"revisionTime": "2022-08-18T03:19:56Z"
+		},
+		{
 			"checksumSHA1": "cFz6PdLyqjSwv7wWrgkhZa4UM08=",
 			"path": "github.com/go-playground/validator",
 			"revision": "61caf9d3038e1af346dbf5c2e16f6678e1548364",
 			"revisionTime": "2017-11-13T04:58:10Z"
+		},
+		{
+			"checksumSHA1": "k1OgGBhhB4iAL9JDanfNwv5zJHM=",
+			"path": "github.com/go-resty/resty",
+			"revision": "313f4190d9b8f7605ff298b769de613621c50220",
+			"revisionTime": "2022-07-19T22:42:23Z"
+		},
+		{
+			"path": "github.com/go-resty/resty/v2",
+			"revision": "v2.7.0",
+			"version": "v2.7.0",
+			"versionExact": "v2.7.0"
 		},
 		{
 			"checksumSHA1": "H8wo+NR5z+VRl0wqPYpVQfC06ks=",
@@ -42,6 +108,30 @@
 			"tree": true
 		},
 		{
+			"checksumSHA1": "SciYclSvCp9eZBCnaT4XE06t5J8=",
+			"path": "github.com/swaggo/files",
+			"revision": "cf1eeac86b11b257d7d453d4f7ebccd9ca6aab16",
+			"revisionTime": "2022-12-08T23:06:13Z",
+			"version": "v1.0.0",
+			"versionExact": "v1.0.0"
+		},
+		{
+			"checksumSHA1": "ovPv1bTKJGd8h4Le4lrm/XNOwv8=",
+			"path": "github.com/swaggo/gin-swagger",
+			"revision": "ddb15761267c07109d8249ad8230df5ecf94c1c7",
+			"revisionTime": "2019-06-13T07:24:37Z",
+			"version": "v1.2.0",
+			"versionExact": "v1.2.0"
+		},
+		{
+			"checksumSHA1": "DQGXNmUZiSuAeeYhMfiZCy2Dg0w=",
+			"path": "github.com/swaggo/swag",
+			"revision": "362d05becd9edced4e80853a1dd9122361be220f",
+			"revisionTime": "2022-11-23T20:51:37Z",
+			"version": "v1.8.8",
+			"versionExact": "v1.8.8"
+		},
+		{
 			"checksumSHA1": "uE78U34xjlJ815TX/bhLROkjmeI=",
 			"path": "github.com/xdg/scram",
 			"revision": "7eeb5667e42c09cb51bf7b7c28aea8c56767da90",
@@ -54,16 +144,34 @@
 			"revisionTime": "2018-07-14T16:05:09Z"
 		},
 		{
+			"checksumSHA1": "KgUD60eqrsnYD6zXpz24+sZOG74=",
+			"path": "golang.org/x/crypto/md4",
+			"revision": "bc7d1d1eb54b3530da4f5ec31625c95d7df40231",
+			"revisionTime": "2022-11-14T20:15:57Z"
+		},
+		{
 			"checksumSHA1": "1MGpGDQqnUoRpv7VEcQrXOBydXE=",
 			"path": "golang.org/x/crypto/pbkdf2",
 			"revision": "505ab145d0a99da450461ae2c1a9f6cd10d1f447",
 			"revisionTime": "2018-09-26T22:07:39Z"
 		},
 		{
+			"checksumSHA1": "nUL7M5iIp06TraBkDFF/pGYuS3Q=",
+			"path": "golang.org/x/net/webdav",
+			"revision": "2aa82152a53e7aa6b28c6390d9369ee5a5b63584",
+			"revisionTime": "2022-12-17T18:15:58Z"
+		},
+		{
 			"checksumSHA1": "tI1YsCNEjyDW/aGNtunZDyjN9MA=",
 			"path": "golang.org/x/sync/semaphore",
 			"revision": "37e7f081c4d4c64e13b10787722085407fe5d15f",
 			"revisionTime": "2018-09-24T18:15:43Z"
+		},
+		{
+			"checksumSHA1": "kpUaJJs5Tmr4SHTf2+G+e3lI7do=",
+			"path": "golang.org/x/sys/execabs",
+			"revision": "3b1fc93fc15c645820aa4a7d912e824f459ea1e3",
+			"revisionTime": "2022-12-15T06:19:58Z"
 		},
 		{
 			"checksumSHA1": "o3YChxWLvyCmkAn/ZNBj9HC9zKw=",
@@ -76,6 +184,50 @@
 			"path": "golang.org/x/text/unicode/norm",
 			"revision": "17bcc049122f272a32787ba38073ee47433023e9",
 			"revisionTime": "2018-12-10T23:38:19Z"
+		},
+		{
+			"checksumSHA1": "C2njZ2hlcGR4NqvEXVRDwp/JTbs=",
+			"path": "golang.org/x/tools",
+			"revision": "b3b5c13b291f9653da6f31b95db100a2e26bd186",
+			"revisionTime": "2022-07-26T21:01:06Z",
+			"version": "v0.1.12",
+			"versionExact": "v0.1.12"
+		},
+		{
+			"checksumSHA1": "C2njZ2hlcGR4NqvEXVRDwp/JTbs=",
+			"path": "golang.org/x/tools/",
+			"revision": "b3b5c13b291f9653da6f31b95db100a2e26bd186",
+			"revisionTime": "2022-07-26T21:01:06Z",
+			"version": "v0.1.12",
+			"versionExact": "v0.1.12"
+		},
+		{
+			"checksumSHA1": "idOztAHfDFH0O4fHt/lMor0vcpI=",
+			"path": "golang.org/x/tools/go/internal/cgo",
+			"revision": "b3b5c13b291f9653da6f31b95db100a2e26bd186",
+			"revisionTime": "2022-07-26T21:01:06Z",
+			"version": "v0.1.12",
+			"versionExact": "v0.1.12"
+		},
+		{
+			"checksumSHA1": "B/HnFGe0RUQit5FXm/3w591eq5Y=",
+			"path": "golang.org/x/tools/go/loader",
+			"revision": "1a08d01ac985cfa2b25f7217b4e885be47495870",
+			"revisionTime": "2022-12-27T16:06:42Z"
+		},
+		{
+			"checksumSHA1": "fd7qmgtkZFRUxX0RMhyP55XfTRs=",
+			"path": "golang.org/x/tools/internal/typeparams",
+			"revision": "b3b5c13b291f9653da6f31b95db100a2e26bd186",
+			"revisionTime": "2022-07-26T21:01:06Z",
+			"version": "v0.1.12",
+			"versionExact": "v0.1.12"
+		},
+		{
+			"checksumSHA1": "Pa5eVnCcZflNxcvIT/yVqns2Sdw=",
+			"path": "gopkg.in/yaml.v3",
+			"revision": "f6f7691b1fdeb513f56608cd2c32c51f8194bf51",
+			"revisionTime": "2022-05-27T08:35:30Z"
 		},
 		{
 			"path": "https://github.com/mohae/deepcopy.git",

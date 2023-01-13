@@ -43,7 +43,15 @@ spec:
           imagePullPolicy: {{ $pullPolicy }}
           {{- end}}
           ports:
+          {{- if eq .name  "webserver" }}
+          {{- range .ports }}
           - containerPort: {{ .port }}
+            protocol: TCP
+          {{- end }}
+          {{- else }}
+          - containerPort: {{ .port }}
+            protocol: TCP
+          {{- end}}
           resources:
             requests:
               cpu: 200m
@@ -56,14 +64,27 @@ spec:
             failureThreshold: 3
             httpGet:
               path: /healthz
+              {{- if eq .name  "webserver" }}
+              {{ with index .ports 0 }}
               port: {{ .port }}
+              {{- end}}
+              {{- else }}
+              port: {{ .port }}
+              {{- end}}
             initialDelaySeconds: 10
             periodSeconds: 10
           readinessProbe:
             failureThreshold: 3
             httpGet:
               path: /healthz
+              {{- if eq .name  "webserver" }}
+              {{ with index .ports 0 }}
               port: {{ .port }}
+              {{- end}}
+              {{- else }}
+              port: {{ .port }}
+              {{- end}}
+
             initialDelaySeconds: 10
             periodSeconds: 10
             successThreshold: 1

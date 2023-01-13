@@ -28,6 +28,7 @@ type TaskQueueConfigServ struct {
 type TaskQueueServDiscoveryInterace interface {
 	GetServers() ([]string, error)
 	GetServersChan() chan []string
+	GetRandomServer() (string, error)
 }
 
 var (
@@ -91,4 +92,8 @@ func (s *taskQueueConfig) GetServers() ([]string, error) {
 
 func (s *taskQueueConfig) GetServersChan() chan []string {
 	return nil
+}
+
+func (s *taskQueueConfig) GetRandomServer() (string, error) {
+	return "", nil
 }

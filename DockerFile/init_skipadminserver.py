@@ -1,10 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import sys
 import getopt
 import os
 import shutil
+import sys
 from string import Template
 
 
@@ -427,6 +427,12 @@ def update_start_script(rd_server, server_ports, enable_auth, log_level, registe
                     extend_flag += ' --enable-auth=%s ' % enable_auth
                 if d in ['cmdb_cloudserver']:
                     extend_flag += ' --enable_cryptor=%s ' % enable_cryptor
+
+                # Extend Port
+                if d in ['cmdb_webserver']:
+                    extend_flag += ' --addrportExtend=${localIp}:%s ' % str(
+                        server_ports.get("cmdb_webserver_extend", 9999))
+
                 if register_ip != '':
                     extend_flag += ' --register-ip=%s ' % register_ip
                 filedata = filedata.replace('extend_flag_placeholder', extend_flag)
@@ -485,7 +491,8 @@ def main(argv):
         "cmdb_coreservice": 50009,
         "cmdb_procserver": 60003,
         "cmdb_toposerver": 60002,
-        "cmdb_webserver": 8083,
+        "cmdb_webserver": 8083,  # line 634,通过参数传入
+        "cmdb_webserver_extend": 8081,
         "cmdb_synchronizeserver": 60010,
         "cmdb_operationserver": 60011,
         "cmdb_taskserver": 60012,
@@ -765,7 +772,7 @@ def main(argv):
     if log_level not in availableLogLevel:
         print("available log_level value are: %s" % availableLogLevel)
         sys.exit()
-    rd_server = "%s:%s:0:%s" % (redis_ip,redis_port,redis_pass)
+    rd_server = "%s:%s:0:%s" % (redis_ip, redis_port, redis_pass)
     # print(rd_server)
     # generate_config_file(
     #     rd_server_v=rd_server,

@@ -134,7 +134,7 @@ type QueryObjectAssociationResult struct {
 
 // InstResult inst item result
 type InstResult struct {
-	Count int             `json:"count"`
+	Count int             `json:"count" example:"1"`
 	Info  []mapstr.MapStr `json:"info"`
 }
 

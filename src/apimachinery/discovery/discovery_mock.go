@@ -111,3 +111,6 @@ func (*mockServer) IsMaster(string) bool {
 func (s *mockServer) GetServersChan() chan []string {
 	return nil
 }
+func (s *mockServer) GetRandomServer() (string, error) {
+	return "http://127.0.0.1:8080", nil
+}

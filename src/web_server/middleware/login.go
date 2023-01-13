@@ -13,13 +13,13 @@
 package middleware
 
 import (
+	"configcenter/src/common/http/httpclient"
 	"strings"
 
 	"configcenter/src/apimachinery/discovery"
 	"configcenter/src/common"
 	"configcenter/src/common/backbone"
 	"configcenter/src/common/blog"
-	"configcenter/src/common/http/httpclient"
 	"configcenter/src/common/util"
 	"configcenter/src/storage/dal/redis"
 	"configcenter/src/web_server/app/options"
@@ -71,7 +71,11 @@ func ValidLogin(config options.Config, disc discovery.DiscoveryInterface) gin.Ha
 					return
 				}
 				url := servers[0]
-				httpclient.ProxyHttp(c, url)
+				if _, e := c.Get("lman"); e {
+					RespRebuildLman(c, url)
+				} else {
+					httpclient.ProxyHttp(c, url)
+				}
 
 			} else {
 				c.Next()

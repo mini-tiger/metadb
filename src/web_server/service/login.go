@@ -13,6 +13,7 @@
 package service
 
 import (
+	"configcenter/src/web_server/bussiness"
 	"strings"
 	"time"
 
@@ -44,6 +45,26 @@ func (s *Service) LogOutUser(c *gin.Context) {
 // Login html file
 func (s *Service) Login(c *gin.Context) {
 	c.HTML(200, "login.html", gin.H{})
+}
+
+func (s *Service) LdapAuth(c *gin.Context) {
+	userName := c.PostForm("username")
+	password := c.PostForm("password")
+	defErr := s.CCErr.CreateDefaultCCErrorIf(util.GetLanguage(c.Request.Header))
+	if userName == "" || password == "" {
+		c.HTML(200, "login.html", gin.H{
+			"error": defErr.CCError(common.CCErrWebNeedFillinUsernamePasswd).Error(),
+		})
+	}
+	entry, err := bussiness.LdapUserAuthentication(userName, password)
+	if err != nil {
+		c.HTML(200, "login.html", gin.H{
+			"error": defErr.CCError(common.CCErrCommCheckAuthorizeFailed).Error(),
+		})
+	}
+
+	c.JSON(200, entry)
+	return
 }
 
 // LoginUser log in user

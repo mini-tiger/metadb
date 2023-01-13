@@ -4,9 +4,11 @@ import (
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/core/utils"
+	"configcenter/src/common/mapstr"
 	"configcenter/src/source_controller/coreservice/core/operation"
 	"configcenter/src/storage/driver/mongodb"
 	"context"
+	"github.com/mohae/deepcopy"
 	"time"
 )
 
@@ -22,7 +24,7 @@ var CacheMapChan chan struct{} = make(chan struct{}, 0)
 
 type syncCacheObj struct {
 	objList        []string
-	cacheObjUnique map[string]interface{}
+	cacheObjUnique mapstr.MapStr
 }
 
 func init() {
@@ -79,7 +81,7 @@ func (s *syncCacheObj) filterCacheObj(ctx context.Context) (err error) {
 		rr = append(rr, v["bk_obj_id"].(string))
 	}
 	//copy(rr, result)
-	s.objList = rr
+	s.objList = deepcopy.Copy(rr).([]string)
 	return err
 }
 

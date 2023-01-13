@@ -17,6 +17,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -54,6 +55,45 @@ type server struct {
 	discoverChan <-chan *registerdiscover.DiscoverEvent
 	serversChan  chan []string
 	redisCli     redis.Client
+}
+
+func (s *server) GetRandomServer() (string, error) {
+	if s == nil {
+		return "", nil
+	}
+
+	s.Lock()
+	num := len(s.servers)
+	if num == 0 {
+		s.Unlock()
+		return "", fmt.Errorf("oops, there is no %s can be used", s.name)
+	}
+
+	var infos []*types.ServerInfo
+	if s.next < num-1 {
+		s.next = s.next + 1
+		infos = append(s.servers[s.next-1:], s.servers[:s.next-1]...)
+	} else {
+		s.next = 0
+		infos = append(s.servers[num-1:], s.servers[:num-1]...)
+	}
+	s.Unlock()
+
+	servers := make([]string, 0)
+	for _, server := range infos {
+		servers = append(servers, server.RegisterAddress())
+	}
+	//
+	//var serverOne string
+
+	if len(servers) > 1 {
+		return servers[rand.Intn(len(servers))], nil
+
+	} else {
+		return servers[0], nil
+	}
+
+	//return serverOne, nil
 }
 
 func (s *server) GetServers() ([]string, error) {

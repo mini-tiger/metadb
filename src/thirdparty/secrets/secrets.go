@@ -14,6 +14,7 @@ package secrets
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"net/http"
 	"sync"
 
@@ -144,4 +145,31 @@ func (s *scDiscovery) GetServers() ([]string, error) {
 
 func (s *scDiscovery) GetServersChan() chan []string {
 	return nil
+}
+
+func (s *scDiscovery) GetRandomServer() (string, error) {
+	s.Lock()
+	defer s.Unlock()
+
+	num := len(s.servers)
+	if num == 0 {
+		return "", errors.New("oops, there is no server can be used")
+	}
+
+	var servers []string = make([]string, 0)
+	if s.index < num-1 {
+		s.index = s.index + 1
+		servers = append(s.servers[s.index-1:], s.servers[:s.index-1]...)
+	} else {
+		s.index = 0
+		servers = append(s.servers[num-1:], s.servers[:num-1]...)
+	}
+
+	if len(servers) > 1 {
+		return servers[rand.Intn(len(servers))], nil
+
+	} else {
+		return servers[0], nil
+	}
+
 }

@@ -13,6 +13,7 @@
 package service
 
 import (
+	_ "configcenter/src/web_server/docs"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -46,8 +47,10 @@ type Service struct {
 func (s *Service) WebService() *gin.Engine {
 	setGinMode()
 	ws := gin.New()
-	ws.Use(gin.Logger())
 
+	ws.Use(gin.Logger())
+	ws.Use(middleware.ReWriteReqUri(s.Discovery()))
+	//
 	ws.Use(middleware.RequestIDMiddleware)
 	ws.Use(sessions.Sessions(s.Config.Session.Name, s.Session))
 
@@ -83,23 +86,28 @@ func (s *Service) WebService() *gin.Engine {
 	ws.POST("/importtemplate/:bk_obj_id", s.BuildDownLoadExcelTemplate)
 	ws.POST("/insts/owner/:bk_supplier_account/object/:bk_obj_id/import", s.ImportInst)
 	ws.POST("/insts/owner/:bk_supplier_account/object/:bk_obj_id/export", s.ExportInst)
+
+	// Auth
+	ws.POST("/ldapauth", s.LdapAuth)
 	ws.POST("/logout", s.LogOutUser)
 	ws.GET("/login", s.Login)
 	ws.POST("/login", s.LoginUser)
-	ws.POST("/object/owner/:bk_supplier_account/object/:bk_obj_id/import", s.ImportObject)
-	ws.POST("/object/owner/:bk_supplier_account/object/:bk_obj_id/export", s.ExportObject)
 	ws.GET("/user/list", s.GetUserList)
-	// suggest move to  Organization
+	ws.GET("/user/language/:language", s.UpdateUserLanguage)
+	// get current login user info
+	ws.GET("/userinfo", s.UserInfo)
+	ws.PUT("/user/current/supplier/:id", s.UpdateSupplier)
+	// suggest move to  Organization 部门 组织
 	ws.GET("/user/department", s.GetDepartment)
 	ws.GET("/user/departmentprofile", s.GetDepartmentProfile)
 
 	ws.GET("/organization/department", s.GetDepartment)
 	ws.GET("/organization/departmentprofile", s.GetDepartmentProfile)
 
-	ws.GET("/user/language/:language", s.UpdateUserLanguage)
-	// get current login user info
-	ws.GET("/userinfo", s.UserInfo)
-	ws.PUT("/user/current/supplier/:id", s.UpdateSupplier)
+	//
+	ws.POST("/object/owner/:bk_supplier_account/object/:bk_obj_id/import", s.ImportObject)
+	ws.POST("/object/owner/:bk_supplier_account/object/:bk_obj_id/export", s.ExportObject)
+
 	ws.POST("/biz/search/web", s.SearchBusiness)
 
 	ws.GET("/", s.Index)
