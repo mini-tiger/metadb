@@ -711,8 +711,8 @@ externalAccess:
     ##   - 30002
     ##
     nodePorts:
-      - 32027
-      - 32028
+      - 32017
+      - 32018
 #      - 32089
     ## @param externalAccess.service.domain Domain or external IP used to configure MongoDB&reg; advertised hostname when service type is NodePort
     ## If not specified, the container will try to get the kubernetes node external IP
@@ -803,7 +803,7 @@ persistence:
     - ReadWriteOnce
   ## @param persistence.size PVC Storage Request for MongoDB&reg; data volume
   ##
-  size: 80Gi
+  size: 300Gi
   ## @param persistence.annotations PVC annotations
   ##
   annotations: {}
