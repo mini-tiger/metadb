@@ -1,0 +1,248 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/issue/add": {
+            "post": {
+                "description": "创建issue desc",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "创建issue summary tag"
+                ],
+                "summary": "创建issue summary",
+                "parameters": [
+                    {
+                        "description": "issue params",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Issue"
+                        }
+                    },
+                    {
+                        "type": "string",
+                        "description": "人名",
+                        "name": "who",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bearer 31a165baebe6dec616b1f8f3207b4273",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "admin",
+                        "name": "BK_NAME",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功后返回",
+                        "schema": {
+                            "$ref": "#/definitions/models.Result"
+                        },
+                        "headers": {
+                            "Token": {
+                                "type": "string",
+                                "description": "token"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/issue/list": {
+            "get": {
+                "tags": [
+                    "issue"
+                ],
+                "summary": "issue列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/models.Result"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/models.Issue"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/lman-cmdb/v3/find/instassociation/object/:objectID": {
+            "get": {
+                "description": "urlPath objectID 模型名称",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "按条件查询模型实例接口"
+                ],
+                "summary": "按条件查询模型实例",
+                "parameters": [
+                    {
+                        "description": "request params",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ExtendInstFilter"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "成功后返回",
+                        "schema": {
+                            "$ref": "#/definitions/models.BaseResp"
+                        },
+                        "headers": {
+                            "Token": {
+                                "type": "string",
+                                "description": "token"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.BaseErr": {
+            "type": "object",
+            "properties": {
+                "Message": {
+                    "type": "string",
+                    "example": "错误描述信息"
+                },
+                "code": {
+                    "type": "string",
+                    "example": "错误代码"
+                }
+            }
+        },
+        "models.BaseResp": {
+            "type": "object",
+            "properties": {
+                "RequestID": {
+                    "type": "string",
+                    "example": "请求ID"
+                },
+                "data": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "example": {
+                        "count": "数据条数",
+                        "info": "数据数组对象"
+                    }
+                },
+                "error": {
+                    "$ref": "#/definitions/models.BaseErr"
+                }
+            }
+        },
+        "models.ExtendInstFilter": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string",
+                    "example": "模型属性名"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "对应数据"
+                }
+            }
+        },
+        "models.Issue": {
+            "type": "object",
+            "properties": {
+                "create_time": {
+                    "type": "string"
+                },
+                "data": {
+                    "description": "map[string]interface{}",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "example": {
+                        "key": "value",
+                        "key2": "value2"
+                    }
+                },
+                "data1": {
+                    "description": "[]string",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "value1",
+                        "value2"
+                    ]
+                },
+                "field": {
+                    "type": "string",
+                    "example": "这是描述"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "solved_user": {
+                    "type": "string",
+                    "example": "这是解决人"
+                },
+                "value": {
+                    "type": "string",
+                    "example": "这是解决方法"
+                }
+            }
+        },
+        "models.Result": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string",
+                    "example": "请求信息"
+                },
+                "stat": {
+                    "type": "integer",
+                    "example": 0
+                }
+            }
+        }
+    }
+}

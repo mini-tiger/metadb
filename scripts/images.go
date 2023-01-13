@@ -43,6 +43,7 @@ var (
 	helm_uninstall_cmd = fmt.Sprintf("helm --kubeconfig=%s uninstall -n %s cmdb", kubeconfig, helm_ns)
 	helm_install_cmd   = fmt.Sprintf("helm --kubeconfig=%s install -n %s cmdb -f values.yaml .", kubeconfig, helm_ns)
 	helm_upgrade_cmd   = fmt.Sprintf("helm --kubeconfig=%s upgrade -n %s cmdb --history-max 3 -f values.yaml .", kubeconfig, helm_ns)
+	swagger_init_cmd   = fmt.Sprint("swag init -g ui.go ")
 	t1                 = time.Now()
 	version            = fmt.Sprintf("%d-%d-%d_%d%d%d", t1.Year(), t1.Month(), t1.Day(), t1.Hour(), t1.Minute(), t1.Second())
 )
@@ -243,6 +244,15 @@ func (sv *TplVariables) Entry() (err error) {
 			log.Printf("Dir: %s fail\n", sv.AppName)
 		}
 	}()
+	if sv.WebServer {
+		log.Println("Swagger Init docs")
+		cmdstr := fmt.Sprintf("pushd %s && %s && popd", path.Join(rootDir, "src", "web_server"), swagger_init_cmd)
+		err = RunCommand(cmdstr)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+
 	log.Println("generate run.sh")
 	err = sv.generateShell()
 	if err != nil {

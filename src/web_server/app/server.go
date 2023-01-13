@@ -112,6 +112,11 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		return err
 	}
 
+	// xxx Extend
+	if err = websvc.LmanServices(service.Discovery(), op.ExtendAddrPort); err != nil {
+		return err
+	}
+
 	select {
 	case <-ctx.Done():
 	}

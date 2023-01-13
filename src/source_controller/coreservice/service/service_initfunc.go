@@ -173,6 +173,7 @@ func (s *coreService) initInstanceAssociation(web *restful.WebService) {
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/create/instanceassociation", Handler: s.CreateOneInstanceAssociation})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/createmany/instanceassociation", Handler: s.CreateManyInstanceAssociation})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/read/instanceassociation", Handler: s.SearchInstanceAssociation})
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/read/cascade/instanceassociation", Handler: s.SearchInstanceAssociation})
 	utility.AddHandler(rest.Action{Verb: http.MethodDelete, Path: "/delete/instanceassociation", Handler: s.DeleteInstanceAssociation})
 
 	utility.AddToRestfulWebService(web)

@@ -13,20 +13,24 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"os"
-	"runtime"
-
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/types"
 	"configcenter/src/common/util"
 	"configcenter/src/web_server/app"
 	"configcenter/src/web_server/app/options"
+	"context"
+	"embed"
+	_ "embed"
+	"fmt"
+	"os"
+	"runtime"
 
 	"github.com/spf13/pflag"
 )
+
+//go:embed docs
+var f embed.FS
 
 func main() {
 	common.SetIdentification(types.CC_MODULE_WEBSERVER)

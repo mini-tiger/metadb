@@ -13,7 +13,6 @@
 package backbone
 
 import (
-	"configcenter/src/common/logMiddleWare"
 	"configcenter/src/thirdparty/monitor"
 	"context"
 	"fmt"
@@ -247,7 +246,7 @@ func StartServer(ctx context.Context, cancel context.CancelFunc, e *Engine, HTTP
 	e.server = Server{
 		ListenAddr: e.srvInfo.IP,
 		ListenPort: e.srvInfo.Port,
-		Handler:    logMiddleWare.LogMiddleware(e.Metric().HTTPMiddleware(HTTPHandler)), // add log
+		Handler:    HTTPHandler,
 		//Handler:      e.Metric().HTTPMiddleware(HTTPHandler),
 		TLS:          TLSConfig{},
 		PProfEnabled: pprofEnabled,

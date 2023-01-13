@@ -70,6 +70,9 @@ func (esb *EsbConfigSrv) GetServers() ([]string, error) {
 func (esb *EsbConfigSrv) GetServersChan() chan []string {
 	return nil
 }
+func (esb *EsbConfigSrv) GetRandomServer() (string, error) {
+	return "", nil
+}
 
 func (esb *EsbConfigSrv) GetConfig() EsbConfig {
 	esb.RLock()

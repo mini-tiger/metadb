@@ -439,6 +439,10 @@ func (s *iamDiscovery) GetServersChan() chan []string {
 	return nil
 }
 
+func (s *iamDiscovery) GetRandomServer() (string, error) {
+	return "", nil
+}
+
 // resource type with id, used to represent resource layer from root to leaf
 type RscTypeAndID struct {
 	ResourceType TypeID `json:"resource_type"`

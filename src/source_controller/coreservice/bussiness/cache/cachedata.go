@@ -38,12 +38,13 @@ var (
 
 // 单条数据
 type CacheData struct {
-	Type          CacheType
-	ObjID         string
-	Unique        string
-	UniqueValue   string
-	Data          []mapstr.MapStr // mongodata
-	CacheSaveData map[string]interface{}
+	Type        CacheType
+	ObjID       string
+	Unique      string
+	UniqueValue string
+	Data        []mapstr.MapStr // mongodata
+	//CacheSaveData map[string]interface{}
+	CacheSaveData mapstr.MapStr
 	CacheDelKeys  []string
 }
 
@@ -69,29 +70,29 @@ func (c *CacheData) SearchOneData() (str string, err error) {
 }
 
 func (c *CacheData) FormatRedisKeyData() {
-	result := make(map[string]interface{}, len(c.Data))
+	c.CacheSaveData = make(map[string]interface{}, len(c.Data))
 	for _, row := range c.Data {
 		if uniqueValue, ok := row[c.Unique]; ok {
 			if json, err := row.ToJSON(); err == nil {
-				result[fmt.Sprintf(Rediskeyprefix, c.ObjID, uniqueValue.(string))] = json
+				c.CacheSaveData[fmt.Sprintf(Rediskeyprefix, c.ObjID, uniqueValue.(string))] = json
 			}
 
 		}
 	}
-	c.CacheSaveData = result
+	//c.CacheSaveData = result
 
 }
 
 func (c *CacheData) FormatRedisKey() {
-	result := make([]string, 0, len(c.Data))
+	c.CacheDelKeys = make([]string, 0, len(c.Data))
 	for _, row := range c.Data {
 		if uniqueValue, ok := row[c.Unique]; ok {
 
-			result = append(result, fmt.Sprintf(Rediskeyprefix, c.ObjID, uniqueValue.(string)))
+			c.CacheDelKeys = append(c.CacheDelKeys, fmt.Sprintf(Rediskeyprefix, c.ObjID, uniqueValue.(string)))
 
 		}
 	}
-	c.CacheDelKeys = result
+	//c.CacheDelKeys = result
 
 }
 
