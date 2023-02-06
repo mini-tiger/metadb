@@ -18,6 +18,7 @@
 * [业务管理](object_biz.md)
 * [集群管理](object_set.md)
 * [模块管理](object_module.md)
+* [模型数据](object_data.md)
 
 #### 进程资源类
 * [进程管理](proc_config.md)
@@ -35,5 +36,5 @@
 * [实例关联](instance_association.md)
 
 #### 调用指引
-* api请求调用请使用cmdb_apiserver的地址
-* 请在http请求中加入BK_USER和HTTP_BLUEKING_SUPPLIER_ID 这两个参数， 分别代表调用用户和供应商的ID（默认为0）
+* api请求调用请使用cmdb_serverserver的地址
+
