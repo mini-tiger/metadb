@@ -6,22 +6,21 @@ apps:
     ports:
       - name: http
         port: 8090
-        nodePort: 32162
+        nodePort: 32166
       - name: extend
         port: 8081
-        nodePort: 32163
+        nodePort: 32167
   - name: apiserver
     port: 8080
-    nodePort: 31921
+    nodePort: 31922
   - name: coreservice
     port: 50009
-    nodePort: 32001
+    nodePort: 32006
     cacheAffinity: true
   - name: toposerver
     port: 60002
   - name: hostserver
     port: 60001
-    nodePort: 32357
   - name: operationserver
     port: 60011
   - name: cacheservice
@@ -42,6 +41,16 @@ image:
 env:
 #  pullPolicy: IfNotPresent
   pullPolicy: Always
+  redisip: redis-master
+  redispass: Ne01ink2022!
+  mongouser: root
+  mongoip: mongo-mongodb-headless
+  mongopass: abc123
+  mongoport: 27017
+  redisport: 6379
+
+
+
 
 # cache coresvc 同一node提高效率
 cache:

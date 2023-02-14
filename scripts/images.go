@@ -18,8 +18,10 @@ import (
 
 var (
 	currentFileName, rootDir, dockerDir, webCompressionPath, tmpDir, binaryDir, helm_path string // images.go 路径
-
-	branch = "metadb-tj" //#"3.9.39.x"
+	helm_dirname                                                                          = "cmdb-helm-b28test"
+	helm_default_ns                                                                       = "cmdbv4"
+	branch                                                                                = "metadb-tj" //#"3.9.39.x"
+	helm_ns                                                                               = getNSEnv()
 
 	//validDir  = map[string]int{"cmdb_adminserver": 60004, "cmdb_webserver": 8090,
 	//	"cmdb_apiserver": 8080, "cmdb_coreservice": 50009, "cmdb_toposerver": 60002, "cmdb_hostserver": 60001,
@@ -39,7 +41,6 @@ var (
 	github             = "meta42/"
 	ver                = "latest"
 	kubeconfig         = "/smb/50.25kubeconfig"
-	helm_ns            = "cmdbv3"
 	helm_uninstall_cmd = fmt.Sprintf("helm --kubeconfig=%s uninstall -n %s cmdb", kubeconfig, helm_ns)
 	helm_install_cmd   = fmt.Sprintf("helm --kubeconfig=%s install -n %s cmdb -f values.yaml .", kubeconfig, helm_ns)
 	helm_upgrade_cmd   = fmt.Sprintf("helm --kubeconfig=%s upgrade -n %s cmdb --history-max 3 -f values.yaml .", kubeconfig, helm_ns)
@@ -56,8 +57,16 @@ func IsDir(path string) bool {
 	}
 	return s.IsDir()
 }
+func getNSEnv() string {
+	val, ex := os.LookupEnv("namespace")
+	if !ex {
+		return helm_default_ns
+	}
+	return val
+}
 
 func init() {
+	fmt.Println(getNSEnv())
 	_, currentFileName, _, _ = runtime.Caller(0)
 	//fmt.Println(CurrentFileName)
 	rootDir = filepath.Dir(filepath.Dir(currentFileName))
@@ -69,7 +78,7 @@ func init() {
 
 	log.Printf("rootDir:%v\n", rootDir)
 	log.Printf("binaryDir:%v\n", binaryDir)
-	helm_path = filepath.Join(rootDir, "deploy", "cmdb-helm")
+	helm_path = filepath.Join(rootDir, "deploy", helm_dirname)
 	if !IsDir(tmpDir) {
 		os.MkdirAll(tmpDir, os.ModePerm)
 	}
