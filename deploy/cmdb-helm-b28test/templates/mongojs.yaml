@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+data:
+  createUser.js: |
+    db.createUser({
+      user: "cc",
+      pwd: "cc",
+      roles: [{ role: "dbAdmin", db: "cmdb" }]
+    })
+kind: ConfigMap
+metadata:
+  name: mongocreateuserjs
+
+

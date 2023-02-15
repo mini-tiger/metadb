@@ -38,17 +38,6 @@ spec:
       {{- end}}
       containers:
         - name:  {{ .name }}
-          env:
-            - name: redisip
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .name }}_secret
-                  key: redisip
-            - name: redispass
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .name }}_secret
-                  key: redispass
           image: {{ $repository }}cmdb_{{ .name}}:{{ $tag }}
           {{- if $pullPolicy }}
           imagePullPolicy: {{ $pullPolicy }}
@@ -102,19 +91,8 @@ spec:
             timeoutSeconds: 1
       initContainers:
         - name: init-redis
-          env:
-            - name: redisIp
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .name }}_secret
-                  key: redisIp
-            - name: redisPass
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .name }}_secret
-                  key: redisPass
           image: harbor.dev.21vianet.com/library/redis:bitnami-6.2.6-debian-10-r103
-          command: [ 'sh','-c',"env && until redis-cli -h redis-master.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local -p 6379 -a cc PING;do echo waiting for redis; sleep 10; done" ]
+          command: [ 'sh','-c',"until redis-cli -h redis-master.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local -p 6379 -a cc PING;do echo waiting for redis; sleep 10; done" ]
         - name: init-mongo
           image: harbor.dev.21vianet.com/cmdb/mongo:4.4.13-debian-10-r52
           # mongo-mongodb-1 finish,cluster finish

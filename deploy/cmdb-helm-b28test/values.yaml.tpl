@@ -1,21 +1,21 @@
 apps:
   - name: adminserver
     port: 60004
-    nodePort: 30971
+#    nodePort: 30971
   - name: webserver
     ports:
       - name: http
         port: 8090
-        nodePort: 32166
+        nodePort: 32168
       - name: extend
         port: 8081
-        nodePort: 32167
+        nodePort: 32165
   - name: apiserver
     port: 8080
-    nodePort: 31922
+#    nodePort: 31922
   - name: coreservice
     port: 50009
-    nodePort: 32006
+#    nodePort: 32006
     cacheAffinity: true
   - name: toposerver
     port: 60002
@@ -41,6 +41,14 @@ image:
 env:
 #  pullPolicy: IfNotPresent
   pullPolicy: Always
+  redisip: "redis-master"
+  redispass: "Ne01ink2022!"
+  mongorootuser: "root"
+  mongorootauthdb: "admin"
+  mongoip: "mongo-mongodb-headless"
+  mongorootpass: "abc123"
+  mongoport: "27017"
+  redisport: "6379"
 
 # cache coresvc 同一node提高效率
 cache:

@@ -38,19 +38,6 @@ image:
   repository: harbor.dev.21vianet.com/cmdb/
   tag: {{.version}}
 #  tag: "latest"
-env:
-#  pullPolicy: IfNotPresent
-  pullPolicy: Always
-  redisip: redis-master
-  redispass: Ne01ink2022!
-  mongouser: root
-  mongoip: mongo-mongodb-headless
-  mongopass: abc123
-  mongoport: 27017
-  redisport: 6379
-
-
-
 
 # cache coresvc 同一node提高效率
 cache:
