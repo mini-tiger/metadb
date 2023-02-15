@@ -2,10 +2,11 @@
 apiVersion: v1
 data:
   createUser.js: |
+    use cmdb;
     db.createUser({
       user: "cc",
       pwd: "cc",
-      roles: [{ role: "dbAdmin", db: "cmdb" }]
+      roles: [{ role: "readWrite", db: "cmdb" }]
     })
 kind: ConfigMap
 metadata:

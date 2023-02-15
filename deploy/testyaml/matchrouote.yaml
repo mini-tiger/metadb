@@ -1,0 +1,40 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: matchroutes
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: matchroutes
+    spec:
+      containers:
+        - image: 'harbor.dev.21vianet.com/taojun/matchrouter:latest'
+          imagePullPolicy: Always
+          name: matchroutes
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: matchroutes-svc2
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+    - name: http
+      nodePort: 31621
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: matchroutes
+  type: NodePort
+
+
+
+

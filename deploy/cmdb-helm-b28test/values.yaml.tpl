@@ -52,7 +52,7 @@ env:
 
 # cache coresvc 同一node提高效率
 cache:
-  enabled: true
+  enabled: false
   labels:
     - name: app.kubernetes.io/name
       value: redis
