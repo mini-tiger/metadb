@@ -1,37 +1,12 @@
 ---
-{{- define "envtpl" }}
-- name: redisIp
-  valueFrom:
-    secretKeyRef:
-      name: metadb-secret
-      key: redisIp
-- name: redisPass
-  valueFrom:
-    secretKeyRef:
-      name: metadb-secret
-      key: redisPass
-- name: redisPort
-  valueFrom:
-    secretKeyRef:
-      name: metadb-secret
-      key: redisPort
-- name: mongoPort
-  valueFrom:
-    secretKeyRef:
-      name: metadb-secret
-      key: mongoPort
-- name: mongoIp
-  valueFrom:
-    secretKeyRef:
-      name: metadb-secret
-      key: mongoIp
-{{- end }}
 
 {{ $repository := .Values.image.repository}}
 {{ $tag := .Values.image.tag }}
 {{ $pullPolicy := .Values.env.pullPolicy }}
 {{ $cache := .Values.cache.enabled}}
 {{ $cacheLabels := .Values.cache.labels}}
+{{ $mongoCluster := .Values.env.mongo_cluster}}
+{{ $mongoShardNode := .Values.env.mongo_shard_node}}
 {{- range .Values.apps }}
   {{- with . }}
 apiVersion: apps/v1
@@ -130,12 +105,30 @@ spec:
           env:
             {{- include "mytemplate" . | indent 12 }}
           image: harbor.dev.21vianet.com/cmdb/mongo:4.4.13-debian-10-r52
-          # mongo-mongodb-1 finish,cluster finish
-#          command: [ 'sh', '-c', 'env && until mongo "mongodb://${mongoUser}:${mongoPass}@${mongoIp}.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local:${mongoPort}/?replicaSet=rs0&connectTimeoutMS=10000&authSource=${mongoAuthDB}&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done' ]
+            {{- if eq .name  "adminserver" }}
+              {{- if eq $mongoCluster "shard" }}
           command: [ 'sh', '-c', 'env 
-              && (mongo  mongodb://${mongoIp}:${mongoPort}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)
-              && until mongo "mongodb://cc:cc@${mongoIp}:${mongoPort}/?replicaSet=rs0&connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done' ]
- #         command: [ 'sh', '-c', 'until  mongo "mongodb://cc:cc@${mongoIp}:${mongoPort}/cmdb --disableImplicitSessions --eval "db.adminCommand("ping")'; do echo waiting for ${mongoIp}; sleep 10; done' ]
+               && until mongo "mongodb://${mongoRootUser}:${mongoRootPass}@{{ $mongoShardNode }}/?connectTimeoutMS=10000&authSource=${mongoRootAuthDB}&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done
+               && (mongo  mongodb://{{ $mongoShardNode }}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)'
+          ]
+              {{- else }}
+          command: [ 'sh', '-c', 'env 
+                && (mongo  mongodb://${mongoIp}:${mongoPort}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)
+                && until mongo "mongodb://cc:cc@${mongoIp}:${mongoPort}/?replicaSet=rs0&connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done'
+          ]
+              {{- end}}
+
+            {{- else }}
+              {{- if eq $mongoCluster "shard" }}
+          command: [ 'sh', '-c', 'env 
+                 && until mongo "mongodb://cc:cc@{{ $mongoShardNode }}/?connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done' ]
+              {{- else }}
+          command: [ 'sh', '-c', 'until  mongo "mongodb://cc:cc@${mongoIp}:${mongoPort}/cmdb --disableImplicitSessions --eval "db.adminCommand("ping"); do echo waiting for ${mongoIp}; sleep 10; done' ]
+              {{- end}}
+
+            {{- end}}
+
+      {{- if eq .name  "adminserver" }}
           volumeMounts: #挂载到容器
             - name: mongocreateuserjs
               mountPath: /js/createUser.js
@@ -144,6 +137,7 @@ spec:
         - name: mongocreateuserjs
           configMap: #指定为configmap文件
             name: mongocreateuserjs      #刚才创建的redis-config的cm文件
+      {{- end}}
 ---
 {{- end}}
   {{- end }}

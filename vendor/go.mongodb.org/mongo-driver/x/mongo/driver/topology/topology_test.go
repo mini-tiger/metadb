@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
@@ -72,7 +73,9 @@ func TestServerSelection(t *testing.T) {
 		}
 		subCh := make(chan description.Topology, 1)
 		subCh <- desc
-		srvs, err := topo.selectServer(context.Background(), subCh, selectFirst, nil)
+
+		state := newServerSelectionState(selectFirst, nil)
+		srvs, err := topo.selectServerFromSubscription(context.Background(), subCh, state)
 		noerr(t, err)
 		if len(srvs) != 1 {
 			t.Errorf("Incorrect number of descriptions returned. got %d; want %d", len(srvs), 1)
@@ -90,7 +93,8 @@ func TestServerSelection(t *testing.T) {
 
 		resp := make(chan []description.Server)
 		go func() {
-			srvs, err := topo.selectServer(context.Background(), subCh, selectFirst, nil)
+			state := newServerSelectionState(selectFirst, nil)
+			srvs, err := topo.selectServerFromSubscription(context.Background(), subCh, state)
 			noerr(t, err)
 			resp <- srvs
 		}()
@@ -137,7 +141,8 @@ func TestServerSelection(t *testing.T) {
 		resp := make(chan error)
 		ctx, cancel := context.WithCancel(context.Background())
 		go func() {
-			_, err := topo.selectServer(ctx, subCh, selectNone, nil)
+			state := newServerSelectionState(selectNone, nil)
+			_, err := topo.selectServerFromSubscription(ctx, subCh, state)
 			resp <- err
 		}()
 
@@ -174,7 +179,8 @@ func TestServerSelection(t *testing.T) {
 		resp := make(chan error)
 		timeout := make(chan time.Time)
 		go func() {
-			_, err := topo.selectServer(context.Background(), subCh, selectNone, timeout)
+			state := newServerSelectionState(selectNone, timeout)
+			_, err := topo.selectServerFromSubscription(context.Background(), subCh, state)
 			resp <- err
 		}()
 
@@ -209,7 +215,8 @@ func TestServerSelection(t *testing.T) {
 		resp := make(chan error)
 		timeout := make(chan time.Time)
 		go func() {
-			_, err := topo.selectServer(context.Background(), subCh, selectError, timeout)
+			state := newServerSelectionState(selectError, timeout)
+			_, err := topo.selectServerFromSubscription(context.Background(), subCh, state)
 			resp <- err
 		}()
 
@@ -288,7 +295,8 @@ func TestServerSelection(t *testing.T) {
 
 		go func() {
 			// server selection should discover the new topology
-			srvs, err := topo.selectServer(context.Background(), subCh, description.WriteSelector(), nil)
+			state := newServerSelectionState(description.WriteSelector(), nil)
+			srvs, err := topo.selectServerFromSubscription(context.Background(), subCh, state)
 			noerr(t, err)
 			resp <- srvs
 		}()
@@ -306,6 +314,33 @@ func TestServerSelection(t *testing.T) {
 		if srvs[0].Addr != desc.Servers[1].Addr {
 			t.Errorf("Incorrect sever selected. got %s; want %s", srvs[0].Addr, desc.Servers[1].Addr)
 		}
+	})
+	t.Run("no subscription in fast path", func(t *testing.T) {
+		// assert that a subscription is not created if there is a server available
+		topo, err := New()
+		noerr(t, err)
+		topo.cfg.cs.HeartbeatInterval = time.Minute
+		atomic.StoreInt32(&topo.connectionstate, connected)
+
+		primaryAddr := address.Address("one")
+		desc := description.Topology{
+			Servers: []description.Server{
+				{Addr: primaryAddr, Kind: description.RSPrimary},
+			},
+		}
+		topo.desc.Store(desc)
+		for _, srv := range desc.Servers {
+			s, err := ConnectServer(srv.Addr, func(desc description.Server) { topo.apply(context.Background(), desc) })
+			noerr(t, err)
+			topo.servers[srv.Addr] = s
+		}
+
+		// manually close subscriptions so calls to Subscribe will error
+		topo.subscriptionsClosed = true
+		selectedServer, err := topo.SelectServer(context.Background(), description.WriteSelector())
+		noerr(t, err)
+		selectedAddr := selectedServer.(*SelectedServer).address
+		assert.Equal(t, primaryAddr, selectedAddr, "expected address %v, got %v", primaryAddr, selectedAddr)
 	})
 }
 
@@ -478,4 +513,29 @@ func TestTopology_String_Race(t *testing.T) {
 
 	<-ch
 	<-ch
+}
+
+func TestTopologyConstruction(t *testing.T) {
+	t.Run("construct with URI", func(t *testing.T) {
+		testCases := []struct {
+			name            string
+			uri             string
+			pollingRequired bool
+		}{
+			{"normal", "mongodb://localhost:27017", false},
+			{"srv", "mongodb+srv://localhost:27017", true},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				topo, err := New(
+					WithURI(func(string) string { return tc.uri }),
+				)
+				assert.Nil(t, err, "topology.New error: %v", err)
+
+				assert.Equal(t, tc.uri, topo.cfg.uri, "expected topology URI to be %v, got %v", tc.uri, topo.cfg.uri)
+				assert.Equal(t, tc.pollingRequired, topo.pollingRequired,
+					"expected topo.pollingRequired to be %v, got %v", tc.pollingRequired, topo.pollingRequired)
+			})
+		}
+	})
 }

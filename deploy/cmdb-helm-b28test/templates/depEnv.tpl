@@ -40,4 +40,14 @@
     secretKeyRef:
       name: metadb-secret
       key: mongoRootAuthDB
+- name: mongoShardNode
+  valueFrom:
+    secretKeyRef:
+      name: metadb-secret
+      key: mongoShardNode
+- name: mongoCluster
+  valueFrom:
+    secretKeyRef:
+      name: metadb-secret
+      key: mongoCluster
 {{- end -}}

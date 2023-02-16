@@ -43,12 +43,18 @@ env:
   pullPolicy: Always
   redisip: "redis-master"
   redispass: "Ne01ink2022!"
+  redisport: "6379"
+
+  #mongo public params
   mongorootuser: "root"
   mongorootauthdb: "admin"
-  mongoip: "mongo-mongodb-headless"
   mongorootpass: "abc123"
   mongoport: "27017"
-  redisport: "6379"
+  # cluster shard
+  mongo_shard_node: "172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084"
+  mongo_cluster: "shard"
+  # 副本集
+  mongoip: "mongo-mongodb-headless"
 
 # cache coresvc 同一node提高效率
 cache:

@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"net"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
 )
 
 func TestPool(t *testing.T) {
@@ -96,12 +99,18 @@ func TestPool(t *testing.T) {
 			if d.lenopened() != 3 {
 				t.Errorf("Should have opened 3 connections, but didn't. got %d; want %d", d.lenopened(), 3)
 			}
+			if p.conns.totalSize != 3 {
+				t.Errorf("Pool should have 3 total connections. got %d; want %d", p.conns.totalSize, 3)
+			}
 			err = p.disconnect(context.Background())
 			time.Sleep(time.Second)
 
 			noerr(t, err)
 			if d.lenclosed() != 3 {
 				t.Errorf("Should have closed 3 connections, but didn't. got %d; want %d", d.lenclosed(), 3)
+			}
+			if p.conns.totalSize != 0 {
+				t.Errorf("Pool should have 0 total connections. got %d; want %d", p.conns.totalSize, 0)
 			}
 			close(cleanup)
 		})
@@ -131,12 +140,18 @@ func TestPool(t *testing.T) {
 			if d.lenopened() != 3 {
 				t.Errorf("Should have opened 3 connections, but didn't. got %d; want %d", d.lenopened(), 3)
 			}
+			if p.conns.totalSize != 3 {
+				t.Errorf("Pool should have 3 total connections. got %d; want %d", p.conns.totalSize, 3)
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Microsecond)
 			defer cancel()
 			err = p.disconnect(ctx)
 			noerr(t, err)
-			if d.lenclosed() != 3 {
-				t.Errorf("Should have closed 3 connections, but didn't. got %d; want %d", d.lenclosed(), 3)
+
+			assertConnectionsClosed(t, d, 3)
+			assert.Nil(t, err, "error running callback: %s", err)
+			if p.conns.totalSize != 0 {
+				t.Errorf("Pool should have 0 total connections. got %d; want %d", p.conns.totalSize, 0)
 			}
 			close(cleanup)
 		})
@@ -157,8 +172,16 @@ func TestPool(t *testing.T) {
 			noerr(t, err)
 			c, err := p.get(context.Background())
 			noerr(t, err)
+			if p.conns.totalSize != 1 {
+				t.Errorf("Pool should have 1 total connection. got %d; want %d", p.conns.totalSize, 1)
+			}
 			err = p.closeConnection(c)
 			noerr(t, err)
+			err = p.put(c)
+			noerr(t, err)
+			if p.conns.totalSize != 0 {
+				t.Errorf("Pool should have 0 total connections. got %d; want %d", p.conns.totalSize, 0)
+			}
 			if d.lenopened() != 1 {
 				t.Errorf("Should have opened 1 connections, but didn't. got %d; want %d", d.lenopened(), 1)
 			}
@@ -174,6 +197,51 @@ func TestPool(t *testing.T) {
 			if state != disconnected {
 				t.Errorf("Should have set the connection state on return. got %d; want %d", state, disconnected)
 			}
+		})
+		t.Run("no race if connections are also connecting", func(t *testing.T) {
+			cleanup := make(chan struct{})
+			addr := bootstrapConnections(t, 3, func(nc net.Conn) {
+				<-cleanup
+				_ = nc.Close()
+			})
+			d := newdialer(&net.Dialer{})
+			pc := poolConfig{
+				Address: address.Address(addr.String()),
+			}
+			p, err := newPool(pc, WithDialer(func(Dialer) Dialer { return d }))
+			noerr(t, err)
+			err = p.connect()
+			noerr(t, err)
+			getDone := make(chan struct{})
+			disconnectDone := make(chan struct{})
+			_, err = p.get(context.Background())
+			noerr(t, err)
+			getCtx, getCancel := context.WithCancel(context.Background())
+			defer getCancel()
+			go func() {
+				defer close(getDone)
+				for {
+					select {
+					case <-disconnectDone:
+						return
+					default:
+						_, _ = p.get(getCtx)
+						noerr(t, err)
+						time.Sleep(time.Microsecond)
+					}
+				}
+			}()
+			go func() {
+				_, err := p.get(getCtx)
+				noerr(t, err)
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Microsecond)
+				defer cancel()
+				err = p.disconnect(ctx)
+				noerr(t, err)
+				close(disconnectDone)
+			}()
+			<-getDone
+			close(cleanup)
 		})
 	})
 	t.Run("connect", func(t *testing.T) {
@@ -202,12 +270,17 @@ func TestPool(t *testing.T) {
 			if d.lenopened() != 1 {
 				t.Errorf("Should have opened 1 connections, but didn't. got %d; want %d", d.lenopened(), 1)
 			}
+			if p.conns.totalSize != 1 {
+				t.Errorf("Pool should have 1 total connection. got %d; want %d", p.conns.totalSize, 1)
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			defer cancel()
 			err = p.disconnect(ctx)
 			noerr(t, err)
-			if d.lenclosed() != 1 {
-				t.Errorf("Should have closed 1 connections, but didn't. got %d; want %d", d.lenclosed(), 1)
+
+			assertConnectionsClosed(t, d, 1)
+			if p.conns.totalSize != 0 {
+				t.Errorf("Pool should have 0 total connections. got %d; want %d", p.conns.totalSize, 0)
 			}
 			close(cleanup)
 			state := atomic.LoadInt32(&p.connected)
@@ -227,6 +300,9 @@ func TestPool(t *testing.T) {
 			noerr(t, err)
 			if d.lenopened() != 2 {
 				t.Errorf("Should have opened 3 connections, but didn't. got %d; want %d", d.lenopened(), 2)
+			}
+			if p.conns.totalSize != 1 {
+				t.Errorf("Pool should have 1 total connection. got %d; want %d", p.conns.totalSize, 1)
 			}
 		})
 		t.Run("cannot connect multiple times without disconnect", func(t *testing.T) {
@@ -301,6 +377,9 @@ func TestPool(t *testing.T) {
 			if err != context.Canceled {
 				t.Errorf("Should return context error when already cancelled. got %v; want %v", err, context.Canceled)
 			}
+			if p.conns.totalSize != 0 {
+				t.Errorf("Pool should have 0 total connections. got %d; want %d", p.conns.totalSize, 0)
+			}
 			close(cleanup)
 		})
 		t.Run("return error when attempting to create new connection", func(t *testing.T) {
@@ -317,6 +396,9 @@ func TestPool(t *testing.T) {
 			_, got := p.get(context.Background())
 			if got != want {
 				t.Errorf("Should return error from calling New. got %v; want %v", got, want)
+			}
+			if p.conns.totalSize != 0 {
+				t.Errorf("Pool should have 0 total connections. got %d; want %d", p.conns.totalSize, 0)
 			}
 		})
 		t.Run("adds connection to inflight pool", func(t *testing.T) {
@@ -340,6 +422,9 @@ func TestPool(t *testing.T) {
 			inflight := len(p.opened)
 			if inflight != 1 {
 				t.Errorf("Incorrect number of inlight connections. got %d; want %d", inflight, 1)
+			}
+			if p.conns.totalSize != 1 {
+				t.Errorf("Pool should have 1 total connection. got %d; want %d", p.conns.totalSize, 1)
 			}
 			err = p.closeConnection(c)
 			noerr(t, err)
@@ -374,12 +459,18 @@ func TestPool(t *testing.T) {
 			if d.lenopened() != 1 {
 				t.Errorf("Should have opened 1 connection, but didn't. got %d; want %d", d.lenopened(), 1)
 			}
+			if p.conns.totalSize != 1 {
+				t.Errorf("Pool should have 1 total connection. got %d; want %d", p.conns.totalSize, 1)
+			}
 			time.Sleep(15 * time.Millisecond)
 			err = p.put(c)
 			noerr(t, err)
 			<-closedChan
 			if d.lenclosed() != 1 {
 				t.Errorf("Should have closed 1 connections, but didn't. got %d; want %d", d.lenclosed(), 1)
+			}
+			if p.conns.totalSize != 0 {
+				t.Errorf("Pool should have 0 total connections. got %d; want %d", p.conns.totalSize, 0)
 			}
 			c, err = p.get(ctx)
 			noerr(t, err)
@@ -388,6 +479,9 @@ func TestPool(t *testing.T) {
 			}
 			if d.lenclosed() != 1 {
 				t.Errorf("Should have closed 1 connection, but didn't. got %d; want %d", d.lenclosed(), 1)
+			}
+			if p.conns.totalSize != 1 {
+				t.Errorf("Pool should have 1 total connection. got %d; want %d", p.conns.totalSize, 1)
 			}
 			close(cleanup)
 		})
@@ -473,6 +567,37 @@ func TestPool(t *testing.T) {
 			}
 			close(cleanup)
 		})
+		t.Run("handshaker i/o fails", func(t *testing.T) {
+			want := "unable to write wire message to network: Write error"
+
+			pc := poolConfig{
+				Address: address.Address(""),
+			}
+			p, err := newPool(pc, WithHandshaker(func(Handshaker) Handshaker {
+				return operation.NewIsMaster()
+			}),
+				WithDialer(func(Dialer) Dialer {
+					return DialerFunc(func(context.Context, string, string) (net.Conn, error) {
+						return &writeFailConn{&net.TCPConn{}}, nil
+					})
+				}),
+			)
+			noerr(t, err)
+			err = p.connect()
+			noerr(t, err)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+
+			_, err = p.get(ctx)
+			connErr := err.(ConnectionError)
+			if !strings.Contains(connErr.Error(), want) {
+				t.Errorf("Incorrect error. got %v; error should contain %v", connErr.Wrapped, want)
+			}
+			if p.conns.totalSize != 0 {
+				t.Errorf("Pool should have 0 total connection. got %d; want %d", p.conns.totalSize, 0)
+			}
+		})
 	})
 	t.Run("Connection", func(t *testing.T) {
 		t.Run("Connection Close Does Not Error After Pool Is Disconnected", func(t *testing.T) {
@@ -523,12 +648,18 @@ func TestPool(t *testing.T) {
 			if p.conns.size != 0 {
 				t.Errorf("Should be no connections in pool. got %d; want %d", p.conns.size, 0)
 			}
+			if p.conns.totalSize != 1 {
+				t.Errorf("Pool should have 1 total connection. got %d; want %d", p.conns.totalSize, 1)
+			}
 			err = c1.Close()
 			noerr(t, err)
 			err = c1.Close()
 			noerr(t, err)
 			if p.conns.size != 1 {
 				t.Errorf("Should not return connection to pool twice. got %d; want %d", p.conns.size, 1)
+			}
+			if p.conns.totalSize != 1 {
+				t.Errorf("Pool should have 1 total connection. got %d; want %d", p.conns.totalSize, 1)
 			}
 		})
 		t.Run("close does not panic if expires before connected", func(t *testing.T) {
@@ -568,4 +699,21 @@ func newSleepDialer(d Dialer) *sleepDialer {
 func (d *sleepDialer) DialContext(ctx context.Context, network, address string) (net.Conn, error) {
 	time.Sleep(5 * time.Second)
 	return d.Dialer.DialContext(ctx, network, address)
+}
+
+func assertConnectionsClosed(t *testing.T, dialer *dialer, expectedClosedCount int) {
+	t.Helper()
+
+	callback := func() error {
+		for {
+			if dialer.lenclosed() == expectedClosedCount {
+				return nil
+			}
+
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	err := assert.RunWithTimeout(callback, 3*time.Second)
+	assert.Nil(t, err, "timed out waiting for connection closed count to hit %d", expectedClosedCount)
 }

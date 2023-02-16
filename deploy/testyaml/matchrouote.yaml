@@ -3,8 +3,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: matchroutes
+  namespace: lmanager
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: matchroutes
   template:
     metadata:
       labels:
@@ -15,7 +19,7 @@ spec:
           imagePullPolicy: Always
           name: matchroutes
           ports:
-            - containerPort: 8080
+            - containerPort: 8081
               protocol: TCP
 
 ---
@@ -23,18 +27,15 @@ apiVersion: v1
 kind: Service
 metadata:
   name: matchroutes-svc2
+  namespace: lmanager
 spec:
   externalTrafficPolicy: Cluster
   ports:
     - name: http
       nodePort: 31621
-      port: 8080
+      port: 8081
       protocol: TCP
-      targetPort: 8080
+      targetPort: 8081
   selector:
     app: matchroutes
   type: NodePort
-
-
-
-

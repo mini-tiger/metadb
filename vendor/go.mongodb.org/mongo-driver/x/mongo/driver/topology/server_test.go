@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
@@ -122,7 +123,6 @@ func TestServer(t *testing.T) {
 				desc = &descript
 				require.Nil(t, desc.LastError)
 			}
-			//err = s.Connect(nil)
 			err = s.pool.connect()
 			require.NoError(t, err, "unable to connect to pool")
 			s.connectionstate = connected
@@ -245,7 +245,7 @@ func TestServer(t *testing.T) {
 		updated.Store(false)
 		s, err := ConnectServer(address.Address("localhost"), func(description.Server) { updated.Store(true) })
 		require.NoError(t, err)
-		s.updateDescription(description.Server{Addr: s.address}, false)
+		s.updateDescription(description.Server{Addr: s.address})
 		require.True(t, updated.Load().(bool))
 	})
 	t.Run("heartbeat", func(t *testing.T) {
@@ -289,6 +289,57 @@ func TestServer(t *testing.T) {
 		if includesMetadata(t, wm) {
 			t.Fatal("client metadata not expected in heartbeat but found")
 		}
+	})
+	t.Run("WithServerAppName", func(t *testing.T) {
+		name := "test"
+
+		s, err := NewServer(address.Address("localhost"),
+			WithServerAppName(func(string) string { return name }))
+		require.Nil(t, err, "error from NewServer: %v", err)
+		require.Equal(t, name, s.cfg.appname, "expected appname to be: %v, got: %v", name, s.cfg.appname)
+	})
+	t.Run("createConnection overwrites WithSocketTimeout", func(t *testing.T) {
+		socketTimeout := 40 * time.Second
+
+		s, err := NewServer(
+			address.Address("localhost"),
+			WithConnectionOptions(func(connOpts ...ConnectionOption) []ConnectionOption {
+				return append(
+					connOpts,
+					WithReadTimeout(func(time.Duration) time.Duration { return socketTimeout }),
+					WithWriteTimeout(func(time.Duration) time.Duration { return socketTimeout }),
+				)
+			}),
+		)
+		assert.Nil(t, err, "NewServer error: %v", err)
+
+		var now time.Time
+		conn, err := s.createConnection(context.Background(), &now)
+		assert.Nil(t, err, "createConnection error: %v", err)
+
+		assert.Equal(t, s.cfg.heartbeatTimeout, 10*time.Second, "expected heartbeatTimeout to be: %v, got: %v", 10*time.Second, s.cfg.heartbeatTimeout)
+		assert.Equal(t, s.cfg.heartbeatTimeout, conn.readTimeout, "expected readTimeout to be: %v, got: %v", s.cfg.heartbeatTimeout, conn.readTimeout)
+		assert.Equal(t, s.cfg.heartbeatTimeout, conn.writeTimeout, "expected writeTimeout to be: %v, got: %v", s.cfg.heartbeatTimeout, conn.writeTimeout)
+	})
+	t.Run("heartbeat connection RTT is accurately measured", func(t *testing.T) {
+		dialer := &channelNetConnDialer{}
+
+		s, err := NewServer(
+			address.Address("localhost"),
+			WithConnectionOptions(func(connOpts ...ConnectionOption) []ConnectionOption {
+				return append(
+					connOpts,
+					WithDialer(func(Dialer) Dialer {
+						return dialer
+					}),
+				)
+			}),
+		)
+		assert.Nil(t, err, "NewServer error: %v", err)
+
+		_, _ = s.heartbeat(nil)
+		assert.True(t, s.averageRTTSet, "expected averageRTTSet to be true but was not")
+		assert.True(t, s.averageRTT < time.Second, "expected average RTT to be less than 1s, got %v", s.averageRTT)
 	})
 }
 

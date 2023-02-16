@@ -1,10 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import sys
 import getopt
 import os
 import shutil
+import sys
 from string import Template
 
 
@@ -18,7 +18,8 @@ def generate_config_file(
         cc_url_v, paas_url_v, full_text_search, es_url_v, es_user_v, es_pass_v, auth_address, auth_app_code,
         auth_app_secret, auth_enabled, auth_scheme, auth_sync_workers, auth_sync_interval_minutes, log_level,
         register_ip,
-        enable_cryptor_v, secret_key_url_v, secrets_addrs_v, secrets_token_v, secrets_project_v, secrets_env_v
+        enable_cryptor_v, secret_key_url_v, secrets_addrs_v, secrets_token_v, secrets_project_v, secrets_env_v,
+        mongo_cluster_v, mongo_shard_node_v,
 ):
     output = os.getcwd() + "/cmdb_adminserver/configures/"
     context = dict(
@@ -56,6 +57,7 @@ def generate_config_file(
         secrets_token=secrets_token_v,
         secrets_project=secrets_project_v,
         secrets_env=secrets_env_v,
+
     )
     if not os.path.exists(output):
         os.mkdir(output)
@@ -141,6 +143,8 @@ mongodb:
   #mongo的socket连接的超时时间，以秒为单位，默认10s，最小5s，最大30s。
   socketTimeoutSeconds: 10
   # mongodb事件监听存储事件链的mongodb配置
+  cluster: $mongo_cluster # 副本集为0
+  shardUri: "$mongo_shard_node"
 watch:
   host: $mongo_host
   port: $mongo_port
@@ -152,7 +156,25 @@ watch:
   mechanism: SCRAM-SHA-1
   rsName: $rs_name
   socketTimeoutSeconds: 10
+  cluster: $mongo_cluster # 副本集为0
+  shardUri: "$mongo_shard_node_watch"
     '''
+
+    mongo_cluster = mongo_cluster_v
+    mongo_shard_node_watch = ''
+    if mongo_cluster in "shard":
+        mongo_shard_node_watch = "mongodb://cc:cc@{node}/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true".format(
+            node=mongo_shard_node_v)
+        mongo_shard_node_list = mongo_shard_node_v.split(",")
+        mongo_shard_node_first = mongo_shard_node_list[0]
+        mongo_shard_node = "mongodb://cc:cc@{node}/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true".format(
+            node=mongo_shard_node_first)
+    # print(context)
+    # print(mongo_shard_node)
+    context["mongo_shard_node"]= mongo_shard_node
+    context["mongo_shard_node_watch"] =mongo_shard_node_watch
+    context["mongo_cluster"] = mongo_cluster
+    print(context)
     template = FileTemplate(mongodb_file_template_str)
     result = template.substitute(**context)
     with open(output + "mongodb.yaml", 'w') as tmp_file:
@@ -475,6 +497,8 @@ def main(argv):
     secrets_token = ''
     secrets_project = ''
     secrets_env = ''
+    mongo_shard_node_env = ''
+    mongo_cluster_env = ''
 
     server_ports = {
         "cmdb_adminserver": 60004,
@@ -500,7 +524,7 @@ def main(argv):
         "blueking_paas_url=", "listen_port=", "es_url=", "es_user=", "es_pass=", "auth_address=",
         "auth_app_code=", "auth_app_secret=", "auth_enabled=",
         "auth_scheme=", "auth_sync_workers=", "auth_sync_interval_minutes=", "full_text_search=", "log_level=",
-        "register_ip=",
+        "register_ip=", "mongo_shard_node=", "mongo_cluster=",
         "enable_cryptor=", "secret_key_url=", "secrets_addrs=", "secrets_token=", "secrets_project=", "secrets_env="
     ]
     usage = '''
@@ -567,7 +591,9 @@ def main(argv):
       --es_pass            cc \\
       --log_level          3 \\
       --register_ip        cmdb.domain.com \\
-      --user_info          user1:password1,user2:password2
+      --user_info          user1:password1,user2:password2 \\
+      --mongo_shard_node   172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084 \\
+      --mongo_cluster      shard  
     '''
     try:
         opts, _ = getopt.getopt(argv, "hd:D:r:p:x:s:m:P:X:S:u:U:a:l:es:v", arr)
@@ -687,6 +713,12 @@ def main(argv):
         elif opt in ("--secrets_env",):
             secrets_env = arg
             print('secrets_env:', secrets_env)
+        elif opt in ("--mongo_shard_node"):
+            mongo_shard_node_env = arg
+            print('mongo_shard_node', mongo_shard_node_env)
+        elif opt in ("--mongo_cluster"):
+            mongo_cluster_env = arg
+            print('mongo_cluster', mongo_cluster_env)
 
     # if 0 == len(rd_server):
     #     print('please input the ZooKeeper address, eg:127.0.0.1:2181')
@@ -765,7 +797,7 @@ def main(argv):
     if log_level not in availableLogLevel:
         print("available log_level value are: %s" % availableLogLevel)
         sys.exit()
-    rd_server = "%s:%s:0:%s" % (redis_ip,redis_port,redis_pass)
+    rd_server = "%s:%s:0:%s" % (redis_ip, redis_port, redis_pass)
     # print(rd_server)
     generate_config_file(
         rd_server_v=rd_server,
@@ -794,6 +826,8 @@ def main(argv):
         secrets_token_v=secrets_token,
         secrets_project_v=secrets_project,
         secrets_env_v=secrets_env,
+        mongo_cluster_v=mongo_cluster_env,
+        mongo_shard_node_v=mongo_shard_node_env,
         **auth
     )
     update_start_script(rd_server, server_ports, auth['auth_enabled'], log_level, register_ip, enable_cryptor)
