@@ -5,6 +5,11 @@
     secretKeyRef:
       name: metadb-secret
       key: redisIp
+- name: redisDBnum
+  valueFrom:
+    secretKeyRef:
+      name: metadb-secret
+      key: redisDBnum
 - name: redisPass
   valueFrom:
     secretKeyRef:

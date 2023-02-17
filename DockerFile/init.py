@@ -13,7 +13,7 @@ class FileTemplate(Template):
 
 
 def generate_config_file(
-        rd_server_v, db_name_v, redis_ip_v, redis_port_v,
+        rd_server_v, db_name_v, redis_ip_v, redis_port_v,redis_db_num_v,
         redis_pass_v, sentinel_pass_v, mongo_ip_v, mongo_port_v, mongo_user_v, mongo_pass_v, rs_name, user_info,
         cc_url_v, paas_url_v, full_text_search, es_url_v, es_user_v, es_pass_v, auth_address, auth_app_code,
         auth_app_secret, auth_enabled, auth_scheme, auth_sync_workers, auth_sync_interval_minutes, log_level,
@@ -30,6 +30,7 @@ def generate_config_file(
         mongo_port=mongo_port_v,
         redis_host=redis_ip_v,
         redis_pass=redis_pass_v,
+        redis_db_num=redis_db_num_v,
         sentinel_pass=sentinel_pass_v,
         redis_port=redis_port_v,
         cc_url=cc_url_v,
@@ -87,7 +88,7 @@ redis:
   host: $redis_host:$redis_port
   pwd: "$redis_pass"
   sentinelPwd: "$sentinel_pass"
-  database: "0"
+  database: $redis_db_num
   maxOpenConns: 3000
   maxIDleConns: 1000
   #以下几个redis配置为datacollection模块所需的配置,用于接收第三方提供的数据
@@ -96,19 +97,19 @@ redis:
     host: $redis_host:$redis_port
     pwd: "$redis_pass"
     sentinelPwd: "$sentinel_pass"
-    database: "0"
+    database: $redis_db_num
   #接收模型实例数据的redis
   discover:
     host: $redis_host:$redis_port
     pwd: "$redis_pass"
     sentinelPwd: "$sentinel_pass"
-    database: "0"
+    database: $redis_db_num
   #接受硬件数据的redis
   netcollect:
     host: $redis_host:$redis_port
     pwd: "$redis_pass"
     sentinelPwd: "$sentinel_pass"
-    database: "0"
+    database: $redis_db_num
     '''
 
     template = FileTemplate(redis_file_template_str)
@@ -466,6 +467,7 @@ def main(argv):
     redis_ip = ''
     redis_port = 6379
     redis_pass = ''
+    redid_db_num = 0
     sentinel_pass = ''
     mongo_ip = ''
     mongo_port = 27017
@@ -518,7 +520,7 @@ def main(argv):
         "cmdb_cacheservice": 50010
     }
     arr = [
-        "help", "discovery=", "database=", "redis_ip=", "redis_port=",
+        "help", "discovery=", "database=", "redis_ip=", "redis_port=","redis_db_num=",
         "redis_pass=", "sentinel_pass=", "mongo_ip=", "mongo_port=", "rs_name=",
         "mongo_user=", "mongo_pass=", "blueking_cmdb_url=", "user_info=",
         "blueking_paas_url=", "listen_port=", "es_url=", "es_user=", "es_pass=", "auth_address=",
@@ -561,7 +563,7 @@ def main(argv):
       --secrets_token      <secrets_token>        secrets_token , as a header param for sending the api request to bk-secrets service
       --secrets_project    <secrets_project>      secrets_project, as a header param for sending the api request to bk-secrets service
       --secrets_env        <secrets_env>          secrets_env, as a header param for sending the api request to bk-secrets service
-
+      --redis_db_num        <redis_db_num>        redis_db_num
     demo:
     python init.py  \\
       --discovery          127.0.0.1:2181 \\
@@ -719,7 +721,9 @@ def main(argv):
         elif opt in ("--mongo_cluster"):
             mongo_cluster_env = arg
             print('mongo_cluster', mongo_cluster_env)
-
+        elif opt in ("--redis_db_num"):
+            redis_db_num = arg
+            print('redis_db_num:', redis_db_num)
     # if 0 == len(rd_server):
     #     print('please input the ZooKeeper address, eg:127.0.0.1:2181')
     #     sys.exit()
@@ -731,6 +735,9 @@ def main(argv):
         sys.exit()
     if redis_port < 0:
         print('please input the redis port, eg:6379')
+        sys.exit()
+    if redis_db_num < 0:
+        print('please input the redis_db_num, eg:0')
         sys.exit()
     if 0 == len(redis_pass):
         print('please input the redis password')
@@ -805,6 +812,7 @@ def main(argv):
         redis_ip_v=redis_ip,
         redis_port_v=redis_port,
         redis_pass_v=redis_pass,
+        redis_db_num_v=redis_db_num,
         sentinel_pass_v=sentinel_pass,
         mongo_ip_v=mongo_ip,
         mongo_port_v=mongo_port,

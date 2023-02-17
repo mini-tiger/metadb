@@ -7,11 +7,11 @@ cd /data/cmdb
 {{if .AdminServer}}
 python init.py --database cmdb --mongo_user cc --mongo_pass cc --mongo_ip ${mongoIp} --mongo_port ${mongoPort} \
     --mongo_shard_node=${mongoShardNode} --mongo_cluster=${mongoCluster} \
-    --redis_ip ${redisIp} --redis_port ${redisPort} --redis_pass ${redisPass}  \
+    --redis_ip ${redisIp} --redis_port ${redisPort} --redis_pass ${redisPass}  --redis_db_num ${redisDBnum} \
     --blueking_cmdb_url http://${ip}:8090 --listen_port 8090 --user_info admin:admin --auth_enabled false  --full_text_search off --log_level 0
 {{else}}
 python init.py --database cmdb --mongo_user cc --mongo_pass cc --mongo_ip ${mongoIp} --mongo_port ${mongoPort} \
-    --redis_ip ${redisIp} --redis_port ${redisPort} --redis_pass ${redisPass}  \
+    --redis_ip ${redisIp} --redis_port ${redisPort} --redis_pass ${redisPass}  --redis_db_num ${redisDBnum} \
     --blueking_cmdb_url http://${ip}:8090 --listen_port 8090 --user_info admin:admin --auth_enabled false  --full_text_search off --log_level 0
 {{end}}
 {{if .AdminServer}}

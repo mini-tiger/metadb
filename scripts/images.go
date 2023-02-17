@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,6 +18,7 @@ import (
 )
 
 var (
+	tpl                                                                                   bool
 	currentFileName, rootDir, dockerDir, webCompressionPath, tmpDir, binaryDir, helm_path string // images.go 路径
 	helm_dirname                                                                          = "cmdb-helm-b28test"
 	helm_default_ns                                                                       = "cmdbv4"
@@ -66,6 +68,8 @@ func getNSEnv() string {
 }
 
 func init() {
+	flag.BoolVar(&tpl, "tpl", false, "helm tpl flag value")
+
 	fmt.Println(getNSEnv())
 	_, currentFileName, _, _ = runtime.Caller(0)
 	//fmt.Println(CurrentFileName)
@@ -128,6 +132,13 @@ func RunCommandStd(command string) (bytes.Buffer, bytes.Buffer) {
 }
 
 func main() {
+	flag.Parse()
+
+	if tpl {
+		fmt.Println("helm tpl flag:", tpl)
+		helmTplCreate()
+		os.Exit(0)
+	}
 
 	var err error
 	listDir, _ := ioutil.ReadDir(binaryDir)
@@ -187,11 +198,8 @@ func main() {
 	//log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
 
 	// helm values.yaml.tpl
-	err = createFile(path.Join(helm_path, "values.yaml"), path.Join(helm_path, "values.yaml.tpl"),
-		map[string]interface{}{"version": version})
-	if err != nil {
-		log.Fatalln(err)
-	}
+	helmTplCreate()
+
 	log.Printf("chdir %s\n", helm_path)
 	err = os.Chdir(helm_path)
 	if err != nil {
@@ -207,6 +215,14 @@ func main() {
 	//std, stderr = RunCommandStd(helm_install_cmd)
 	//log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
 
+}
+
+func helmTplCreate() {
+	err := createFile(path.Join(helm_path, "values.yaml"), path.Join(helm_path, "values.yaml.tpl"),
+		map[string]interface{}{"version": version})
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 func binaryFileDirCopy(src, dest string, dir bool) error {
 	var cmdstr string
