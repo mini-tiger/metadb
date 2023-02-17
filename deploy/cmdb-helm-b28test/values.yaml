@@ -36,7 +36,7 @@ apps:
 
 image:
   repository: harbor.dev.21vianet.com/cmdb/
-  tag: 2023-2-17_1434
+  tag: 2023-2-17_14358
 #  tag: "latest"
 env:
 #  pullPolicy: IfNotPresent
@@ -56,8 +56,8 @@ env:
   # cluster shard
 
   #mongo_shard_node: "172.60.3.144:27000,172.60.3.145:27000,172.60.3.146:27000"   # b28-test
-  #mongo_shard_node: "172.22.50.25:32085,172.22.50.25:32086,172.22.50.25:32087"   # 50.25 cmdb-neolink
-  mongo_shard_node: "172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084"
+  mongo_shard_node: "172.22.50.25:32085,172.22.50.25:32086,172.22.50.25:32087"   # 50.25 cmdb-neolink
+  #mongo_shard_node: "172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084"
   mongo_cluster: "shard"
   # 副本集
   mongoip: "mongo-mongodb-headless"
