@@ -36,14 +36,14 @@ apps:
 
 image:
   repository: harbor.dev.21vianet.com/cmdb/
-  tag: 2023-2-17_191414
+  tag: {{.version}}
 #  tag: "latest"
 env:
 #  pullPolicy: IfNotPresent
   pullPolicy: Always
   redisip: "redis-master"
   #redisip: "172.60.3.120"   # b28-test
-  #redisip: "redis-master"   # 50.25 cmdb-neolink cmdbv4
+  #redisip: "redis-master"   # 50.25 cmdb-neolink
   redispass: "Ne01ink2022!"
   redisport: "6379"
   redisDBnum: "7"
@@ -56,8 +56,8 @@ env:
   # cluster shard
 
   #mongo_shard_node: "172.60.3.144:27000,172.60.3.145:27000,172.60.3.146:27000"   # b28-test
-  #mongo_shard_node: "172.22.50.25:32085,172.22.50.25:32086,172.22.50.25:32087"   # 50.25 cmdb-neolink
-  mongo_shard_node: "172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084"    # cmdbv4
+  mongo_shard_node: "172.22.50.25:32085,172.22.50.25:32086,172.22.50.25:32087"   # 50.25 cmdb-neolink
+  #mongo_shard_node: "172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084"
   mongo_cluster: "shard"
   # 副本集
   mongoip: "mongo-mongodb-headless"

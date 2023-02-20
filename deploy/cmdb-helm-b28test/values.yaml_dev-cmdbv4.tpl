@@ -36,7 +36,7 @@ apps:
 
 image:
   repository: harbor.dev.21vianet.com/cmdb/
-  tag: 2023-2-17_191414
+  tag: {{.version}}
 #  tag: "latest"
 env:
 #  pullPolicy: IfNotPresent
@@ -46,7 +46,7 @@ env:
   #redisip: "redis-master"   # 50.25 cmdb-neolink cmdbv4
   redispass: "Ne01ink2022!"
   redisport: "6379"
-  redisDBnum: "7"
+  redisDBnum: "0"
 
   #mongo public params
   mongorootuser: "root"

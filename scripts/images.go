@@ -18,7 +18,8 @@ import (
 )
 
 var (
-	tpl                                                                                   bool
+	tpl                                                                                   string
+	tplOnly                                                                               bool
 	currentFileName, rootDir, dockerDir, webCompressionPath, tmpDir, binaryDir, helm_path string // images.go 路径
 	helm_dirname                                                                          = "cmdb-helm-b28test"
 	helm_default_ns                                                                       = "cmdbv4"
@@ -68,9 +69,10 @@ func getNSEnv() string {
 }
 
 func init() {
-	flag.BoolVar(&tpl, "tpl", false, "helm tpl flag value")
+	flag.StringVar(&tpl, "tpl", "", "helm tpl flag value")
+	flag.BoolVar(&tplOnly, "tplonly", false, "tpl only run")
+	//flag.StringVar(&stringflag, "stringflag", "default", "string flag value")
 
-	fmt.Println(getNSEnv())
 	_, currentFileName, _, _ = runtime.Caller(0)
 	//fmt.Println(CurrentFileName)
 	rootDir = filepath.Dir(filepath.Dir(currentFileName))
@@ -133,12 +135,14 @@ func RunCommandStd(command string) (bytes.Buffer, bytes.Buffer) {
 
 func main() {
 	flag.Parse()
-
-	if tpl {
-		fmt.Println("helm tpl flag:", tpl)
-		helmTplCreate()
+	fmt.Printf("!!!!!!!!!!!   当前 k8s namespace: %s ,tplflag: %s , tplOnly: %v \n ", getNSEnv(), tpl, tplOnly)
+	time.Sleep(1 * time.Second)
+	if tplOnly {
+		//fmt.Println("helm tpl flag:", tpl)
+		helmTplCreate(tpl)
 		os.Exit(0)
 	}
+	//fmt.Println(getNSEnv())
 
 	var err error
 	listDir, _ := ioutil.ReadDir(binaryDir)
@@ -198,7 +202,7 @@ func main() {
 	//log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
 
 	// helm values.yaml.tpl
-	helmTplCreate()
+	helmTplCreate(tpl)
 
 	log.Printf("chdir %s\n", helm_path)
 	err = os.Chdir(helm_path)
@@ -217,8 +221,8 @@ func main() {
 
 }
 
-func helmTplCreate() {
-	err := createFile(path.Join(helm_path, "values.yaml"), path.Join(helm_path, "values.yaml.tpl"),
+func helmTplCreate(processEnv string) {
+	err := createFile(path.Join(helm_path, "values.yaml"), path.Join(helm_path, fmt.Sprintf("values.yaml_%s.tpl", processEnv)),
 		map[string]interface{}{"version": version})
 	if err != nil {
 		log.Fatalln(err)
