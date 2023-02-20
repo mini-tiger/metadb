@@ -88,10 +88,6 @@ func init() {
 	if !IsDir(tmpDir) {
 		os.MkdirAll(tmpDir, os.ModePerm)
 	}
-	err := RunCommand("docker pull harbor.dev.21vianet.com/taojun/python2.7-debug-tz:latest")
-	if err != nil {
-		log.Fatalln(err)
-	}
 
 }
 
@@ -142,9 +138,13 @@ func main() {
 		helmTplCreate(tpl)
 		os.Exit(0)
 	}
-	//fmt.Println(getNSEnv())
 
 	var err error
+	err = RunCommand("docker pull harbor.dev.21vianet.com/taojun/python2.7-debug-tz:latest")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	listDir, _ := ioutil.ReadDir(binaryDir)
 	var srcDir, destDir string
 
