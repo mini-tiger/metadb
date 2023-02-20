@@ -44,6 +44,7 @@ func CmdbReloadSession(sess Session, info *SessionInfo) error {
 	}
 	idDoc := bsonx.Doc{{"id", bsonx.Binary(session.UUIDSubtype, sessionIDBytes[:])}}
 	i.clientSession.Server.SessionID = idDoc
+
 	i.clientSession.SessionID=idDoc
 	// i.didCommitAfterStart=false
 	if info.TxnNubmer > 1 {

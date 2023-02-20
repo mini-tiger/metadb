@@ -1,0 +1,1 @@
+go run images.go --tplonly --tpl dev-neolink

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
@@ -44,6 +45,13 @@ func TestConnection(t *testing.T) {
 				if !cmp.Equal(got, want, cmp.Comparer(compareErrors)) {
 					t.Errorf("errors do not match. got %v; want %v", got, want)
 				}
+			})
+			t.Run("no default idle timeout", func(t *testing.T) {
+				conn, err := newConnection(context.Background(), address.Address(""))
+				assert.Nil(t, err, "newConnection error: %v", err)
+				wantTimeout := time.Duration(0)
+				assert.Equal(t, wantTimeout, conn.idleTimeout, "expected idle timeout %v, got %v", wantTimeout,
+					conn.idleTimeout)
 			})
 		})
 		t.Run("connect", func(t *testing.T) {
@@ -88,32 +96,50 @@ func TestConnection(t *testing.T) {
 					t.Errorf("errors do not match. got %v; want %v", got, want)
 				}
 			})
-			t.Run("calls description callback", func(t *testing.T) {
-				want := description.Server{Addr: address.Address("1.2.3.4:56789")}
-				var got description.Server
+			t.Run("calls error callback", func(t *testing.T) {
+				handshakerError := errors.New("handshaker error")
+				var got error
+
 				conn, err := newConnection(context.Background(), address.Address(""),
-					withServerDescriptionCallback(func(desc description.Server) { got = desc },
-						WithHandshaker(func(Handshaker) Handshaker {
-							return &testHandshaker{
-								getDescription: func(context.Context, address.Address, driver.Connection) (description.Server, error) {
-									return want, nil
-								},
-							}
-						}),
-						WithDialer(func(Dialer) Dialer {
-							return DialerFunc(func(context.Context, string, string) (net.Conn, error) {
-								return &net.TCPConn{}, nil
-							})
-						}),
-					)...,
+					WithHandshaker(func(Handshaker) Handshaker {
+						return &testHandshaker{
+							getDescription: func(context.Context, address.Address, driver.Connection) (description.Server, error) {
+								return description.Server{}, handshakerError
+							},
+						}
+					}),
+					WithDialer(func(Dialer) Dialer {
+						return DialerFunc(func(context.Context, string, string) (net.Conn, error) {
+							return &net.TCPConn{}, nil
+						})
+					}),
+					withErrorHandlingCallback(func(err error) {
+						got = err
+					}),
 				)
 				noerr(t, err)
 				conn.connect(context.Background())
+
+				var want error = ConnectionError{Wrapped: handshakerError}
 				err = conn.wait()
-				noerr(t, err)
-				if !cmp.Equal(got, want) {
-					t.Errorf("Server descriptions do not match. got %v; want %v", got, want)
-				}
+				assert.NotNil(t, err, "expected connect error %v, got nil", want)
+				assert.Equal(t, want, got, "expected error %v, got %v", want, got)
+			})
+			t.Run("cancelConnectContext is nil after connect", func(t *testing.T) {
+				conn, err := newConnection(context.Background(), address.Address(""))
+				assert.Nil(t, err, "newConnection shouldn't error. got %v; want nil", err)
+				var wg sync.WaitGroup
+				wg.Add(1)
+
+				go func() {
+					defer wg.Done()
+					conn.connect(context.Background())
+					assert.Nil(t, conn.cancelConnectContext, "expected nil, got context.CancelFunc")
+				}()
+
+				conn.closeConnectContext()
+				assert.Nil(t, conn.cancelConnectContext, "expected nil, got context.CancelFunc")
+				wg.Wait()
 			})
 		})
 		t.Run("writeWireMessage", func(t *testing.T) {
@@ -259,7 +285,7 @@ func TestConnection(t *testing.T) {
 			})
 			t.Run("Read (size)", func(t *testing.T) {
 				err := errors.New("Read error")
-				want := ConnectionError{ConnectionID: "foobar", Wrapped: err, message: "unable to decode message length"}
+				want := ConnectionError{ConnectionID: "foobar", Wrapped: err, message: "incomplete read of message header"}
 				tnc := &testNetConn{readerr: err}
 				conn := &connection{id: "foobar", nc: tnc, connected: connected}
 				_, got := conn.readWireMessage(context.Background(), []byte{})
@@ -272,7 +298,7 @@ func TestConnection(t *testing.T) {
 			})
 			t.Run("Read (wire message)", func(t *testing.T) {
 				err := errors.New("Read error")
-				want := ConnectionError{ConnectionID: "foobar", Wrapped: err, message: "unable to read full message"}
+				want := ConnectionError{ConnectionID: "foobar", Wrapped: err, message: "incomplete read of full message"}
 				tnc := &testNetConn{readerr: err, buf: []byte{0x11, 0x00, 0x00, 0x00}}
 				conn := &connection{id: "foobar", nc: tnc, connected: connected}
 				_, got := conn.readWireMessage(context.Background(), []byte{})
@@ -490,6 +516,18 @@ func (nc *netconn) Close() error {
 	nc.closed <- struct{}{}
 	nc.d.connclosed(nc)
 	return nc.Conn.Close()
+}
+
+type writeFailConn struct {
+	net.Conn
+}
+
+func (wfc *writeFailConn) Write([]byte) (int, error) {
+	return 0, errors.New("Write error")
+}
+
+func (wfc *writeFailConn) SetWriteDeadline(t time.Time) error {
+	return nil
 }
 
 type dialer struct {

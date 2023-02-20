@@ -450,6 +450,7 @@ def main(argv):
     redis_ip = ''
     redis_port = 6379
     redis_pass = ''
+    redis_db_num = ''
     sentinel_pass = ''
     mongo_ip = ''
     mongo_port = 27017
@@ -507,7 +508,7 @@ def main(argv):
         "blueking_paas_url=", "listen_port=", "es_url=", "es_user=", "es_pass=", "auth_address=",
         "auth_app_code=", "auth_app_secret=", "auth_enabled=",
         "auth_scheme=", "auth_sync_workers=", "auth_sync_interval_minutes=", "full_text_search=", "log_level=",
-        "register_ip=",
+        "register_ip=", "redis_db_num=",
         "enable_cryptor=", "secret_key_url=", "secrets_addrs=", "secrets_token=", "secrets_project=", "secrets_env="
     ]
     usage = '''
@@ -544,7 +545,7 @@ def main(argv):
       --secrets_token      <secrets_token>        secrets_token , as a header param for sending the api request to bk-secrets service
       --secrets_project    <secrets_project>      secrets_project, as a header param for sending the api request to bk-secrets service
       --secrets_env        <secrets_env>          secrets_env, as a header param for sending the api request to bk-secrets service
-
+      --redis_db_num        <redis_db_num>        redis_db_num
     demo:
     python init.py  \\
       --discovery          127.0.0.1:2181 \\
@@ -694,6 +695,9 @@ def main(argv):
         elif opt in ("--secrets_env",):
             secrets_env = arg
             print('secrets_env:', secrets_env)
+        elif opt in ("--redis_db_num"):
+            redis_db_num = arg
+            print('redis_db_num:', redis_db_num)
 
     # if 0 == len(rd_server):
     #     print('please input the ZooKeeper address, eg:127.0.0.1:2181')
@@ -704,8 +708,12 @@ def main(argv):
     if 0 == len(redis_ip):
         print('please input the redis ip, eg: 127.0.0.1')
         sys.exit()
+
     if redis_port < 0:
         print('please input the redis port, eg:6379')
+        sys.exit()
+    if redis_db_num < 0:
+        print('please input the redis db num, eg:0')
         sys.exit()
     if 0 == len(redis_pass):
         print('please input the redis password')
@@ -772,7 +780,7 @@ def main(argv):
     if log_level not in availableLogLevel:
         print("available log_level value are: %s" % availableLogLevel)
         sys.exit()
-    rd_server = "%s:%s:0:%s" % (redis_ip, redis_port, redis_pass)
+    rd_server = "%s:%s:%s:%s" % (redis_ip, redis_port, redis_db_num, redis_pass)
     # print(rd_server)
     # generate_config_file(
     #     rd_server_v=rd_server,

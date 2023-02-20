@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+data:
+  createUser.js: |
+    use cmdb;
+    db.createUser({
+      user: "cc",
+      pwd: "cc",
+      roles: [{ role: "readWrite", db: "cmdb" }]
+    });
+    sh.enableSharding("cmdb");
+    db.getCollectionNames().forEach(function(collectionName) {
+        var indexExists = false;
+    	db.cc_abc.getIndexes().forEach(function(index) {
+        if (index.name === "_id") {
+            indexExists = true;
+        	}
+    	});
+
+    	if (!indexExists) {
+        // 执行创建索引和分片的代码
+           db[collectionName].createIndex({ "_id": "hashed" });
+           sh.shardCollection("cmdb." + collectionName, { "_id": "hashed" });
+    	}
+    });
+kind: ConfigMap
+metadata:
+  name: mongocreateuserjs
+
+

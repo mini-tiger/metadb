@@ -254,11 +254,27 @@ func TestClientOptions(t *testing.T) {
 				baseClient().SetAuth(Credential{AuthSource: "admin", Username: "foo"}),
 			},
 			{
+				"Unescaped slash in username",
+				"mongodb:///:pwd@localhost",
+				&ClientOptions{err: internal.WrapErrorf(
+					errors.New("unescaped slash in username"),
+					"error parsing uri",
+				)},
+			},
+			{
 				"Password",
 				"mongodb://foo:bar@localhost/",
 				baseClient().SetAuth(Credential{
 					AuthSource: "admin", Username: "foo",
 					Password: "bar", PasswordSet: true,
+				}),
+			},
+			{
+				"Single character username and password",
+				"mongodb://f:b@localhost/",
+				baseClient().SetAuth(Credential{
+					AuthSource: "admin", Username: "f",
+					Password: "b", PasswordSet: true,
 				}),
 			},
 			{
@@ -274,7 +290,7 @@ func TestClientOptions(t *testing.T) {
 			{
 				"Compressors",
 				"mongodb://localhost/?compressors=zlib,snappy",
-				baseClient().SetCompressors([]string{"zlib", "snappy"}),
+				baseClient().SetCompressors([]string{"zlib", "snappy"}).SetZlibLevel(6),
 			},
 			{
 				"DatabaseNoAuth",
@@ -404,11 +420,42 @@ func TestClientOptions(t *testing.T) {
 				"mongodb://localhost/?zlibCompressionLevel=4",
 				baseClient().SetZlibLevel(4),
 			},
+			{
+				"TLS tlsCertificateFile and tlsPrivateKeyFile",
+				"mongodb://localhost/?tlsCertificateFile=testdata/nopass/cert.pem&tlsPrivateKeyFile=testdata/nopass/key.pem",
+				baseClient().SetTLSConfig(&tls.Config{Certificates: make([]tls.Certificate, 1)}),
+			},
+			{
+				"TLS only tlsCertificateFile",
+				"mongodb://localhost/?tlsCertificateFile=testdata/nopass/cert.pem",
+				&ClientOptions{err: internal.WrapErrorf(
+					errors.New("the tlsPrivateKeyFile URI option must be provided if the tlsCertificateFile option is specified"),
+					"error parsing uri",
+				)},
+			},
+			{
+				"TLS only tlsPrivateKeyFile",
+				"mongodb://localhost/?tlsPrivateKeyFile=testdata/nopass/key.pem",
+				&ClientOptions{err: internal.WrapErrorf(
+					errors.New("the tlsCertificateFile URI option must be provided if the tlsPrivateKeyFile option is specified"),
+					"error parsing uri",
+				)},
+			},
+			{
+				"TLS tlsCertificateFile and tlsPrivateKeyFile and tlsCertificateKeyFile",
+				"mongodb://localhost/?tlsCertificateFile=testdata/nopass/cert.pem&tlsPrivateKeyFile=testdata/nopass/key.pem&tlsCertificateKeyFile=testdata/nopass/certificate.pem",
+				&ClientOptions{err: internal.WrapErrorf(
+					errors.New("the sslClientCertificateKeyFile/tlsCertificateKeyFile URI option cannot be provided "+
+						"along with tlsCertificateFile or tlsPrivateKeyFile"),
+					"error parsing uri",
+				)},
+			},
 		}
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				result := Client().ApplyURI(tc.uri)
+				tc.result.uri = tc.uri // manually add URI to avoid writing it in each test
 				if diff := cmp.Diff(
 					tc.result, result,
 					cmp.AllowUnexported(readconcern.ReadConcern{}, writeconcern.WriteConcern{}, readpref.ReadPref{}),

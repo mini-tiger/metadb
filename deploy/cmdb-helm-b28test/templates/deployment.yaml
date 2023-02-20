@@ -1,0 +1,143 @@
+---
+
+{{ $repository := .Values.image.repository}}
+{{ $tag := .Values.image.tag }}
+{{ $pullPolicy := .Values.env.pullPolicy }}
+{{ $cache := .Values.cache.enabled}}
+{{ $cacheLabels := .Values.cache.labels}}
+{{ $mongoCluster := .Values.env.mongo_cluster}}
+{{ $mongoShardNode := .Values.env.mongo_shard_node}}
+{{- range .Values.apps }}
+  {{- with . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+  labels:
+    app:  {{ .name }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app:  {{ .name }}
+  template:
+    metadata:
+      labels:
+        app:  {{ .name }}
+#      annotations:
+#        timestamp: {{ now | quote }}
+    spec:
+      {{- if and $cache .cacheAffinity}}
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                {{- range $val := $cacheLabels }}
+                  {{  $val.name  }}: {{ $val.value }}
+                {{- end }}
+      {{- end}}
+      containers:
+        - name:  {{ .name }}
+          env:
+            {{- include "mytemplate" . | indent 12 }}
+          image: {{ $repository }}cmdb_{{ .name}}:{{ $tag }}
+          {{- if $pullPolicy }}
+          imagePullPolicy: {{ $pullPolicy }}
+          {{- end}}
+          ports:
+          {{- if eq .name  "webserver" }}
+          {{- range .ports }}
+          - containerPort: {{ .port }}
+            protocol: TCP
+          {{- end }}
+          {{- else }}
+          - containerPort: {{ .port }}
+            protocol: TCP
+          {{- end}}
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+#            limits:
+#              cpu: 500m
+#              memory: 512m
+
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              {{- if eq .name  "webserver" }}
+              {{ with index .ports 0 }}
+              port: {{ .port }}
+              {{- end}}
+              {{- else }}
+              port: {{ .port }}
+              {{- end}}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              {{- if eq .name  "webserver" }}
+              {{ with index .ports 0 }}
+              port: {{ .port }}
+              {{- end}}
+              {{- else }}
+              port: {{ .port }}
+              {{- end}}
+
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+      initContainers:
+        - name: init-redis
+          env:
+            {{- include "mytemplate" . | indent 12 }}
+          image: harbor.dev.21vianet.com/library/redis:bitnami-6.2.6-debian-10-r103
+          command: [ 'sh','-c',"env && until redis-cli -h ${redisIp} -p ${redisPort} -a ${redisPass} PING;do echo waiting for redis; sleep 10; done" ]
+#          command: [ 'sh','-c',"env && until redis-cli -h ${redisIp}.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local -p ${redisPort} -a ${redisPass} PING;do echo waiting for redis; sleep 10; done" ]
+        - name: init-mongo
+          env:
+            {{- include "mytemplate" . | indent 12 }}
+          image: harbor.dev.21vianet.com/cmdb/mongo:4.4.13-debian-10-r52
+            {{- if eq .name  "adminserver" }}
+              {{- if eq $mongoCluster "shard" }}
+          command: [ 'sh', '-c', 'env 
+               && until mongo "mongodb://${mongoRootUser}:${mongoRootPass}@{{ $mongoShardNode }}/?connectTimeoutMS=10000&authSource=${mongoRootAuthDB}&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done
+               && (mongo  mongodb://{{ $mongoShardNode }}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)'
+          ]
+              {{- else }}
+          command: [ 'sh', '-c', 'env 
+                && (mongo  mongodb://${mongoIp}:${mongoPort}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)
+                && until mongo "mongodb://cc:cc@${mongoIp}:${mongoPort}/?replicaSet=rs0&connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done'
+          ]
+              {{- end}}
+
+            {{- else }}
+              {{- if eq $mongoCluster "shard" }}
+          command: [ 'sh', '-c', 'env 
+                 && until mongo "mongodb://cc:cc@{{ $mongoShardNode }}/?connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done' ]
+              {{- else }}
+          command: [ 'sh', '-c', 'until  mongo "mongodb://cc:cc@${mongoIp}:${mongoPort}/cmdb --disableImplicitSessions --eval "db.adminCommand("ping"); do echo waiting for ${mongoIp}; sleep 10; done' ]
+              {{- end}}
+
+            {{- end}}
+
+      {{- if eq .name  "adminserver" }}
+          volumeMounts: #挂载到容器
+            - name: mongocreateuserjs
+              mountPath: /js/createUser.js
+              subPath: createUser.js
+      volumes:
+        - name: mongocreateuserjs
+          configMap: #指定为configmap文件
+            name: mongocreateuserjs      #刚才创建的redis-config的cm文件
+      {{- end}}
+---
+{{- end}}
+  {{- end }}

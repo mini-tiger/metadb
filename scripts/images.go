@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,9 +18,13 @@ import (
 )
 
 var (
+	tpl                                                                                   string
+	tplOnly                                                                               bool
 	currentFileName, rootDir, dockerDir, webCompressionPath, tmpDir, binaryDir, helm_path string // images.go 路径
-
-	branch = "metadb-tj" //#"3.9.39.x"
+	helm_dirname                                                                          = "cmdb-helm-b28test"
+	helm_default_ns                                                                       = "cmdbv4"
+	branch                                                                                = "metadb-tj" //#"3.9.39.x"
+	helm_ns                                                                               = getNSEnv()
 
 	//validDir  = map[string]int{"cmdb_adminserver": 60004, "cmdb_webserver": 8090,
 	//	"cmdb_apiserver": 8080, "cmdb_coreservice": 50009, "cmdb_toposerver": 60002, "cmdb_hostserver": 60001,
@@ -39,7 +44,6 @@ var (
 	github             = "meta42/"
 	ver                = "latest"
 	kubeconfig         = "/smb/50.25kubeconfig"
-	helm_ns            = "cmdbv3"
 	helm_uninstall_cmd = fmt.Sprintf("helm --kubeconfig=%s uninstall -n %s cmdb", kubeconfig, helm_ns)
 	helm_install_cmd   = fmt.Sprintf("helm --kubeconfig=%s install -n %s cmdb -f values.yaml .", kubeconfig, helm_ns)
 	helm_upgrade_cmd   = fmt.Sprintf("helm --kubeconfig=%s upgrade -n %s cmdb --history-max 3 -f values.yaml .", kubeconfig, helm_ns)
@@ -56,8 +60,19 @@ func IsDir(path string) bool {
 	}
 	return s.IsDir()
 }
+func getNSEnv() string {
+	val, ex := os.LookupEnv("namespace")
+	if !ex {
+		return helm_default_ns
+	}
+	return val
+}
 
 func init() {
+	flag.StringVar(&tpl, "tpl", "", "helm tpl flag value")
+	flag.BoolVar(&tplOnly, "tplonly", false, "tpl only run")
+	//flag.StringVar(&stringflag, "stringflag", "default", "string flag value")
+
 	_, currentFileName, _, _ = runtime.Caller(0)
 	//fmt.Println(CurrentFileName)
 	rootDir = filepath.Dir(filepath.Dir(currentFileName))
@@ -69,7 +84,7 @@ func init() {
 
 	log.Printf("rootDir:%v\n", rootDir)
 	log.Printf("binaryDir:%v\n", binaryDir)
-	helm_path = filepath.Join(rootDir, "deploy", "cmdb-helm")
+	helm_path = filepath.Join(rootDir, "deploy", helm_dirname)
 	if !IsDir(tmpDir) {
 		os.MkdirAll(tmpDir, os.ModePerm)
 	}
@@ -119,6 +134,15 @@ func RunCommandStd(command string) (bytes.Buffer, bytes.Buffer) {
 }
 
 func main() {
+	flag.Parse()
+	fmt.Printf("!!!!!!!!!!!   当前 k8s namespace: %s ,tplflag: %s , tplOnly: %v \n ", getNSEnv(), tpl, tplOnly)
+	time.Sleep(1 * time.Second)
+	if tplOnly {
+		//fmt.Println("helm tpl flag:", tpl)
+		helmTplCreate(tpl)
+		os.Exit(0)
+	}
+	//fmt.Println(getNSEnv())
 
 	var err error
 	listDir, _ := ioutil.ReadDir(binaryDir)
@@ -178,11 +202,8 @@ func main() {
 	//log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
 
 	// helm values.yaml.tpl
-	err = createFile(path.Join(helm_path, "values.yaml"), path.Join(helm_path, "values.yaml.tpl"),
-		map[string]interface{}{"version": version})
-	if err != nil {
-		log.Fatalln(err)
-	}
+	helmTplCreate(tpl)
+
 	log.Printf("chdir %s\n", helm_path)
 	err = os.Chdir(helm_path)
 	if err != nil {
@@ -198,6 +219,14 @@ func main() {
 	//std, stderr = RunCommandStd(helm_install_cmd)
 	//log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
 
+}
+
+func helmTplCreate(processEnv string) {
+	err := createFile(path.Join(helm_path, "values.yaml"), path.Join(helm_path, fmt.Sprintf("values.yaml_%s.tpl", processEnv)),
+		map[string]interface{}{"version": version})
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 func binaryFileDirCopy(src, dest string, dir bool) error {
 	var cmdstr string

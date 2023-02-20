@@ -21,10 +21,14 @@ mongodb:
   maxOpenConns: 3000
   maxIdleConns: 100
   mechanism: SCRAM-SHA-1
-  rsName: rs0
   #mongo的socket连接的超时时间，以秒为单位，默认10s，最小5s，最大30s。
   socketTimeoutSeconds: 10
-  # mongodb事件监听存储事件链的mongodb配置
+  rsName: rs0
+  # 分片集群
+  cluster: shard # 副本集为0
+  shardUri: "mongodb://cc:cc@172.22.50.25:27117/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true"
+
+# mongodb事件监听存储事件链的mongodb配置
 watch:
   host: 172.22.50.25
   port: 27021
@@ -37,4 +41,7 @@ watch:
   mechanism: SCRAM-SHA-1
   rsName: rs0
   socketTimeoutSeconds: 10
+    # 分片集群
+  cluster: shard # 副本集为0
+  shardUri: "mongodb://cc:cc@172.22.50.25:27117,172.22.50.25:27118/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true"
     
