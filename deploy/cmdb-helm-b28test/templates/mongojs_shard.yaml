@@ -1,13 +1,7 @@
 ---
 apiVersion: v1
 data:
-  createUser.js: |
-    use cmdb;
-    db.createUser({
-      user: "cc",
-      pwd: "cc",
-      roles: [{ role: "readWrite", db: "cmdb" }]
-    });
+  createShard.js: |
     use cmdb;
     print("begin shard!!")
     sh.enableSharding("cmdb");
@@ -29,13 +23,13 @@ data:
         // 执行创建索引和分片的代码
            db[collectionName].createIndex({ "_id": "hashed" });
            sh.shardCollection("cmdb." + collectionName, { "_id": "hashed" });
-           print(collection,index.name,"     create shard")
+           print(collection,"     create shard")
         }
         }
     );
 
 kind: ConfigMap
 metadata:
-  name: mongocreateuserjs
+  name: mongocreateshardjs
 
 
