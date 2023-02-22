@@ -8,31 +8,6 @@ data:
       pwd: "cc",
       roles: [{ role: "readWrite", db: "cmdb" }]
     });
-    use cmdb;
-    print("begin shard!!")
-    sh.enableSharding("cmdb");
-    db.getCollectionNames().forEach(function(collectionName) {
-        var indexExists = false;
-        const collection = db.getCollection(collectionName);
-
-        // 查询该集合下的所有索引
-        const indexes = collection.getIndexes();
-
-        indexes.forEach(function(index) {
-        if (index.name === "_id_hashed") {
-            indexExists = true;
-            print(collection,index.name,"skip create shard")
-            return
-           }
-        });
-        if (!indexExists) {
-        // 执行创建索引和分片的代码
-           db[collectionName].createIndex({ "_id": "hashed" });
-           sh.shardCollection("cmdb." + collectionName, { "_id": "hashed" });
-           print(collection,index.name,"     create shard")
-        }
-        }
-    );
 
 kind: ConfigMap
 metadata:

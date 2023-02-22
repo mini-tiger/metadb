@@ -49,9 +49,9 @@ env:
   redisDBnum: "7"
 
   #mongo public params
-  mongorootuser: "root"
+  mongorootuser: "neolink"
   mongorootauthdb: "admin"
-  mongorootpass: "cc"
+  mongorootpass: "Ne01ink2022!"
 
   # cluster shard
 
