@@ -36,7 +36,7 @@ apps:
 
 image:
   repository: harbor.dev.21vianet.com/cmdb/
-  tag: 2023-2-23_155452
+  tag: 2023-2-23_18318
 #  tag: "latest"
 env:
 #  pullPolicy: IfNotPresent
