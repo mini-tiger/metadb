@@ -10,7 +10,7 @@
  * limitations under the License.
  */
 
-package y3_9_202203171605
+package y3_9_202302171150
 
 import (
 	"context"
@@ -24,24 +24,6 @@ import (
 	"configcenter/src/scene_server/admin_server/upgrader"
 	"configcenter/src/storage/dal"
 )
-
-func addNeedObjects(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err error) {
-	err = addAsstData(ctx, db, conf) // 不添加 不能createData
-	if err != nil {
-		return err
-	}
-	err = addClassifications_defaultGroup(ctx, db, conf) // 添加默认模型分组
-	if err != nil {
-		return err
-	}
-
-	err = addObjDesDataMainLine(ctx, db, conf)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 func addPresetObjects(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err error) {
 	err = addClassifications(ctx, db, conf)
@@ -62,6 +44,7 @@ func addPresetObjects(ctx context.Context, db dal.RDB, conf *upgrader.Config) (e
 		return err
 	}
 
+	//关联
 	err = addAsstData(ctx, db, conf)
 	if err != nil {
 		return err
@@ -71,10 +54,10 @@ func addPresetObjects(ctx context.Context, db dal.RDB, conf *upgrader.Config) (e
 		return err
 	}
 
-	err = addObjectBaseData(ctx, db, conf)
-	if err != nil {
-		return err
-	}
+	//err = addObjectBaseData(ctx, db, conf)
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }
@@ -137,6 +120,7 @@ func addObjAttDescData(ctx context.Context, db dal.RDB, conf *upgrader.Config) e
 	rows := getObjAttDescData(conf.OwnerID)
 	for _, row := range rows {
 		err := upgrader.InsertData(ctx, db, tablename, row)
+		//upgrader.Insert()
 		//_, _, err := upgrader.Upsert(ctx, db, tablename, row, "id", []string{common.BKObjIDField, common.BKPropertyIDField}, []string{})
 		if nil != err {
 			blog.Errorf("add data for  %s table error  %s", tablename, err)
@@ -155,20 +139,6 @@ func addObjAttDescData(ctx context.Context, db dal.RDB, conf *upgrader.Config) e
 	}
 
 	db.Table(tablename).Delete(ctx, selector)
-
-	return nil
-}
-
-func addObjDesDataMainLine(ctx context.Context, db dal.RDB, conf *upgrader.Config) error {
-	tablename := common.BKTableNameObjDes
-	blog.Errorf("add data for  %s table ", tablename)
-	rows := getObjectDesDataMainLine(conf.OwnerID)
-	for _, row := range rows {
-		if _, _, err := upgrader.Upsert(ctx, db, tablename, row, "id", []string{common.BKObjIDField, common.BKClassificationIDField, common.BKOwnerIDField}, []string{"id"}); err != nil {
-			blog.Errorf("add data for  %s table error  %s", tablename, err)
-			return err
-		}
-	}
 
 	return nil
 }
@@ -199,18 +169,6 @@ func addClassifications(ctx context.Context, db dal.RDB, conf *upgrader.Config) 
 	return
 }
 
-func addClassifications_defaultGroup(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err error) {
-	tablename := common.BKTableNameObjClassification
-	blog.Infof("add %s rows", tablename)
-	for _, row := range classificationRowsDefaultGroup {
-		if _, _, err = upgrader.Upsert(ctx, db, tablename, row, "id", []string{common.BKClassificationIDField}, []string{"id"}); err != nil {
-			blog.Errorf("add data for  %s table error  %s", tablename, err)
-			return err
-		}
-	}
-	return
-}
-
 func addPropertyGroupData(ctx context.Context, db dal.RDB, conf *upgrader.Config) error {
 	tablename := common.BKTableNamePropertyGroup
 	blog.Errorf("add data for  %s table ", tablename)
@@ -223,49 +181,25 @@ func addPropertyGroupData(ctx context.Context, db dal.RDB, conf *upgrader.Config
 	}
 	return nil
 }
-
-func getObjectDesDataMainLine(ownerID string) []*metadata.Object {
-
-	dataRows := []*metadata.Object{
-
-		//&metadata.Object{ObjCls: "bk_host_manage", ObjectID: common.BKInnerObjIDHost, ObjectName: "主机", IsPre: true, ObjIcon: "icon-cc-host", Position: `{"bk_host_manage":{"x":-600,"y":-650}}`},
-		//&metadata.Object{ObjCls: "bk_biz_topo", ObjectID: common.BKInnerObjIDModule, ObjectName: "模块", IsPre: true, ObjIcon: "icon-cc-module", Position: ``},
-		//&metadata.Object{ObjCls: "bk_biz_topo", ObjectID: common.BKInnerObjIDSet, ObjectName: "集群", IsPre: true, ObjIcon: "icon-cc-set", Position: ``},
-		&metadata.Object{ObjCls: "bk_organization", ObjectID: common.BKInnerObjIDApp, ObjectName: "业务", IsPre: true, ObjIcon: "icon-cc-business", Position: `{"bk_organization":{"x":-100,"y":-100}}`},
-		//&metadata.Object{ObjCls: "bk_host_manage", ObjectID: common.BKInnerObjIDProc, ObjectName: "进程", IsPre: true, ObjIcon: "icon-cc-process", Position: `{"bk_host_manage":{"x":-450,"y":-650}}`},
-		//&metadata.Object{ObjCls: "bk_host_manage", ObjectID: common.BKInnerObjIDPlat, ObjectName: "云区域", IsPre: true, ObjIcon: "icon-cc-subnet", Position: `{"bk_host_manage":{"x":-600,"y":-500}}`},
-		//&metadata.Object{ObjCls: "bk_network", ObjectID: common.BKInnerObjIDSwitch, ObjectName: "交换机", ObjIcon: "icon-cc-switch2", Position: `{"bk_network":{"x":-200,"y":-50}}`},
-		//&metadata.Object{ObjCls: "bk_network", ObjectID: common.BKInnerObjIDRouter, ObjectName: "路由器", ObjIcon: "icon-cc-router", Position: `{"bk_network":{"x":-350,"y":-50}}`},
-		//&metadata.Object{ObjCls: "bk_network", ObjectID: common.BKInnerObjIDBlance, ObjectName: "负载均衡", ObjIcon: "icon-cc-balance", Position: `{"bk_network":{"x":-500,"y":-50}}`},
-		//&metadata.Object{ObjCls: "bk_network", ObjectID: common.BKInnerObjIDFirewall, ObjectName: "防火墙", ObjIcon: "icon-cc-firewall", Position: `{"bk_network":{"x":-650,"y":-50}}`},
-	}
-	t := metadata.Now()
-	for _, r := range dataRows {
-		r.CreateTime = &t
-		r.LastTime = &t
-		r.IsPaused = false
-		r.Creator = common.CCSystemOperatorUserName
-		r.OwnerID = ownerID
-		r.Description = ""
-		r.Modifier = ""
-	}
-
-	return dataRows
-}
-
 func getObjectDesData(ownerID string) []*metadata.Object {
 
 	dataRows := []*metadata.Object{
-		&metadata.Object{ObjCls: "HVAC", ObjectID: "water_cooled_chiller", ObjectName: "水冷型冷水机组", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false},
-		&metadata.Object{ObjCls: "HVAC", ObjectID: "refrigeration_pump", ObjectName: "冷冻泵", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false},
-		&metadata.Object{ObjCls: "power", ObjectID: "low_voltage_switchgear", ObjectName: "低压开关柜", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false},
-		&metadata.Object{ObjCls: "power", ObjectID: "modular_UPS", ObjectName: "模块化UPS", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false},
-		&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "idc", ObjectName: "数据中心", ObjIcon: "icon-cc-idc", IsPre: false, IsHidden: false},
-		&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "building", ObjectName: "楼栋", ObjIcon: "icon-cc-company", IsPre: false, IsHidden: false},
-		&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "floor", ObjectName: "楼层", ObjIcon: "icon-cc-firewall", IsPre: false, IsHidden: false},
-		&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "room", ObjectName: "机房", ObjIcon: "icon-cc-engine-room", IsPre: false, IsHidden: false},
-		&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "line", ObjectName: "机列", ObjIcon: "icon-cc-engine-room", IsPre: false, IsHidden: false},
-		&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "cabinet", ObjectName: "机柜", ObjIcon: "icon-cc-cabinet", IsPre: false, IsHidden: false},
+		&metadata.Object{IsCache: false, ObjCls: "lmanager", ObjectID: "region", ObjectName: "地域", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false, IsPaused: false},
+		&metadata.Object{IsCache: false, ObjCls: "lmanager", ObjectID: "zone", ObjectName: "可用区", ObjIcon: "icon-cc-triangle", IsPre: false, IsHidden: false, IsPaused: false},
+		&metadata.Object{IsCache: false, ObjCls: "lmanager", ObjectID: "cmdb_host", ObjectName: "主机", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false, IsPaused: false},
+		&metadata.Object{IsCache: false, ObjCls: "lmanager", ObjectID: "cluster", ObjectName: "集群", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false, IsPaused: false},
+		&metadata.Object{IsCache: false, ObjCls: "lmanager", ObjectID: "storageBackend", ObjectName: "存储后端", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false, IsPaused: false},
+		&metadata.Object{IsCache: false, ObjCls: "lmanager", ObjectID: "storageBackendPool", ObjectName: "存储后端池", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false, IsPaused: false},
+		//&metadata.Object{ObjCls: "HVAC", ObjectID: "water_cooled_chiller", ObjectName: "水冷型冷水机组", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false},
+		//&metadata.Object{ObjCls: "HVAC", ObjectID: "refrigeration_pump", ObjectName: "冷冻泵", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false},
+		//&metadata.Object{ObjCls: "power", ObjectID: "low_voltage_switchgear", ObjectName: "低压开关柜", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false},
+		//&metadata.Object{ObjCls: "power", ObjectID: "modular_UPS", ObjectName: "模块化UPS", ObjIcon: "icon-cc-default", IsPre: false, IsHidden: false},
+		//&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "idc", ObjectName: "数据中心", ObjIcon: "icon-cc-idc", IsPre: false, IsHidden: false},
+		//&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "building", ObjectName: "楼栋", ObjIcon: "icon-cc-company", IsPre: false, IsHidden: false},
+		//&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "floor", ObjectName: "楼层", ObjIcon: "icon-cc-firewall", IsPre: false, IsHidden: false},
+		//&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "room", ObjectName: "机房", ObjIcon: "icon-cc-engine-room", IsPre: false, IsHidden: false},
+		//&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "line", ObjectName: "机列", ObjIcon: "icon-cc-engine-room", IsPre: false, IsHidden: false},
+		//&metadata.Object{ObjCls: "spatial_relationship", ObjectID: "cabinet", ObjectName: "机柜", ObjIcon: "icon-cc-cabinet", IsPre: false, IsHidden: false},
 		//&metadata.Object{ObjCls: "bk_host_manage", ObjectID: common.BKInnerObjIDHost, ObjectName: "主机", IsPre: true, ObjIcon: "icon-cc-host", Position: `{"bk_host_manage":{"x":-600,"y":-650}}`},
 		//&metadata.Object{ObjCls: "bk_biz_topo", ObjectID: common.BKInnerObjIDModule, ObjectName: "模块", IsPre: true, ObjIcon: "icon-cc-module", Position: ``},
 		//&metadata.Object{ObjCls: "bk_biz_topo", ObjectID: common.BKInnerObjIDSet, ObjectName: "集群", IsPre: true, ObjIcon: "icon-cc-set", Position: ``},
@@ -312,10 +246,8 @@ type Association struct {
 func getAddAsstData(ownerID string) []Association {
 	dataRows := []Association{
 		//{ID: 1, OwnerID: ownerID, ObjectID: "jigui", AsstObjID: "jifang", ObjAsstId: "jigui_belong_jifang", AsstId: "belong", Mapping: "n:n"},
-		{ID: 1, OwnerID: ownerID, ObjectID: "set", AsstObjID: "biz", ObjAsstId: "set_bk_mainline_biz", AsstId: "bk_mainline", Mapping: "1:1"},
-		{ID: 2, OwnerID: ownerID, ObjectID: "module", AsstObjID: "set", ObjAsstId: "module_bk_mainline_set", AsstId: "bk_mainline", Mapping: "1:1"},
-		{ID: 3, OwnerID: ownerID, ObjectID: "host", AsstObjID: "module", ObjAsstId: "host_bk_mainline_module", AsstId: "bk_mainline", Mapping: "1:1"},
-		{ID: 4, OwnerID: ownerID, ObjectID: "bk_switch", AsstObjID: "host", ObjAsstId: "bk_switch_bk_mainline_host", AsstId: "bk_mainline", Mapping: "1:n"},
+		{ID: 10, OwnerID: ownerID, ObjectID: "zone", AsstObjID: "region", ObjAsstId: "zone_connect_region", AsstId: "connect", Mapping: "n:n"},
+		{ID: 11, OwnerID: ownerID, ObjectID: "cluster", AsstObjID: "zone", ObjAsstId: "cluster_connect_zone", AsstId: "connect", Mapping: "n:n"},
 	}
 	return dataRows
 }
@@ -336,7 +268,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_supplier_account":                "0",
 			"manufacturer":                       "约克",
 			"rated_power":                        4000,
-			"bk_inst_id":                         int64(9),
+			"bk_inst_id":                         9,
 			"create_time":                        ct,
 			"last_time":                          ct,
 		},
@@ -345,7 +277,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_supplier_account": "0",
 			"manufacturer":        "施耐德",
 			"rated_power":         1231,
-			"bk_inst_id":          int64(10),
+			"bk_inst_id":          10,
 			"output_voltage":      235,
 			"bk_obj_id":           "low_voltage_switchgear",
 			"nominal_voltage":     400,
@@ -360,7 +292,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"manufacturer":        "格兰富",
 			"rated_speed":         532,
 			"model":               "SAFsf",
-			"bk_inst_id":          int64(11),
+			"bk_inst_id":          11,
 			"nominal_voltage":     400,
 			"SN":                  "123456",
 			"bk_obj_id":           "refrigeration_pump",
@@ -371,7 +303,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_obj_id":               "building",
 			"floor_high":              6,
 			"seismic_grade":           "8",
-			"bk_inst_id":              int64(12),
+			"bk_inst_id":              12,
 			"area":                    3758.34,
 			"bk_inst_name":            "1栋",
 			"bk_supplier_account":     "0",
@@ -388,7 +320,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"handle_weight":       500,
 			"name":                "1层",
 			"prod_time":           "2021-03-09",
-			"bk_inst_id":          int64(13),
+			"bk_inst_id":          13,
 			"create_time":         ct,
 			"last_time":           ct,
 			"bk_inst_name":        "1层",
@@ -398,7 +330,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_obj_id":           "room",
 			"is_cold_channel":     true,
 			"name":                "001",
-			"bk_inst_id":          int64(14),
+			"bk_inst_id":          14,
 			"bk_inst_name":        "001室",
 			"customer_name":       "",
 			"create_time":         ct,
@@ -409,7 +341,7 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_obj_id":           "room",
 			"is_cold_channel":     true,
 			"name":                "002",
-			"bk_inst_id":          int64(15),
+			"bk_inst_id":          15,
 			"bk_inst_name":        "002室",
 			"customer_name":       "",
 			"create_time":         ct,
@@ -417,18 +349,18 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_supplier_account": "0",
 		},
 	}
-	var n int64 = 1
+	var n int32 = 1
 	for i := 16; i <= 20; i++ {
 		dataRows = append(dataRows, map[string]interface{}{
 			"bk_inst_name":        fmt.Sprintf("%d列", n),
 			"bk_obj_id":           "line",
 			"bk_supplier_account": "0",
 			"manufacturer":        "华为",
-			"bk_inst_id":          int64(i),
+			"bk_inst_id":          i,
 			"create_time":         ct,
 			"last_time":           ct,
 		})
-		atomic.AddInt64(&n, 1)
+		atomic.AddInt32(&n, 1)
 	}
 
 	n = 1
@@ -441,9 +373,9 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 			"bk_supplier_account": "0",
 			"depth":               800,
 			"hight":               2000,
-			"bk_inst_id":          int64(ii),
+			"bk_inst_id":          ii,
 		})
-		atomic.AddInt64(&n, 1)
+		atomic.AddInt32(&n, 1)
 	}
 	//row, err := upgrader.JsonToMap(data)
 	//if err == nil {
@@ -453,28 +385,29 @@ func getAddObjectBaseData(ownerID string) []map[string]interface{} {
 	return dataRows
 }
 func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
-	dataRows := []metadata.ObjectUnique{{
-		ID:        24,
-		ObjID:     "water_cooled_chiller",
-		MustCheck: true,
-		Keys: []metadata.UniqueKey{
-			{
-				Kind: metadata.UniqueKeyKindProperty,
-				ID:   150,
-			},
-		},
-		Ispre:    false,
-		OwnerID:  ownerID,
-		LastTime: metadata.Now(),
-	},
+	dataRows := []metadata.ObjectUnique{
 		{
-			ID:        25,
-			ObjID:     "low_voltage_switchgear",
+			ID:        18,
+			ObjID:     "region",
 			MustCheck: true,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   170,
+					ID:   152,
+				},
+			},
+			Ispre:    false,
+			OwnerID:  ownerID,
+			LastTime: metadata.Now(),
+		},
+		{
+			ID:        25,
+			ObjID:     "region",
+			MustCheck: false,
+			Keys: []metadata.UniqueKey{
+				{
+					Kind: metadata.UniqueKeyKindProperty,
+					ID:   158,
 				},
 			},
 			Ispre:    false,
@@ -483,12 +416,12 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 		},
 		{
 			ID:        26,
-			ObjID:     "building",
-			MustCheck: true,
+			ObjID:     "region",
+			MustCheck: false,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   199,
+					ID:   159,
 				},
 			},
 			Ispre:    false,
@@ -497,12 +430,12 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 		},
 		{
 			ID:        27,
-			ObjID:     "refrigeration_pump",
+			ObjID:     "zone",
 			MustCheck: true,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   203,
+					ID:   190,
 				},
 			},
 			Ispre:    false,
@@ -511,26 +444,12 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 		},
 		{
 			ID:        28,
-			ObjID:     "floor",
-			MustCheck: true,
+			ObjID:     "zone",
+			MustCheck: false,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   211,
-				},
-			},
-			Ispre:    false,
-			OwnerID:  ownerID,
-			LastTime: metadata.Now(),
-		},
-		{
-			ID:        29,
-			ObjID:     "modular_UPS",
-			MustCheck: true,
-			Keys: []metadata.UniqueKey{
-				{
-					Kind: metadata.UniqueKeyKindProperty,
-					ID:   215,
+					ID:   191,
 				},
 			},
 			Ispre:    false,
@@ -539,12 +458,12 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 		},
 		{
 			ID:        30,
-			ObjID:     "room",
+			ObjID:     "cmdb_host",
 			MustCheck: true,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   220,
+					ID:   300,
 				},
 			},
 			Ispre:    false,
@@ -553,12 +472,12 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 		},
 		{
 			ID:        31,
-			ObjID:     "line",
+			ObjID:     "cluster",
 			MustCheck: true,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   226,
+					ID:   210,
 				},
 			},
 			Ispre:    false,
@@ -567,12 +486,12 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 		},
 		{
 			ID:        32,
-			ObjID:     "cabinet",
+			ObjID:     "storageBackend",
 			MustCheck: true,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   227,
+					ID:   270,
 				},
 			},
 			Ispre:    false,
@@ -581,32 +500,18 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 		},
 		{
 			ID:        33,
-			ObjID:     "idc",
+			ObjID:     "storageBackendPool",
 			MustCheck: true,
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   187,
+					ID:   250,
 				},
 			},
 			Ispre:    false,
 			OwnerID:  ownerID,
 			LastTime: metadata.Now(),
 		},
-		//{
-		//	ID:        34,
-		//	ObjID:     "ww",
-		//	MustCheck: true,
-		//	Keys: []metadata.UniqueKey{
-		//		{
-		//			Kind: metadata.UniqueKeyKindProperty,
-		//			ID:   234,
-		//		},
-		//	},
-		//	Ispre:    false,
-		//	OwnerID:  ownerID,
-		//	LastTime: metadata.Now(),
-		//},
 	}
 	return dataRows
 }
@@ -640,10 +545,10 @@ func getObjAttDescData(ownerID string) []*Attribute {
 		//}
 		// xxx edit
 		r.IsEditable = true
-
 		r.IsReadOnly = false
 		r.CreateTime = t
-		r.Creator = common.CCSystemOperatorUserName
+		//r.Creator = common.CCSystemOperatorUserName
+		r.Creator = common.CCSystemUserName
 		r.LastTime = r.CreateTime
 		r.Description = ""
 		r.IsSystem = false
@@ -669,25 +574,37 @@ func getPropertyGroupData(ownerID string) []*metadata.Group {
 
 	dataRows := []*metadata.Group{
 		//netdata
-		&metadata.Group{BizID: 0, ObjectID: "water_cooled_chiller", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 18},
-		&metadata.Group{BizID: 0, ObjectID: "low_voltage_switchgear", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 36},
-		&metadata.Group{BizID: 0, ObjectID: "water_cooled_chiller", GroupID: "1b4717fe-7e71-4fd9-a725-70d454b80803", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 37},
+		&metadata.Group{BizID: 0, ObjectID: "region", GroupID: "default", GroupName: "Default", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 20},
 
-		&metadata.Group{BizID: 0, ObjectID: "low_voltage_switchgear", GroupID: "1b99731e-bbb3-4258-b7fc-2cc3be29185b", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 38},
+		&metadata.Group{BizID: 0, ObjectID: "zone", GroupID: "default", GroupName: "Default", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 21},
 
-		&metadata.Group{BizID: 0, ObjectID: "idc", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 39},
-		&metadata.Group{BizID: 0, ObjectID: "building", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 40},
+		&metadata.Group{BizID: 0, ObjectID: "storageBackend", GroupID: "default", GroupName: "Default", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 22},
 
-		&metadata.Group{BizID: 0, ObjectID: "refrigeration_pump", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 41},
-		&metadata.Group{BizID: 0, ObjectID: "refrigeration_pump", GroupID: "18746577-f5f5-4b8f-972f-82d24a3a5139", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 42},
+		&metadata.Group{BizID: 0, ObjectID: "storageBackendPool", GroupID: "default", GroupName: "Default", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 23},
+		&metadata.Group{BizID: 0, ObjectID: "cmdb_host", GroupID: "default", GroupName: "Default", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 24},
+		&metadata.Group{BizID: 0, ObjectID: "cluster", GroupID: "default", GroupName: "Default", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 25},
+		//&metadata.Group{BizID: 0, ObjectID: "water_cooled_chiller", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 18},
+		//&metadata.Group{BizID: 0, ObjectID: "low_voltage_switchgear", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 36},
+		//&metadata.Group{BizID: 0, ObjectID: "water_cooled_chiller", GroupID: "1b4717fe-7e71-4fd9-a725-70d454b80803", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 37},
+		//
+		//&metadata.Group{BizID: 0, ObjectID: "low_voltage_switchgear", GroupID: "1b99731e-bbb3-4258-b7fc-2cc3be29185b", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 38},
+		//
+		//&metadata.Group{BizID: 0, ObjectID: "idc", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 39},
+		//&metadata.Group{BizID: 0, ObjectID: "building", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 40},
+		//
+		//&metadata.Group{BizID: 0, ObjectID: "refrigeration_pump", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 41},
+		//&metadata.Group{BizID: 0, ObjectID: "refrigeration_pump", GroupID: "18746577-f5f5-4b8f-972f-82d24a3a5139", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 42},
+		//
+		//&metadata.Group{BizID: 0, ObjectID: "floor", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 43},
+		//&metadata.Group{BizID: 0, ObjectID: "modular_UPS", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 44},
+		//&metadata.Group{BizID: 0, ObjectID: "room", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 45},
+		//
+		//&metadata.Group{BizID: 0, ObjectID: "modular_UPS", GroupID: "fc2a4990-5750-4cbe-b402-081864185a7c", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 46},
+		//&metadata.Group{BizID: 0, ObjectID: "line", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 47},
+		//&metadata.Group{BizID: 0, ObjectID: "cabinet", GroupID: "default", GroupName: "基础信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 48},
+		//
+		//
 
-		&metadata.Group{BizID: 0, ObjectID: "floor", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 43},
-		&metadata.Group{BizID: 0, ObjectID: "modular_UPS", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 44},
-		&metadata.Group{BizID: 0, ObjectID: "room", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 45},
-
-		&metadata.Group{BizID: 0, ObjectID: "modular_UPS", GroupID: "fc2a4990-5750-4cbe-b402-081864185a7c", GroupName: "运维信息", GroupIndex: -1, OwnerID: ownerID, IsDefault: false, IsPre: false, IsCollapse: false, ID: 46},
-		&metadata.Group{BizID: 0, ObjectID: "line", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 47},
-		&metadata.Group{BizID: 0, ObjectID: "cabinet", GroupID: "default", GroupName: "基础信息", GroupIndex: 1, OwnerID: ownerID, IsDefault: true, IsPre: false, IsCollapse: false, ID: 48},
 		//app
 		//&metadata.Group{ObjectID: common.BKInnerObjIDApp, GroupID: mCommon.BaseInfo, GroupName: mCommon.BaseInfoName, GroupIndex: 1, OwnerID: ownerID, IsDefault: true},
 		//&metadata.Group{ObjectID: common.BKInnerObjIDApp, GroupID: mCommon.AppRole, GroupName: mCommon.AppRoleName, GroupIndex: 2, OwnerID: ownerID, IsDefault: true},
@@ -736,17 +653,8 @@ var classificationRows = []*metadata.Classification{
 	//&metadata.Classification{ClassificationID: "bk_biz_topo", ClassificationName: "业务拓扑", ClassificationType: "inner", ClassificationIcon: "icon-cc-business"},
 	//&metadata.Classification{ClassificationID: "bk_organization", ClassificationName: "组织架构", ClassificationType: "inner", ClassificationIcon: "icon-cc-organization"},
 	//&metadata.Classification{ClassificationID: "bk_network", ClassificationName: "网络", ClassificationType: "inner", ClassificationIcon: "icon-cc-network-equipment"},
-	&metadata.Classification{ClassificationID: "HVAC", ClassificationName: "暖通", ClassificationType: "inner", ClassificationIcon: "icon-cc-business"},
-	&metadata.Classification{ClassificationID: "power", ClassificationName: "电力", ClassificationType: "inner", ClassificationIcon: "icon-cc-business"},
-	&metadata.Classification{ClassificationID: "spatial_relationship", ClassificationName: "空间关系", ClassificationType: "inner", ClassificationIcon: "icon-cc-network-equipment"},
-}
-
-var classificationRowsDefaultGroup = []*metadata.Classification{
-	&metadata.Classification{ClassificationID: "metadb_default_groups", ClassificationName: "默认分组", ClassificationType: "inner", ClassificationIcon: "icon-cc-host"},
-	//&metadata.Classification{ClassificationID: "bk_biz_topo", ClassificationName: "业务拓扑", ClassificationType: "inner", ClassificationIcon: "icon-cc-business"},
-	//&metadata.Classification{ClassificationID: "bk_organization", ClassificationName: "组织架构", ClassificationType: "inner", ClassificationIcon: "icon-cc-organization"},
-	//&metadata.Classification{ClassificationID: "bk_network", ClassificationName: "网络", ClassificationType: "inner", ClassificationIcon: "icon-cc-network-equipment"},
 	//&metadata.Classification{ClassificationID: "HVAC", ClassificationName: "暖通", ClassificationType: "inner", ClassificationIcon: "icon-cc-business"},
 	//&metadata.Classification{ClassificationID: "power", ClassificationName: "电力", ClassificationType: "inner", ClassificationIcon: "icon-cc-business"},
 	//&metadata.Classification{ClassificationID: "spatial_relationship", ClassificationName: "空间关系", ClassificationType: "inner", ClassificationIcon: "icon-cc-network-equipment"},
+	&metadata.Classification{ClassificationID: "lmanager", ClassificationName: "lmanager", ClassificationType: "inner", ClassificationIcon: "icon-cc-business"},
 }

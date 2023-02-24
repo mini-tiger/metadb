@@ -10,7 +10,7 @@
  * limitations under the License.
  */
 
-package y3_9_202203171605
+package y3_9_202302171150
 
 import (
 	"configcenter/src/scene_server/admin_server/upgrader"
@@ -20,45 +20,27 @@ import (
 
 func init() {
 	// xxx 必须是 y3.9.202112071431 格式
-	upgrader.RegistUpgrader("y3.9.202203171605", upgrade)
+	upgrader.RegistUpgrader("y3.9.202302171150", upgrade)
 }
 
 func upgrade(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err error) {
 
-	//2023-1-16 清空 所有 bk数据
-	err = delObjects(ctx, db, conf)
-	if err != nil {
-		return err
-	}
-	err = dropObjects(ctx, db, conf)
-	if err != nil {
-		return err
-	}
-	err = rebuildAuditLog(ctx, db, conf) // replace y3.8.202001172032
-	if err != nil {
-		return err
-	}
-	err = createTable(ctx, db, conf)
-	if err != nil {
-		return err
-	}
-	err = addNeedObjects(ctx, db, conf) //
-	if err != nil {
-		return err
-	}
-
-	//err = UpdateSequence(ctx, db, conf)
+	// 21vianet 内部模型  表不需要创建
+	//err = dropObjects(ctx, db, conf)
 	//if err != nil {
 	//	return err
 	//}
 
-	// 2023-1-16 保留cmdb object
-	//err = addPresetObjects(ctx, db, conf)
+	err = addPresetObjects(ctx, db, conf)
+	if err != nil {
+		return err
+	}
+
+	//err = updateTableIndex(ctx, db, conf)
 	//if err != nil {
 	//	return err
 	//}
-	//
-	//// 更新 序列号表
+	// 更新 序列号表
 	//err = UpdateSequence(ctx, db, conf)
 	//if err != nil {
 	//	return err
