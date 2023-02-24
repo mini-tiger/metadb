@@ -104,7 +104,7 @@ spec:
         - name: init-mongo
           env:
             {{- include "mytemplate" . | indent 12 }}
-          image: harbor.dev.21vianet.com/cmdb/mongo:4.4.13-debian-10-r52
+          image: harbor.dev.21vianet.com/library/mongo:4.4.13-debian-10-r52
             {{- if eq .name  "adminserver" }}
               {{- if eq $mongoCluster "shard" }}
           command: [ 'sh', '-c', 'env 

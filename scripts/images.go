@@ -20,6 +20,7 @@ import (
 var (
 	tpl                                                                                   string
 	tplOnly                                                                               bool
+	newImageTagFile                                                                       string
 	currentFileName, rootDir, dockerDir, webCompressionPath, tmpDir, binaryDir, helm_path string // images.go 路径
 	helm_dirname                                                                          = "cmdb-helm-b28test"
 	helm_default_ns                                                                       = "cmdbv4"
@@ -88,10 +89,7 @@ func init() {
 	if !IsDir(tmpDir) {
 		os.MkdirAll(tmpDir, os.ModePerm)
 	}
-	err := RunCommand("docker pull harbor.dev.21vianet.com/taojun/python2.7-debug-tz:latest")
-	if err != nil {
-		log.Fatalln(err)
-	}
+	newImageTagFile = path.Join(helm_path, "NewImageTag")
 
 }
 
@@ -136,15 +134,20 @@ func RunCommandStd(command string) (bytes.Buffer, bytes.Buffer) {
 func main() {
 	flag.Parse()
 	fmt.Printf("!!!!!!!!!!!   当前 k8s namespace: %s ,tplflag: %s , tplOnly: %v \n ", getNSEnv(), tpl, tplOnly)
-	time.Sleep(1 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 	if tplOnly {
 		//fmt.Println("helm tpl flag:", tpl)
+		version = readFile(newImageTagFile)
 		helmTplCreate(tpl)
 		os.Exit(0)
 	}
-	//fmt.Println(getNSEnv())
 
 	var err error
+	err = RunCommand("docker pull harbor.dev.21vianet.com/taojun/python2.7-debug-tz:latest")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	listDir, _ := ioutil.ReadDir(binaryDir)
 	var srcDir, destDir string
 
@@ -195,7 +198,8 @@ func main() {
 		}
 	}
 
-	// xxx Deploy k8s dev
+	// xxx write image_version to file
+	writeFile(newImageTagFile, version)
 	//log.Println(helm_uninstall_cmd)
 
 	//std, stderr := RunCommandStd(helm_uninstall_cmd)
@@ -372,6 +376,42 @@ func (t *TplVariables) generateDockerFile() error {
 
 	}
 	return createFile(path.Join(tmpDir, "Dockerfile"), path.Join(dockerDir, "Dockerfile.tpl"), t)
+}
+
+func readFile(filename string) string {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		//fmt.Printf("文件打开失败=%v\n", err)
+		//return
+		panic(err)
+	}
+	return string(data)
+}
+
+func writeFile(filename, content string) {
+	//创建一个新文件，写入内容 5 句 “http://c.biancheng.net/golang/”
+	//filePath := "e:/code/golang.txt"
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		//fmt.Println("文件打开失败", err)
+		panic(err)
+	}
+	//及时关闭file句柄
+	defer file.Close()
+	//写入文件时，使用带缓存的 *Writer
+	//write := bufio.NewWriter(file)
+	_, err = file.Write([]byte(content))
+	if err != nil {
+		panic(err)
+	}
+	//for i := 0; i < 5; i++ {
+	//	write.WriteString("http://c.biancheng.net/golang/ \n")
+	//}
+	//Flush将缓存的文件真正写入到文件中
+	//err = write.Flush()
+	//if err != nil {
+	//	panic(err)
+	//}
 }
 
 func createFile(file, tpl string, p interface{}) error {

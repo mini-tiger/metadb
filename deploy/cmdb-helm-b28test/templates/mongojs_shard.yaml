@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+data:
+  createShard.js: |
+    use cmdb;
+    print("begin shard!!")
+    sh.enableSharding("cmdb");
+    db.getCollectionNames().forEach(function(collectionName) {
+        const collection = db.getCollection(collectionName);
+        const shardv = collection.getShardVersion() //是否分片
+        if (shardv.ok == 1){
+                print(collection,"exist shard ,skip create shard")
+                return
+        }
+
+        // 查询该集合下的所有索引
+        const indexes = collection.getIndexes();
+        var indexUnique = false
+        for (var i=0;i<indexes.length;i++){
+            var index=indexes[i]
+                if (index.unique){
+                        indexUnique=true
+                        break
+                }
+        }
+        var ret
+        if (indexUnique){
+                ret=sh.shardCollection("cmdb." + collectionName, index.key);
+         }else{
+                // 执行创建索引和分片的代码
+                db[collectionName].createIndex({ "_id": "hashed" });
+                ret=sh.shardCollection("cmdb." + collectionName, { "_id": "hashed" });
+                print(collection,"     create shard")
+
+         }
+
+         if (ret.ok==1){
+                print(collection,index.name,"      create shard")
+          }else{
+                print(collection,index.name,ret.errmsg)
+          }
+        }
+    );
+kind: ConfigMap
+metadata:
+  name: mongocreateshardjs

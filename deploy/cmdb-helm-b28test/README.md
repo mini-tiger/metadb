@@ -1,1 +1,1 @@
-go run images.go --tplonly --tpl dev-neolink
+go run images.go --tplonly=true --tpl=b28-test

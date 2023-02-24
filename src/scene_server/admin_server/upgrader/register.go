@@ -13,20 +13,18 @@
 package upgrader
 
 import (
-	"context"
-	"fmt"
-	"regexp"
-	"sort"
-	"strings"
-	"sync"
-	"time"
-
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/util"
 	ccversion "configcenter/src/common/version"
 	"configcenter/src/storage/dal"
 	"configcenter/src/storage/dal/redis"
+	"context"
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
+	"sync"
 )
 
 // Config config for upgrader
@@ -147,23 +145,23 @@ func ValidateMigrationVersionFormat(version string) error {
 
 	// since v3.6.x migration version must
 	if strings.HasPrefix(version, VersionNgPrefix) {
-		ngVersion, err := ParseNgVersion(version)
-		if err != nil {
-			return err
-		}
+		//ngVersion, err := ParseNgVersion(version)
+		//if err != nil {
+		//	return err
+		//}
 
 		// third field in version split by `.` shouldn't greater than tomorrow
-		timeFormat := "200601021504"
-		maxMigrationTime := time.Now().AddDate(0, 0, 1)
-		maxVersionCurrently := maxMigrationTime.Format(timeFormat)
-		if ngVersion.Patch >= maxVersionCurrently {
-			err := fmt.Errorf(`
-	invalid time field of migration version: %s,
-    please use current time as part of migration version:
-      ex: y3.6.%s
-	`, version, time.Now().Format(timeFormat))
-			return err
-		}
+		//timeFormat := "200601021504"
+		//maxMigrationTime := time.Now().AddDate(0, 0, 1)
+		//maxVersionCurrently := maxMigrationTime.Format(timeFormat)
+		//	if ngVersion.Patch >= maxVersionCurrently {
+		//		err := fmt.Errorf(`
+		//invalid time field of migration version: %s,
+		//please use current time as part of migration version:
+		//  ex: y3.6.%s
+		//`, version, time.Now().Format(timeFormat))
+		//		return err
+		//	}
 	}
 	return nil
 }

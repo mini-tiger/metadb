@@ -1,0 +1,60 @@
+{{ $mongoShardNode := .Values.env.mongo_shard_node}}
+---
+apiVersion: v1
+data:
+  loopreq.sh: "#!/bin/bash\n#设置变量，url为你需要检测的目标网站的网址（IP或域名）\nurl=$1\necho $url\n#定义函数check_http：\n#使用curl命令检查http服务器的状态\n#-m设置curl不管访问成功或失败，最大消耗的时间为5秒，5秒连接服务为相应则视为无法连接\n#-s设置静>默连接，不显示连接时的连接速度、时间消耗等信息\n#-o将curl下载的页面内容导出到/dev/null(默认会在屏幕显示页面内容)\n#-w设置curl命令需要显示的内容%{http_code}，指定curl返回服务器的状态码\ncheck_http(){\nstatus_code=$(curl
+    \  -m 5 -s -o /dev/null -w %{http_code} -H 'HTTP_BLUEKING_SUPPLIER_ID:0' -H 'BK_USER:migrate'
+     $url)\n}\n \nwhile :\ndo\n       check_http\n
+    \      echo $status_code\n       if [[ $status_code -ne 200 ]];then\n              sleep
+    5\n       else\n              echo \"$url success 200\"\n              break\n
+    \      fi\ndone\n"
+kind: ConfigMap
+metadata:
+#  namespace: cmdbv4
+  name: validshell
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-mongodb-sharded
+#  namespace: cmdbv4
+spec:
+  #  backoffLimit: 5
+  #  activeDeadlineSeconds: 100
+  template:
+    spec:
+      containers:
+        - name: mongodb-shard-init
+          image: harbor.dev.21vianet.com/library/mongo:4.4.13-debian-10-r52
+          env:
+            {{- include "mytemplate" . | indent 12 }}
+          command: [ 'sh', '-c', 'env && sleep 1
+               && until mongo "mongodb://${mongoRootUser}:${mongoRootPass}@{{ $mongoShardNode }}/?connectTimeoutMS=10000&authSource=${mongoRootAuthDB}&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done
+               && (mongo  mongodb://{{ $mongoShardNode }}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createShard.js|| exit 0)'
+          ]
+#          command: ["bash",  "-c", "sleep 999d"]
+          volumeMounts:
+            - mountPath: /js/createShard.js
+              name: mongocreateshardjs
+              subPath: createShard.js
+      restartPolicy: Never
+      initContainers:
+        - name: curl-reqest
+          env:
+            {{- include "mytemplate" . | indent 12 }}
+          image: harbor.dev.21vianet.com/taojun/mycurl:centos
+          command: ["bash","-c","/data/loopreq.sh http://adminserver-svc:60004/migrate/v3/searchcollectionvalid"]
+          #command: ["sh","-c","sleep 999d"]
+          volumeMounts:
+            - mountPath: /data/loopreq.sh
+              name: validshell
+              subPath: loopreq.sh
+      volumes:
+        - configMap:
+            defaultMode: 0777
+            name: validshell
+          name: validshell
+        - configMap:
+            defaultMode: 0777
+            name: mongocreateshardjs
+          name: mongocreateshardjs

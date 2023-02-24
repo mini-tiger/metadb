@@ -49,15 +49,15 @@ env:
   redisDBnum: "7"
 
   #mongo public params
-  mongorootuser: "root"
+  mongorootuser: "neolink"
   mongorootauthdb: "admin"
-  mongorootpass: "cc"
+  mongorootpass: "Ne01ink2022!"
 
   # cluster shard
 
   mongo_shard_node: "172.60.3.144:27000,172.60.3.145:27000,172.60.3.146:27000"   # b28-test
   #mongo_shard_node: "172.22.50.25:32085,172.22.50.25:32086,172.22.50.25:32087"   # 50.25 cmdb-neolink
-  #mongo_shard_node: "172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084"
+  #mongo_shard_node: "172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084"   #cmdbv4
   mongo_cluster: "shard"
   # 副本集
   mongoip: "mongo-mongodb-headless"
