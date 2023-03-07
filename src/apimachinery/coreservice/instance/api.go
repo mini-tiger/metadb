@@ -107,6 +107,20 @@ func (inst *instance) ReadInstance(ctx context.Context, h http.Header, objID str
 	return
 }
 
+func (inst *instance) ReadInstanceAsst(ctx context.Context, h http.Header, objID string, input *metadata.QueryAsstCondition) (resp *metadata.MapArrayResponse, err error) {
+	resp = new(metadata.MapArrayResponse)
+	subPath := "/read/model/%s/instances/asst"
+
+	err = inst.client.Post().
+		WithContext(ctx).
+		Body(input).
+		SubResourcef(subPath, objID).
+		WithHeaders(h).
+		Do().
+		Into(resp)
+	return
+}
+
 func (inst *instance) ReadInstanceCache(ctx context.Context, h http.Header, objID string,
 	input mapstr.MapStr) (resp *metadata.QueryConditionResult, header http.Header, err error) {
 	resp = new(metadata.QueryConditionResult)

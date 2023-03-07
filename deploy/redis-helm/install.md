@@ -1,0 +1,1 @@
+helm install -n cmdb-neolink redis -f values.yaml .

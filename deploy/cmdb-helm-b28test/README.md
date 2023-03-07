@@ -1,1 +1,1 @@
-go run images.go --tplonly=true --tpl=b28-test
+go run images.go --tplonly=false --tpl=dev-cmdbv4 --helmdeploy=false

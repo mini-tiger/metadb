@@ -72,22 +72,22 @@ func (s *coreService) SearchModelInstancesCache(ctx *rest.Contexts) {
 
 	//// 4.  save redis
 	//// 原则是 只 保存一条到cache
-	sc := &cache.SendCache{
-		Cond:     inputData,
-		Core:     s.core,
-		ObjectID: objectID,
-	}
+	//sc := &cache.SendCache{
+	//	Cond:     inputData,
+	//	Core:     s.core,
+	//	ObjectID: objectID,
+	//}
+	//
+	//sc.CopyKit(ctx.Kit)
+	//sc.IsCache()
+	//// 不判断 cache,mongo 查找 数据
+	//err, dataResult := sc.SearchDBAndSaveCache()
+	//if err != nil {
+	//	ctx.RespEntityWithError(fmt.Sprintf("obj: %s unique:%s  get mongo err:%v ", objectID, unique, err), err)
+	//	return
+	//}
 
-	sc.CopyKit(ctx.Kit)
-	sc.IsCache()
-	// 不判断 cache,mongo 查找 数据
-	err, dataResult := sc.SearchDBAndSaveCache()
-	if err != nil {
-		ctx.RespEntityWithError(fmt.Sprintf("obj: %s unique:%s  get mongo err:%v ", objectID, unique, err), err)
-		return
-	}
-
-	ctx.RespEntityHeader(dataResult, map[string]string{"iscache": "0"})
+	//ctx.RespEntityHeader(dataResult, map[string]string{"iscache": "0"})
 
 }
 
@@ -132,36 +132,36 @@ func (s *coreService) UpdateModelManyInstancesCache(ctx *rest.Contexts) {
 		}
 	}
 
-	var successSaveCache []interface{}
+	//var successSaveCache []interface{}
 	//var iscache bool
 	//var ui interface{}
 	//var unique string
 	//ui, iscache = cache.CacheObjMap.Get(objectID)
 	//unique = ui.(string)
-	sc := &cache.SendCache{
-		//Cond: inputCopy,
-		Core:     s.core,
-		ObjectID: objectID,
-	}
-	sc.IsCache()
-	if sc.Iscache {
-		successSaveCache = make([]interface{}, 0, len(successSaveDB))
-		for _, inputdata := range successSaveDBMap {
-			inputCopy := inputdata.Clone()
-			sc.Cond = inputCopy
-
-			sc.CopyKit(ctx.Kit)
-
-			err, _ := sc.SearchDBAndSaveCache()
-			//fmt.Println(dataResult)
-			//fmt.Println(err)
-			if err != nil {
-				blog.Errorf("Update Instance Cache save Cache Cond:[%v] err:%v", inputdata, err)
-				continue
-			}
-			successSaveCache = append(successSaveCache, inputdata[UniqueKey])
-		}
-	}
+	//sc := &cache.SendCache{
+	//	//Cond: inputCopy,
+	//	Core:     s.core,
+	//	ObjectID: objectID,
+	//}
+	//sc.IsCache()
+	//if sc.Iscache {
+	//	successSaveCache = make([]interface{}, 0, len(successSaveDB))
+	//	for _, inputdata := range successSaveDBMap {
+	//		inputCopy := inputdata.Clone()
+	//		sc.Cond = inputCopy
+	//
+	//		sc.CopyKit(ctx.Kit)
+	//
+	//		err, _ := sc.SearchDBAndSaveCache()
+	//		//fmt.Println(dataResult)
+	//		//fmt.Println(err)
+	//		if err != nil {
+	//			blog.Errorf("Update Instance Cache save Cache Cond:[%v] err:%v", inputdata, err)
+	//			continue
+	//		}
+	//		successSaveCache = append(successSaveCache, inputdata[UniqueKey])
+	//	}
+	//}
 
 	//fmt.Println(result)
 	ctx.RespEntityWithError(map[string]interface{}{"successDB": successSaveDB, "errDB": errSaveDB}, nil)

@@ -136,13 +136,13 @@ import (
 	_ "configcenter/src/scene_server/admin_server/upgrader/y3.9.202112071130"
 	_ "configcenter/src/scene_server/admin_server/upgrader/y3.9.202112071431"
 
-	// metadb data
+	// metadb  basedata
 	_ "configcenter/src/scene_server/admin_server/upgrader/y3.9.202203171605"
 	// 21vianet data
 	//_ "configcenter/src/scene_server/admin_server/upgrader/y3.9.202206200944"
 
 	// lmanager
-	_ "configcenter/src/scene_server/admin_server/upgrader/y3.9.202302171150"
+	//_ "configcenter/src/scene_server/admin_server/upgrader/y3.9.202302171150"
 
 	//updateSequence
 	_ "configcenter/src/scene_server/admin_server/upgrader/y3.9.209912302358"

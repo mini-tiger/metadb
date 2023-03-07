@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
@@ -98,6 +99,23 @@ func UpdateSequence(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err
 			blog.Infof("collction:%s seqid:%d\n", tableName, sid)
 		}
 
+	}
+	return nil
+}
+
+func UpdateFieldTypeLong(ctx context.Context, db dal.RDB, conf *upgrader.Config) (err error) {
+	for _, tableNameMap := range alltables {
+
+		for tableName, idField := range tableNameMap {
+			//err = db.Table(tableName).Update(ctx, operation.M{},
+			//	types.ModeUpdate{Op: "set", Doc: operation.M{idField: operation.M{"$toLong": fmt.Sprintf("$%s", idField)}}})
+			_, err = db.Client().Database("cmdb").Collection(tableName).UpdateMany(ctx, operation.M{},
+				primitive.A{operation.M{"$set": operation.M{idField: operation.M{"$toLong": fmt.Sprintf("$%s", idField)}}}})
+
+			if err != nil {
+				continue
+			}
+		}
 	}
 	return nil
 }

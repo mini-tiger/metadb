@@ -16,6 +16,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"reflect"
 	"strconv"
 	"strings"
@@ -54,6 +56,8 @@ type MongoConf struct {
 	URI            string
 	RsName         string
 	SocketTimeout  int
+	Cluster        string
+	ShardUri       string
 }
 
 // NewMgo returns new RDB
@@ -70,19 +74,35 @@ func NewMgo(config MongoConf, timeout time.Duration) (*Mongo, error) {
 	appName := common.GetIdentification()
 	// do not change this, our transaction plan need it to false.
 	// it's related with the transaction number(eg txnNumber) in a transaction session.
-	disableWriteRetry := false
+	WriteRetry := false
 	conOpt := options.ClientOptions{
-		MaxPoolSize:     &config.MaxOpenConns,
-		MinPoolSize:     &config.MaxIdleConns,
-		ConnectTimeout:  &timeout,
-		SocketTimeout:   &socketTimeout,
-		ReplicaSet:      &config.RsName,
-		RetryWrites:     &disableWriteRetry,
+		MaxPoolSize:    &config.MaxOpenConns,
+		MinPoolSize:    &config.MaxIdleConns,
+		ConnectTimeout: &timeout,
+		SocketTimeout:  &socketTimeout,
+		//ReplicaSet:      &config.RsName,
+		RetryWrites:     &WriteRetry,
 		MaxConnIdleTime: &maxConnIdleTime,
 		AppName:         &appName,
 	}
+	var uri string
+	if config.Cluster != "shard" {
+		conOpt.ReplicaSet = &config.RsName
+		uri = config.URI
 
-	client, err := mongo.NewClient(options.Client().ApplyURI(config.URI), &conOpt)
+	} else {
+		var direct = true
+		conOpt.Direct = &direct
+		uri = config.ShardUri
+		//请求确认写操作传播到大多数mongod实例
+		wc := writeconcern.New(writeconcern.WMajority())
+		wc = wc.WithOptions(writeconcern.J(true))
+		wc = wc.WithOptions(writeconcern.WTimeout(15 * time.Second))
+		//读关注
+		conOpt.SetReadConcern(readconcern.Majority()) //指定查询应返回实例的最新数据确认为，已写入副本集中的大多数成员
+		conOpt.SetWriteConcern(wc)
+	}
+	client, err := mongo.NewClient(options.Client().ApplyURI(uri), &conOpt)
 	if nil != err {
 		return nil, err
 	}
@@ -634,6 +654,7 @@ func (c *Collection) DeleteSkipArchive(ctx context.Context, filter types.Filter)
 
 func (c *Collection) tryArchiveDeletedDoc(ctx context.Context, filter types.Filter) error {
 	switch c.collName {
+	case common.BKTableNameInstAsst:
 	case common.BKTableNameModuleHostConfig:
 	case common.BKTableNameBaseHost:
 	case common.BKTableNameBaseApp:

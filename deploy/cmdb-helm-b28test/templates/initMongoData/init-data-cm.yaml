@@ -1,0 +1,17 @@
+{{ $currentScope := .}}
+{{ range $path, $_ :=  .Files.Glob  "init-mongodb-data/**.json" }}
+{{- with $currentScope}}
+{{- $filename := lower (base  $path | trimSuffix ".json" | trimPrefix "cc_") -}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: init-data-cm-{{ $filename }}
+
+binaryData:
+  {{ base $path }}: {{ .Files.Get $path | b64enc }}
+#    {{ base $path }}: {{ $path }}
+immutable: true
+---
+{{- end }}
+{{ end }}

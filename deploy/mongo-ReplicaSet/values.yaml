@@ -98,7 +98,7 @@ diagnosticMode:
 ##
 image:
   registry: harbor.dev.21vianet.com
-  repository: cmdb/mongo
+  repository: taojun/mongo
   tag: 4.4.11-debian-10-r21
   ## Specify a imagePullPolicy
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images

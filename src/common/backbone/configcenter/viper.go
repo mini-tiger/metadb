@@ -366,6 +366,8 @@ func Mongo(prefix string) (mongo.Config, error) {
 		Database:  parser.getString(prefix + ".database"),
 		Mechanism: parser.getString(prefix + ".mechanism"),
 		RsName:    parser.getString(prefix + ".rsName"),
+		Cluster:   parser.getString(prefix + ".cluster"),
+		ShardUri:  parser.getString(prefix + ".sharduri"),
 	}
 
 	if c.RsName == "" {

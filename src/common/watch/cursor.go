@@ -63,6 +63,7 @@ const (
 	ObjectBase              CursorType = "object_instance"
 	Process                 CursorType = "process"
 	ProcessInstanceRelation CursorType = "process_instance_relation"
+	//InstAsst                CursorType = "instAsst"
 )
 
 func (ct CursorType) ToInt() int {
@@ -87,6 +88,8 @@ func (ct CursorType) ToInt() int {
 		return 9
 	case ProcessInstanceRelation:
 		return 10
+	//case InstAsst:
+	//	return 11
 	default:
 		return -1
 	}
@@ -114,6 +117,8 @@ func (ct *CursorType) ParseInt(typ int) {
 		*ct = Process
 	case 10:
 		*ct = ProcessInstanceRelation
+	//case 11:
+	//	*ct = InstAsst
 	default:
 		*ct = UnknownType
 	}
@@ -127,6 +132,7 @@ func ListCursorTypes() []CursorType {
 // ListEventCallbackCursorTypes returns all support CursorTypes for event callback.
 func ListEventCallbackCursorTypes() []CursorType {
 	return []CursorType{Host, ModuleHostRelation, Biz, Set, Module, ObjectBase, Process, ProcessInstanceRelation}
+	//return []CursorType{InstAsst}
 }
 
 // Cursor is a self-defined token which is corresponding to the mongodb's resume token.
@@ -281,6 +287,8 @@ func GetEventCursor(coll string, e *types.Event) (string, error) {
 		curType = Process
 	case common.BKTableNameProcessInstanceRelation:
 		curType = ProcessInstanceRelation
+	//case common.BKTableNameInstAsst:
+	//	curType = InstAsst
 	default:
 		blog.Errorf("unsupported cursor type collection: %s, oid: %s", e.Oid)
 		return "", fmt.Errorf("unsupported cursor type collection: %s", coll)

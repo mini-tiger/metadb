@@ -1,0 +1,3 @@
+{"_id":{"$oid":"63f8576d40039dc164bf3b73"},"bk_obj_asst_id":"zone_connect_region","bk_asst_id":"connect","mapping":"n:n","id":10,"bk_obj_id":"zone","bk_supplier_account":"0","bk_asst_obj_id":"region","bk_asst_name":""}
+{"_id":{"$oid":"63f8576d40039dc164bf3b74"},"bk_asst_id":"connect","mapping":"n:n","id":11,"bk_obj_id":"cluster","bk_supplier_account":"0","bk_asst_obj_id":"zone","bk_asst_name":"","bk_obj_asst_id":"cluster_connect_zone"}
+{"_id":{"$oid":"63fdae7705fdc4906bf68ded"},"id":12,"bk_supplier_account":"0","bk_obj_asst_id":"cmdb_host_connect_cluster","bk_obj_asst_name":"","bk_obj_id":"cmdb_host","bk_asst_obj_id":"cluster","bk_asst_id":"connect","mapping":"n:n","on_delete":"none","ispre":null}

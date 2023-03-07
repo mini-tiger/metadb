@@ -28,6 +28,7 @@ type InstanceClientInterface interface {
 	SetManyInstance(ctx context.Context, h http.Header, objID string, input *metadata.SetManyModelInstance) (resp *metadata.SetOptionResult, err error)
 	UpdateInstance(ctx context.Context, h http.Header, objID string, input *metadata.UpdateOption) (resp *metadata.UpdatedOptionResult, err error)
 	ReadInstance(ctx context.Context, h http.Header, objID string, input *metadata.QueryCondition) (resp *metadata.QueryConditionResult, err error)
+	ReadInstanceAsst(ctx context.Context, h http.Header, objID string, input *metadata.QueryAsstCondition) (resp *metadata.MapArrayResponse, err error)
 	DeleteInstance(ctx context.Context, h http.Header, objID string, input *metadata.DeleteOption) (resp *metadata.DeletedOptionResult, err error)
 	DeleteInstanceCascade(ctx context.Context, h http.Header, objID string, input *metadata.DeleteOption) (resp *metadata.DeletedOptionResult, err error)
 	// ReadInstanceStruct 按照结构体返回实例数据

@@ -39,17 +39,19 @@ const (
 
 // Config config
 type Config struct {
-	Connect      string
-	Address      string
-	User         string
-	Password     string
-	Port         string
-	Database     string
-	Mechanism    string
-	MaxOpenConns uint64
-	MaxIdleConns uint64
-	RsName       string
-	SocketTimeout   int
+	Connect       string
+	Address       string
+	User          string
+	Password      string
+	Port          string
+	Database      string
+	Mechanism     string
+	MaxOpenConns  uint64
+	MaxIdleConns  uint64
+	RsName        string
+	SocketTimeout int
+	Cluster       string
+	ShardUri      string
 }
 
 // BuildURI return mongo uri according to  https://docs.mongodb.com/manual/reference/connection-string/
@@ -71,21 +73,25 @@ func (c Config) BuildURI() string {
 
 func (c Config) GetMongoConf() local.MongoConf {
 	return local.MongoConf{
-		MaxOpenConns: c.MaxOpenConns,
-		MaxIdleConns: c.MaxIdleConns,
-		URI:          c.BuildURI(),
-		RsName:       c.RsName,
-		SocketTimeout:  c.SocketTimeout,
+		MaxOpenConns:  c.MaxOpenConns,
+		MaxIdleConns:  c.MaxIdleConns,
+		URI:           c.BuildURI(),
+		RsName:        c.RsName,
+		SocketTimeout: c.SocketTimeout,
+		Cluster:       c.Cluster,
+		ShardUri:      c.ShardUri,
 	}
 }
 
 func (c Config) GetMongoClient() (db dal.RDB, err error) {
 	mongoConf := local.MongoConf{
-		MaxOpenConns: c.MaxOpenConns,
-		MaxIdleConns: c.MaxIdleConns,
-		URI:          c.BuildURI(),
-		RsName:       c.RsName,
+		MaxOpenConns:  c.MaxOpenConns,
+		MaxIdleConns:  c.MaxIdleConns,
+		URI:           c.BuildURI(),
+		RsName:        c.RsName,
 		SocketTimeout: c.SocketTimeout,
+		Cluster:       c.Cluster,
+		ShardUri:      c.ShardUri,
 	}
 	db, err = local.NewMgo(mongoConf, time.Minute)
 	if err != nil {

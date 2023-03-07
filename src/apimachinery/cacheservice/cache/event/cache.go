@@ -55,7 +55,10 @@ func (e *eventCache) SearchFollowingEventChainNodes(ctx context.Context, h http.
 		WithHeaders(h).
 		Do().
 		Into(resp)
-
+	//if opts.Resource == "instAsst" {
+	//	fmt.Println(opts.StartCursor)
+	//	fmt.Println(22222222, resp.Data.Nodes)
+	//}
 	if err != nil {
 		return false, nil, errors.New(common.CCErrCommHTTPDoRequestFailed, err.Error())
 	}
