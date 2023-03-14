@@ -547,7 +547,7 @@ func (d *Distributor) Start(eventHandler *EventHandler) error {
 	// wait for LIST-DONE to handle resource cursors.
 	<-d.waitForHandleResourceCursors
 
-	// run event hander.
+	// xxx run event hander. send msg
 	if err := d.eventHandler.Start(); err != nil {
 		return fmt.Errorf("start event handler failed, %+v", err)
 	}

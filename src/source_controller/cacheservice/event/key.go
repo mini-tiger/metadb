@@ -168,6 +168,32 @@ var ObjectBaseKey = Key{
 	},
 }
 
+var objectAsstFields = []string{common.BKInstIDField, common.BKAsstObjIDField, common.BKAsstInstIDField}
+var ObjectAsstKey = Key{
+	namespace:  watchCacheNamespace + common.BKInstAsst,
+	collection: common.BKTableNameInstAsst,
+	ttlSeconds: 6 * 60 * 60,
+	validator: func(doc []byte) error {
+		fields := gjson.GetManyBytes(doc, objectAsstFields...)
+		for idx := range objectAsstFields {
+			if !fields[idx].Exists() {
+				return fmt.Errorf("field %s not exist", objectAsstFields[idx])
+			}
+		}
+		return nil
+	},
+	asstID: func(doc []byte) int64 {
+		return gjson.GetBytes(doc, common.BKAsstInstIDField).Int()
+	},
+	asstObjID: func(doc []byte) string {
+		fields := gjson.GetManyBytes(doc, objectAsstFields...)
+		return fields[1].String()
+	},
+	instID: func(doc []byte) int64 {
+		return gjson.GetBytes(doc, common.BKInstIDField).Int()
+	},
+}
+
 var processFields = []string{common.BKProcessIDField, common.BKProcessNameField}
 var ProcessKey = Key{
 	namespace:  watchCacheNamespace + common.BKInnerObjIDProc,
@@ -229,7 +255,9 @@ type Key struct {
 	instName func(doc []byte) string
 
 	// instID returns the event's corresponding instance id,
-	instID func(doc []byte) int64
+	instID    func(doc []byte) int64
+	asstID    func(doc []byte) int64
+	asstObjID func(doc []byte) string
 }
 
 // Note: do not change the format, it will affect the way in event server to
@@ -266,6 +294,20 @@ func (k Key) InstanceID(doc []byte) int64 {
 		return k.instID(doc)
 	}
 	return 0
+}
+
+func (k Key) AsstID(doc []byte) int64 {
+	if k.asstID != nil {
+		return k.asstID(doc)
+	}
+	return 0
+}
+
+func (k Key) AsstObjID(doc []byte) string {
+	if k.asstObjID != nil {
+		return k.asstObjID(doc)
+	}
+	return ""
 }
 
 func (k Key) Collection() string {

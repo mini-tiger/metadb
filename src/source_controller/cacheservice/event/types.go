@@ -37,6 +37,8 @@ func GetResourceKeyWithCursorType(res watch.CursorType) (Key, error) {
 		key = SetTemplateKey
 	case watch.ObjectBase:
 		key = ObjectBaseKey
+	case watch.InstAsst:
+		key = ObjectAsstKey
 	case watch.Process:
 		key = ProcessKey
 	case watch.ProcessInstanceRelation:

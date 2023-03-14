@@ -67,8 +67,14 @@ func NewEvent(watch stream.LoopInterface, isMaster discovery.ServiceManageInterf
 		blog.Errorf("run set_template event flow failed, err: %v", err)
 		return err
 	}
-	// xxx
+	//// xxx
 	if err := e.runObjectBase(context.Background()); err != nil {
+		blog.Errorf("run object base event flow failed, err: %v", err)
+		return err
+	}
+
+	// xxx
+	if err := e.runObjectAsst(context.Background()); err != nil {
 		blog.Errorf("run object base event flow failed, err: %v", err)
 		return err
 	}
@@ -174,6 +180,18 @@ func (e *Event) runSetTemplate(ctx context.Context) error {
 func (e *Event) runObjectBase(ctx context.Context) error {
 	opts := flowOptions{
 		key:      event.ObjectBaseKey,
+		watch:    e.watch,
+		watchDB:  e.watchDB,
+		ccDB:     e.ccDB,
+		isMaster: e.isMaster,
+	}
+
+	return newFlow(ctx, opts)
+}
+
+func (e *Event) runObjectAsst(ctx context.Context) error {
+	opts := flowOptions{
+		key:      event.ObjectAsstKey,
 		watch:    e.watch,
 		watchDB:  e.watchDB,
 		ccDB:     e.ccDB,

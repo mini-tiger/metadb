@@ -167,6 +167,8 @@ const (
 	EventTypeRelation           = "relation"
 	EventTypeAssociation        = "association"
 	EventTypeResourcePoolModule = "resource"
+	// xxx
+	EventTypeInstAsst = "instasst"
 )
 
 // Event object type
@@ -239,9 +241,16 @@ func ParseCursorTypeFromEventType(eventType string) watch.CursorType {
 
 	case "moduleupdate":
 		return watch.Module
-
 	case "moduledelete":
 		return watch.Module
+
+	case "instasstdelete":
+		return watch.InstAsst
+	case "instasstcreate":
+		return watch.InstAsst
+
+	case "instasstupdate":
+		return watch.InstAsst
 
 	default:
 		return watch.ObjectBase
