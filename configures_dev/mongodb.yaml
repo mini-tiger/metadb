@@ -27,6 +27,7 @@ mongodb:
   # 分片集群
   cluster: shard # 副本集为0
   shardUri: "mongodb://cc:cc@172.22.50.25:27117/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true"
+#  shardUri: "mongodb://cc:cc@172.22.50.25:32082/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true"
 
 # mongodb事件监听存储事件链的mongodb配置
 watch:
@@ -44,4 +45,5 @@ watch:
     # 分片集群
   cluster: shard # 副本集为0
   shardUri: "mongodb://cc:cc@172.22.50.25:27117,172.22.50.25:27118/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true"
+#  shardUri: "mongodb://cc:cc@172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true"
     

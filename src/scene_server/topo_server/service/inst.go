@@ -771,6 +771,27 @@ func (s *Service) SearchInstByAssociation(ctx *rest.Contexts) {
 	ctx.RespEntity(result)
 }
 
+// SearchInstByAssociation search inst by the association inst
+func (s *Service) SearchInstByAssociationAsst(ctx *rest.Contexts) {
+	data := new(operation.AssociationParams)
+	if err := ctx.DecodeInto(&data); err != nil {
+		ctx.RespAutoError(err)
+		return
+	}
+	objID := ctx.Request.PathParameter("bk_obj_id")
+
+	ctx.SetReadPreference(common.SecondaryPreferredMode)
+
+	result, err := s.Core.InstOperation().FindInstByAssociationInstAsst(ctx.Kit, objID, data)
+	if nil != err {
+		blog.Errorf("[api-inst] failed to find the objects(%s), error info is %s, rid: %s", ctx.Request.PathParameter("bk_obj_id"), err.Error(), ctx.Kit.Rid)
+		ctx.RespAutoError(err)
+		return
+	}
+
+	ctx.RespEntity(result)
+}
+
 func (s *Service) UpdateManyInstByAssociation(ctx *rest.Contexts) {
 	data := make(map[string]interface{}, 0)
 	if err := ctx.DecodeInto(&data); err != nil {

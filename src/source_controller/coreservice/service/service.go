@@ -13,6 +13,7 @@
 package service
 
 import (
+	"configcenter/src/common/rdapi"
 	"net/http"
 
 	"configcenter/src/common"
@@ -138,6 +139,7 @@ func (s *coreService) WebService() *restful.Container {
 	// xxx rdapi.AllGlobalFilter(getErrFunc)) 认证
 	//api.Path("/api/v3").Filter(s.engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON).Consumes(restful.MIME_JSON)
 	api.Path("/api/v3").Filter(s.engine.Metric().RestfulMiddleWare).Produces(restful.MIME_JSON).Consumes(restful.MIME_JSON)
+	api.Filter(rdapi.RequestLogFilter())
 
 	//xxx init service actions
 	s.initService(api)

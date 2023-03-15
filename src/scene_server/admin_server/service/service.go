@@ -83,6 +83,7 @@ func (s *Service) WebService() *restful.Container {
 	api.Route(api.POST("/migrate/system/hostcrossbiz/{ownerID}").To(s.SetSystemConfiguration))
 	api.Route(api.POST("/migrate/system/user_config/{key}/{can}").To(s.UserConfigSwitch))
 	api.Route(api.GET("/find/system/config_admin").To(s.SearchConfigAdmin))
+
 	api.Route(api.PUT("/update/system/config_admin").To(s.UpdateConfigAdmin))
 
 	api.Route(api.PUT("/update/system_config/platform_setting").To(s.UpdatePlatformSettingConfig))
@@ -93,12 +94,20 @@ func (s *Service) WebService() *restful.Container {
 	api.Route(api.POST("/migrate/dataid").To(s.migrateDataID))
 	api.Route(api.POST("/delete/auditlog").To(s.DeleteAuditLog))
 
+	// 是否可以 开始分片 ，导入数据完成
+	api.Route(api.GET("/searchcollectionvalid").To(s.SearchCollectionValid))
+
 	container.Add(api)
 
 	// common api
 	commonAPI := new(restful.WebService).Produces(restful.MIME_JSON)
 	commonAPI.Route(commonAPI.GET("/healthz").To(s.Healthz))
 	commonAPI.Route(commonAPI.GET("/version").To(restfulservice.Version))
+
+	// init mongodb data
+	commonAPI.Route(commonAPI.GET("/find/init_mongodb_data/{collection}").To(s.FindCollectionVer))
+	commonAPI.Route(commonAPI.GET("/FindInitBaseData").To(s.FindInitBaseData)) //查询metadb 原生数据初始化完成
+	commonAPI.Route(commonAPI.GET("/UpdateSequence").To(s.UpdateSequenceView)) //更新cc_idgenerator 序号 并且更新 bk_inst_id 数据类型
 	container.Add(commonAPI)
 
 	return container

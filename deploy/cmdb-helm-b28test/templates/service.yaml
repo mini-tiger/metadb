@@ -1,36 +1,29 @@
+{{ $prefix := .Values.prefix}}
 {{- range .Values.apps }}
   {{- with . }}
+  {{- if .enable }}
 ---
-
 apiVersion: v1
 kind: Service
 metadata: 
-  name: {{ .name }}-svc
+  name: {{ $prefix }}-{{ .name }}-svc
   labels: 
-    app: {{ .name }}-svc
+    app: {{ $prefix }}-{{ .name }}-svc
   annotations:
     timestamp: {{ now | quote }}
-spec: 
+spec:
+  selector:
+    app: {{ $prefix }}-{{ .name }}
+  type: NodePort
   ports:
-  {{- if eq .name  "webserver" }}
-  {{- range .ports }}
-  - name: {{ .name }}
-    port: {{ .port }}
-    targetPort: {{ .port }}
-    {{- if .nodePort}}
-    nodePort: {{ .nodePort}}
-    {{- end}}
-  {{- end }}
-  {{- else }}
   - port: {{ .port }}
     targetPort: {{ .port }}
     {{- if .nodePort}}
     nodePort: {{ .nodePort}}
     {{- end}}
   {{- end}}
-  type: NodePort
-  selector:
-    app: {{ .name }}
+  {{- end}}
+
+
 ---
 {{- end}}
-  {{- end}}

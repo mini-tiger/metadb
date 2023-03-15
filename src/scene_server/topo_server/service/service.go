@@ -13,6 +13,7 @@
 package service
 
 import (
+	"configcenter/src/common/rdapi"
 	"encoding/json"
 
 	"configcenter/src/ac/extensions"
@@ -46,6 +47,7 @@ func (s *Service) WebService() *restful.Container {
 	//}
 
 	api := new(restful.WebService)
+	api.Filter(rdapi.RequestLogFilter())
 	//api.Path("/topo/v3/").Filter(s.Engine.Metric().RestfulMiddleWare).Filter(rdapi.AllGlobalFilter(getErrFunc)).Produces(restful.MIME_JSON)
 	api.Path("/topo/v3/").Filter(s.Engine.Metric().RestfulMiddleWare).Produces(restful.MIME_JSON)
 	// init service actions

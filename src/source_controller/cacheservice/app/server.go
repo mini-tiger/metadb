@@ -91,7 +91,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		return nil
 	}
 
-	// 启动Watch
+	// xxx 启动Watch
 	err = cacheService.SetConfig(*cacheSvr.Config, engine, engine.CCErr, engine.Language)
 	if err != nil {
 		return err

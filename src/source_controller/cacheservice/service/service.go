@@ -13,9 +13,6 @@
 package service
 
 import (
-	"net/http"
-	"time"
-
 	"configcenter/src/common"
 	"configcenter/src/common/backbone"
 	"configcenter/src/common/blog"
@@ -32,6 +29,8 @@ import (
 	"configcenter/src/storage/dal/mongo/local"
 	"configcenter/src/storage/reflector"
 	"configcenter/src/storage/stream"
+	"net/http"
+	"time"
 
 	"github.com/emicklei/go-restful"
 )
@@ -91,7 +90,7 @@ func (s *cacheService) SetConfig(cfg options.Config, engine *backbone.Engine, er
 		return dbErr
 	}
 
-	// xxx redis
+	// xxx redis, watch redis
 	c, cacheErr := cacheop.NewCache(event, loopW, engine.ServiceManageInterface, watchDB)
 	if cacheErr != nil {
 		blog.Errorf("new cache instance failed, err: %v", cacheErr)

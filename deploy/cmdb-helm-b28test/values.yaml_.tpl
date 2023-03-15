@@ -34,6 +34,9 @@ apps:
   - name: taskserver
     port: 60012
 
+prefix: lmanager-cmdb
+ingress:
+    enable: false
 image:
   repository: harbor.dev.21vianet.com/cmdb/
   tag: {{.version}}

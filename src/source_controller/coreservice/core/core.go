@@ -111,6 +111,7 @@ type InstanceOperation interface {
 		*metadata.CreateManyDataResult, error)
 	UpdateModelInstance(kit *rest.Kit, objID string, inputParam metadata.UpdateOption) (*metadata.UpdatedCount, error)
 	SearchModelInstance(kit *rest.Kit, objID string, inputParam metadata.QueryCondition) (*metadata.QueryResult, error)
+	SearchModelInstanceAsst(kit *rest.Kit, objID string, inputParam metadata.QueryAsstCondition) ([]mapstr.MapStr, error)
 	CountModelInstances(kit *rest.Kit, objID string, inputParam *metadata.CountCondition) (*metadata.CommonCountResult,
 		error)
 	DeleteModelInstance(kit *rest.Kit, objID string, inputParam metadata.DeleteOption) (*metadata.DeletedCount, error)

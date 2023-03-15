@@ -57,6 +57,43 @@ func (s *Service) SearchConfigAdmin(req *restful.Request, resp *restful.Response
 	_ = resp.WriteEntity(metadata.NewSuccessResp(conf))
 }
 
+// SearchConfigAdmin search the config
+func (s *Service) SearchCollectionValid(req *restful.Request, resp *restful.Response) {
+	//rHeader := req.Request.Header
+	//rid := util.GetHTTPCCRequestID(rHeader)
+	//defErr := s.CCErr.CreateDefaultCCErrorIf(util.GetLanguage(rHeader))
+
+	cond := map[string]interface{}{
+		"_id": "cc_ObjAttDes",
+	}
+
+	var ret map[string]interface{}
+	err := s.db.Table(common.BKTableNameIDgenerator).Find(cond).Fields("SequenceID").One(s.ctx, &ret)
+	if err != nil {
+		_ = resp.WriteError(http.StatusBadRequest, err)
+		return
+	}
+	var valid = false
+	if v, ok := ret["SequenceID"]; ok {
+		sid := v.(int64)
+		if sid >= 300 {
+			valid = true
+		}
+	}
+	//conf := metadata.ConfigAdmin{}
+	//if err := json.Unmarshal([]byte(ret.Config), &conf); err != nil {
+	//	blog.Errorf("SearchConfigAdmin failed, Unmarshal err: %v, config:%+v,rid:%s", err, ret.Config, rid)
+	//	_ = resp.WriteError(http.StatusOK, &metadata.RespError{Msg: defErr.Error(common.CCErrCommJSONUnmarshalFailed)})
+	//	return
+	//}
+	if valid {
+		resp.WriteHeader(http.StatusOK)
+	} else {
+		_ = resp.WriteError(http.StatusBadRequest, nil)
+	}
+
+}
+
 // UpdateConfigAdmin udpate the config
 func (s *Service) UpdateConfigAdmin(req *restful.Request, resp *restful.Response) {
 	rHeader := req.Request.Header

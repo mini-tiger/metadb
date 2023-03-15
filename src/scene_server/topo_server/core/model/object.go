@@ -460,7 +460,6 @@ func (o *object) Create() error {
 	if err := o.IsValid(false, o.obj.ToMapStr()); nil != err {
 		return err
 	}
-
 	o.obj.OwnerID = o.kit.SupplierAccount
 	exists, err := o.IsExists()
 	if nil != err {

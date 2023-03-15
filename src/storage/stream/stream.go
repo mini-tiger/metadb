@@ -23,8 +23,6 @@ import (
 	"configcenter/src/storage/stream/loop"
 	"configcenter/src/storage/stream/types"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 )
 
@@ -41,26 +39,27 @@ func NewStream(conf local.MongoConf) (Interface, error) {
 	if nil != err {
 		return nil, err
 	}
-	if conf.RsName == "" {
-		return nil, fmt.Errorf("rsName not set")
-	}
+	//if conf.RsName == "" {
+	//	return nil, fmt.Errorf("rsName not set")
+	//}
 
 	timeout := 15 * time.Second
-	conOpt := options.ClientOptions{
-		MaxPoolSize:    &conf.MaxOpenConns,
-		MinPoolSize:    &conf.MaxIdleConns,
-		ConnectTimeout: &timeout,
-		ReplicaSet:     &conf.RsName,
-	}
+	//conOpt := options.ClientOptions{
+	//	MaxPoolSize:    &conf.MaxOpenConns,
+	//	MinPoolSize:    &conf.MaxIdleConns,
+	//	ConnectTimeout: &timeout,
+	//	//ReplicaSet:     &conf.RsName,
+	//}
 
-	client, err := mongo.NewClient(options.Client().ApplyURI(conf.URI), &conOpt)
+	mgo, err := local.NewMgo(conf, timeout)
+	//client, err := mongo.NewClient(options.Client().ApplyURI(conf.ShardUri), &conOpt)
 	if nil != err {
 		return nil, err
 	}
-	if err := client.Connect(context.TODO()); nil != err {
-		return nil, err
-	}
-
+	//if err := client.Connect(context.TODO()); nil != err {
+	//	return nil, err
+	//}
+	client := mgo.GetDBClient()
 	event, err := event.NewEvent(client, connStr.Database)
 	if err != nil {
 		return nil, fmt.Errorf("new event failed, err: %v", err)
@@ -79,26 +78,26 @@ func NewLoopStream(conf local.MongoConf, isMaster discovery.ServiceManageInterfa
 	if nil != err {
 		return nil, err
 	}
-	if conf.RsName == "" {
-		return nil, fmt.Errorf("rsName not set")
-	}
+	//if conf.RsName == "" {
+	//	return nil, fmt.Errorf("rsName not set")
+	//}
 
 	timeout := 15 * time.Second
-	conOpt := options.ClientOptions{
-		MaxPoolSize:    &conf.MaxOpenConns,
-		MinPoolSize:    &conf.MaxIdleConns,
-		ConnectTimeout: &timeout,
-		ReplicaSet:     &conf.RsName,
-	}
-
-	client, err := mongo.NewClient(options.Client().ApplyURI(conf.URI), &conOpt)
+	//conOpt := options.ClientOptions{
+	//	MaxPoolSize:    &conf.MaxOpenConns,
+	//	MinPoolSize:    &conf.MaxIdleConns,
+	//	ConnectTimeout: &timeout,
+	//	//ReplicaSet:     &conf.RsName,
+	//}
+	mgo, err := local.NewMgo(conf, timeout)
+	//client, err := mongo.NewClient(options.Client().ApplyURI(conf.ShardUri), &conOpt)
 	if nil != err {
 		return nil, err
 	}
-	if err := client.Connect(context.TODO()); nil != err {
-		return nil, err
-	}
-
+	//if err := client.Connect(context.TODO()); nil != err {
+	//	return nil, err
+	//}
+	client := mgo.GetDBClient()
 	event, err := event.NewEvent(client, connStr.Database)
 	if err != nil {
 		return nil, fmt.Errorf("new event failed, err: %v", err)

@@ -46,6 +46,7 @@ type InstOperationInterface interface {
 	FindOriginInst(kit *rest.Kit, objID string, cond *metadata.QueryInput) (*metadata.InstResult, errors.CCError)
 	FindInst(kit *rest.Kit, obj model.Object, cond *metadata.QueryInput, needAsstDetail bool) (count int, results []inst.Inst, err error)
 	FindInstByAssociationInst(kit *rest.Kit, objID string, asstParamCond *AssociationParams) (*metadata.InstResult, error)
+	FindInstByAssociationInstAsst(kit *rest.Kit, objID string, asstParamCond *AssociationParams) (*metadata.InstResult, error)
 	FindInstChildTopo(kit *rest.Kit, obj model.Object, instID int64, query *metadata.QueryInput) (count int, results []*CommonInstTopo, err error)
 	FindInstParentTopo(kit *rest.Kit, obj model.Object, instID int64, query *metadata.QueryInput) (count int, results []*CommonInstTopo, err error)
 	FindInstTopo(kit *rest.Kit, obj model.Object, instID int64, query *metadata.QueryInput) (count int, results []CommonInstTopoV2, err error)
@@ -1213,6 +1214,149 @@ func (c *commonInst) FindInstByAssociationInst(kit *rest.Kit, objID string, asst
 	return c.FindOriginInst(kit, objID, query)
 }
 
+// FindInstByAssociationInst deprecated function.
+func (c *commonInst) FindInstByAssociationInstAsst(kit *rest.Kit, objID string, asstParamCond *AssociationParams) (*metadata.InstResult, error) {
+
+	instCond := map[string]interface{}{}
+	if metadata.IsCommon(objID) {
+		instCond[common.BKObjIDField] = objID
+	}
+	targetInstIDS := make([]int64, 0)
+
+	for keyObjID, objs := range asstParamCond.Condition {
+		// Extract the ID of the instance according to the associated object.
+		cond := map[string]interface{}{}
+		if common.GetObjByType(keyObjID) == common.BKInnerObjIDObject {
+			cond[common.BKObjIDField] = keyObjID
+		}
+
+		for _, objCondition := range objs {
+			if objCondition.Operator != common.BKDBEQ {
+				if objID == keyObjID {
+					if objCondition.Operator == common.BKDBLIKE ||
+						objCondition.Operator == common.BKDBMULTIPLELike {
+						switch t := objCondition.Value.(type) {
+						case string:
+							instCond[objCondition.Field] = map[string]interface{}{
+								objCondition.Operator: gparams.SpecialCharChange(t),
+							}
+						default:
+							// deal self condition
+							instCond[objCondition.Field] = map[string]interface{}{
+								objCondition.Operator: objCondition.Value,
+							}
+						}
+					} else if objCondition.Operator == common.BKDBLT ||
+						objCondition.Operator == common.BKDBLTE ||
+						objCondition.Operator == common.BKDBGT ||
+						objCondition.Operator == common.BKDBGTE {
+
+						// fix condition covered when do date range search action.
+						// ISSUE: https://github.com/Tencent/bk-cmdb/issues/5302
+						if _, isExist := instCond[objCondition.Field]; !isExist {
+							instCond[objCondition.Field] = make(map[string]interface{})
+						}
+						if condValue, ok := instCond[objCondition.Field].(map[string]interface{}); ok {
+							condValue[objCondition.Operator] = objCondition.Value
+						}
+					} else {
+						// deal self condition
+						instCond[objCondition.Field] = map[string]interface{}{
+							objCondition.Operator: objCondition.Value,
+						}
+					}
+				} else {
+					// deal association condition
+					cond[objCondition.Field] = map[string]interface{}{
+						objCondition.Operator: objCondition.Value,
+					}
+				}
+			} else {
+				if objID == keyObjID {
+					// deal self condition
+					switch t := objCondition.Value.(type) {
+					case string:
+						instCond[objCondition.Field] = map[string]interface{}{
+							common.BKDBEQ: t,
+						}
+					default:
+						instCond[objCondition.Field] = objCondition.Value
+					}
+
+				} else {
+					// deal association condition
+					cond[objCondition.Field] = objCondition.Value
+				}
+			}
+
+		}
+
+		if objID == keyObjID {
+			// no need to search the association objects
+			continue
+		}
+
+		innerCond := new(metadata.QueryInput)
+		if fields, ok := asstParamCond.Fields[keyObjID]; ok {
+			innerCond.Fields = strings.Join(fields, ",")
+		}
+		innerCond.Condition = cond
+
+		asstInstIDS, err := c.searchAssociationInst(kit, keyObjID, innerCond)
+		if nil != err {
+			blog.Errorf("[operation-inst]failed to search the association inst, err: %s, rid: %s", err.Error(), kit.Rid)
+			return nil, err
+		}
+		blog.V(4).Infof("[FindInstByAssociationInst] search association insts, keyObjID %s, condition: %v, results: %v, rid: %s", keyObjID, innerCond, asstInstIDS, kit.Rid)
+
+		query := &metadata.QueryInput{}
+		query.Condition = map[string]interface{}{
+			"bk_asst_inst_id": map[string]interface{}{
+				common.BKDBIN: asstInstIDS,
+			},
+			"bk_asst_obj_id": keyObjID,
+			"bk_obj_id":      objID,
+		}
+
+		asstInst, err := c.asst.SearchInstAssociation(kit, query)
+		if nil != err {
+			blog.Errorf("[operation-inst] failed to search the association inst, err: %s, rid: %s", err.Error(), kit.Rid)
+			return nil, err
+		}
+
+		for _, asst := range asstInst {
+			targetInstIDS = append(targetInstIDS, asst.InstID)
+		}
+		blog.V(4).Infof("[FindInstByAssociationInst] search association, objectID=%s, keyObjID=%s, condition: %v, results: %v, rid: %s", objID, keyObjID, query, targetInstIDS, kit.Rid)
+	}
+
+	if 0 != len(targetInstIDS) {
+		instCond[metadata.GetInstIDFieldByObjID(objID)] = map[string]interface{}{
+			common.BKDBIN: targetInstIDS,
+		}
+	} else if 0 != len(asstParamCond.Condition) {
+		if _, ok := asstParamCond.Condition[objID]; !ok {
+			instCond[metadata.GetInstNameFieldName(objID)] = map[string]interface{}{
+				common.BKDBIN: targetInstIDS,
+			}
+		}
+	}
+
+	query := &metadata.QueryInput{}
+	query.Condition = instCond
+	query.TimeCondition = asstParamCond.TimeCondition
+	if fields, ok := asstParamCond.Fields[objID]; ok {
+		query.Fields = strings.Join(fields, ",")
+	}
+	query.Limit = asstParamCond.Page.Limit
+	query.Sort = asstParamCond.Page.Sort
+	query.Start = asstParamCond.Page.Start
+	queryWrap := &metadata.QueryAsstInput{Down: asstParamCond.Down, QueryInput: query}
+
+	blog.V(4).Infof("[FindInstByAssociationInst] search object[%s] with inst condition: %v, rid: %s", objID, instCond, kit.Rid)
+	return c.FindOriginInstAsst(kit, objID, queryWrap)
+}
+
 func (c *commonInst) FindOriginInst(kit *rest.Kit, objID string, cond *metadata.QueryInput) (*metadata.InstResult, errors.CCError) {
 	switch objID {
 	case common.BKInnerObjIDHost:
@@ -1248,6 +1392,29 @@ func (c *commonInst) FindOriginInst(kit *rest.Kit, objID string, cond *metadata.
 		}
 		return &metadata.InstResult{Info: rsp.Data.Info, Count: rsp.Data.Count}, nil
 	}
+}
+
+func (c *commonInst) FindOriginInstAsst(kit *rest.Kit, objID string, cond *metadata.QueryAsstInput) (*metadata.InstResult, errors.CCError) {
+
+	queryCond, err := mapstr.NewFromInterface(cond.Condition)
+	input := &metadata.QueryCondition{Condition: queryCond, TimeCondition: cond.TimeCondition}
+	inputWrap := &metadata.QueryAsstCondition{Down: cond.Down, QueryCondition: input}
+	//input.Page.Start = cond.Start
+	//input.Page.Limit = cond.Limit
+	//input.Page.Sort = cond.Sort
+	//input.Fields = strings.Split(cond.Fields, ",")
+	rsp, err := c.clientSet.CoreService().Instance().ReadInstanceAsst(kit.Ctx, kit.Header, objID, inputWrap)
+	if nil != err {
+		blog.Errorf("[operation-inst] failed to request object controller, err: %s, rid: %s", err.Error(), kit.Rid)
+		return nil, kit.CCError.Error(common.CCErrCommHTTPDoRequestFailed)
+	}
+
+	if !rsp.Result {
+		blog.Errorf("[operation-inst] failed to delete the object(%s) inst by the condition(%#v), err: %s, rid: %s", objID, cond, rsp.ErrMsg, kit.Rid)
+		return nil, kit.CCError.New(rsp.Code, rsp.ErrMsg)
+	}
+	return &metadata.InstResult{Info: rsp.Data, Count: len(rsp.Data)}, nil
+
 }
 
 func (c *commonInst) FindInst(kit *rest.Kit, obj model.Object, cond *metadata.QueryInput, needAsstDetail bool) (count int, results []inst.Inst, err error) {

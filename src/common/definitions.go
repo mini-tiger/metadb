@@ -91,6 +91,8 @@ const (
 	// BKInnerObjIDObject the inner object
 	BKInnerObjIDObject = "object"
 
+	BKInstAsst = "instAsst"
+
 	// BKInnerObjIDProc the inner object
 	BKInnerObjIDProc = "process"
 

@@ -449,7 +449,7 @@ func getAddUniqueData(ownerID string) []metadata.ObjectUnique {
 			Keys: []metadata.UniqueKey{
 				{
 					Kind: metadata.UniqueKeyKindProperty,
-					ID:   191,
+					ID:   193,
 				},
 			},
 			Ispre:    false,

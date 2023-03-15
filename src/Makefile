@@ -34,7 +34,7 @@ deploy:
 	@echo ""
 	@echo -e "\033[34mdeploy server... \033[0m"
 	@#rm -rf "./ui/node_modules"
-	@cd  $(SCRIPT_DIR) && go run images.go
+	@cd  $(SCRIPT_DIR) && export namespace="cmdbv4" && go run images.go && unset namespace
 
 .PHONY:server
 server:

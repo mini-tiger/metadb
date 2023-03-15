@@ -130,6 +130,11 @@ type QueryInput struct {
 	DisableCounter bool           `json:"disable_counter,omitempty"`
 }
 
+type QueryAsstInput struct {
+	Down uint8 `json:"down"`
+	*QueryInput
+}
+
 type TimeConditionItem struct {
 	Field string       `json:"field" bson:"field"`
 	Start *cctime.Time `json:"start" bson:"start"`

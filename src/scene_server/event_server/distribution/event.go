@@ -238,6 +238,13 @@ func (h *EventHandler) Handle(nodes []*watch.ChainNode, eventDetailStrs []string
 			detailBytes, _ := jsonStr.MarshalJSON()
 			eventInst.ObjType = gjson.Get(string(detailBytes), "bk_obj_id").String()
 
+		case watch.InstAsst:
+			//eventInst.EventType = metadata.EventTypeInstAsst
+			//jsonStr := event.Detail.(watch.JsonString)
+			//detailBytes, _ := jsonStr.MarshalJSON()
+			//eventInst.ObjType = gjson.Get(string(detailBytes), common.BKAsstObjIDField).String()
+			eventInst.EventType = metadata.EventTypeInstData
+			eventInst.ObjType = common.BKInstAsst
 		default:
 			continue
 		}
@@ -459,7 +466,7 @@ func (h *EventHandler) start() {
 	// keep cleaning.
 	go h.cleaning()
 
-	// keep check and handle pushers.
+	// xxx keep check and handle pushers.
 	go h.handlePushers()
 
 	for {

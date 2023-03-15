@@ -13,6 +13,9 @@
 package instances
 
 import (
+	"configcenter/src/source_controller/coreservice/core/operation"
+	"encoding/json"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"strconv"
@@ -571,6 +574,129 @@ func (m *instanceManager) SearchModelInstance(kit *rest.Kit, objID string, input
 	}
 
 	return dataResult, nil
+}
+
+func (m *instanceManager) SearchModelInstanceAsst(kit *rest.Kit, objID string, inputParam metadata.QueryAsstCondition) ([]mapstr.MapStr, error) {
+	blog.V(9).Infof("search instance with parameter: %+v, rid: %s", inputParam, kit.Rid)
+
+	tableName := common.GetInstTableName(objID)
+	if tableName == common.BKTableNameBaseInst {
+		if inputParam.Condition == nil {
+			inputParam.Condition = mapstr.MapStr{}
+		}
+		objIDCond, ok := inputParam.Condition[common.BKObjIDField]
+		if ok && objIDCond != objID {
+			blog.V(9).Infof("searchInstance condition's bk_obj_id: %s not match objID: %s, rid: %s", objIDCond, objID, kit.Rid)
+			return nil, nil
+		}
+		inputParam.Condition[common.BKObjIDField] = objID
+	}
+	// xxx bk_supplier_account 设置
+	inputParam.Condition = util.SetQueryOwner(inputParam.Condition, kit.SupplierAccount)
+
+	if inputParam.TimeCondition != nil {
+		var err error
+		inputParam.Condition, err = inputParam.TimeCondition.MergeTimeCondition(inputParam.Condition)
+		if err != nil {
+			blog.ErrorJSON("merge time condition failed, error: %s, input: %s, rid: %s", err, inputParam, kit.Rid)
+			return nil, err
+		}
+	}
+
+	// parse vip fields for processes
+	//fields, vipFields := hooks.ParseVIPFieldsForProcessHook(inputParam.Fields, tableName)
+
+	//instItems := make([]mapstr.MapStr, 0)
+	//query := mongodb.Client().Table(tableName).Find(inputParam.Condition).Start(uint64(inputParam.Page.Start)).
+	//	Limit(uint64(inputParam.Page.Limit)).
+	//	Sort(inputParam.Page.Sort).
+	//	Fields(fields...)
+	var pipeline []operation.M
+	if inputParam.Down == 1 {
+		pipeline = []operation.M{
+			{"$match": inputParam.Condition},
+			{"$lookup": operation.M{"from": "cc_InstAsst", "localField": "bk_inst_id", "foreignField": "bk_asst_inst_id", "as": "asst"}},
+			{"$group": operation.M{"_id": "$$ROOT._id",
+				"asst_items":  operation.M{"$addToSet": "$asst.bk_inst_id"},
+				"asst_ids":    operation.M{"$addToSet": "$asst.id"},
+				"originalDoc": operation.M{"$first": "$$ROOT"}}},
+			{"$project": operation.M{"asst_inst_ids": operation.M{"$reduce": operation.M{"input": "$asst_items", "initialValue": []string{}, "in": operation.M{"$concatArrays": []string{"$$value", "$$this"}}}},
+				"originalDoc": 1, "asst_ids": 1, // 显示原始文档中的所有字段
+			},
+			},
+			{"$lookup": operation.M{"from": "cc_ObjectBase", "localField": "asst_inst_ids", "foreignField": "bk_inst_id", "as": "asst_datas"}},
+			{"$project": operation.M{"originalDoc.asst": 0}},
+			{"$unwind": "$asst_ids"},
+		}
+
+	} else {
+		pipeline = []operation.M{
+			{"$match": inputParam.Condition},
+			{"$lookup": operation.M{"from": "cc_InstAsst", "localField": "bk_inst_id", "foreignField": "bk_inst_id", "as": "bk_asst_inst"}},
+			{"$group": operation.M{"_id": "$$ROOT._id",
+				"asst_items":  operation.M{"$addToSet": "$bk_asst_inst.bk_asst_inst_id"},
+				"asst_ids":    operation.M{"$addToSet": "$bk_asst_inst.id"},
+				"originalDoc": operation.M{"$first": "$$ROOT"}}},
+			{"$project": operation.M{"asst_inst_ids": operation.M{"$reduce": operation.M{"input": "$asst_items", "initialValue": []string{}, "in": operation.M{"$concatArrays": []string{"$$value", "$$this"}}}},
+				"originalDoc": 1, "asst_ids": 1, // 显示原始文档中的所有字段
+			},
+			},
+			{"$lookup": operation.M{"from": "cc_ObjectBase", "localField": "asst_inst_ids", "foreignField": "bk_inst_id", "as": "asst_datas"}},
+			{"$project": operation.M{"originalDoc.bk_asst_inst": 0}},
+			{"$unwind": "$asst_ids"},
+		}
+	}
+
+	b, _ := json.MarshalIndent(pipeline, " ", " ")
+	//fmt.Println(err)
+	fmt.Println(string(b))
+	var result []mapstr.MapStr
+	err := mongodb.Client().Table(tableName).AggregateAll(kit.Ctx, pipeline, &result)
+	//fmt.Println(result)
+	//for i, v := range result {
+	//	fmt.Println(i)
+	//	for key, value := range v {
+	//		fmt.Println(key, value)
+	//	}
+	//}
+	//var instErr error
+	//if objID == common.BKInnerObjIDHost {
+	//	hosts := make([]metadata.HostMapStr, 0)
+	//	instErr = query.All(kit.Ctx, &hosts)
+	//	for _, host := range hosts {
+	//		instItems = append(instItems, mapstr.MapStr(host))
+	//	}
+	//} else {
+	//	instErr = query.All(kit.Ctx, &instItems)
+	//}
+	if err != nil {
+		blog.Errorf("search instance error [%v], rid: %s", err, kit.Rid)
+		return nil, err
+	}
+
+	//var finalCount uint64
+	//
+	//if !inputParam.DisableCounter {
+	//	count, countErr := mongodb.Client().Table(tableName).Find(inputParam.Condition).Count(kit.Ctx)
+	//	if countErr != nil {
+	//		blog.Errorf("count instance error [%v], rid: %s", countErr, kit.Rid)
+	//		return nil, countErr
+	//	}
+	//	finalCount = count
+	//}
+	//
+	//// set vip info for processes
+	//instItems, instErr = hooks.SetVIPInfoForProcessHook(kit, instItems, vipFields, tableName, mongodb.Client())
+	//if instErr != nil {
+	//	return nil, instErr
+	//}
+
+	//dataResult := &metadata.QueryResult{
+	//	//Count: finalCount,
+	//	//Info:  result,
+	//}
+
+	return result, nil
 }
 
 // CountModelInstances counts target model instances num.

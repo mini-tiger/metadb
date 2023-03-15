@@ -132,6 +132,7 @@ func (e *Event) loopWatch(ctx context.Context,
 			blog.InfoJSON("retry watch with pipeline: %s, options: %s, stream options: %s", pipeline, opts, streamOptions)
 
 			var err error
+			//streamOptions = options.ChangeStream().SetFullDocument(options.UpdateLookup)
 			stream, err = e.client.
 				Database(e.database).
 				Collection(opts.Collection).
@@ -235,7 +236,6 @@ func (e *Event) loopWatch(ctx context.Context,
 				},
 			}
 		}
-
 		if err := stream.Err(); err != nil {
 			blog.ErrorJSON("mongodb watch encountered a error, conf: %s, err: %s", *opts, err)
 			stream.Close(ctx)

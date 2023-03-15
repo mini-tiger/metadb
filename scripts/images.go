@@ -20,6 +20,7 @@ import (
 var (
 	tpl                                                                                   string
 	tplOnly                                                                               bool
+	helmDeopy                                                                             bool
 	newImageTagFile                                                                       string
 	currentFileName, rootDir, dockerDir, webCompressionPath, tmpDir, binaryDir, helm_path string // images.go 路径
 	helm_dirname                                                                          = "cmdb-helm-b28test"
@@ -50,7 +51,7 @@ var (
 	helm_upgrade_cmd   = fmt.Sprintf("helm --kubeconfig=%s upgrade -n %s cmdb --history-max 3 -f values.yaml .", kubeconfig, helm_ns)
 	swagger_init_cmd   = fmt.Sprint("swag init -g ui.go ")
 	t1                 = time.Now()
-	version            = fmt.Sprintf("%d-%d-%d_%d%d%d", t1.Year(), t1.Month(), t1.Day(), t1.Hour(), t1.Minute(), t1.Second())
+	version            = fmt.Sprintf("%d-%d-%d_%d%d", t1.Year(), t1.Month(), t1.Day(), t1.Hour(), t1.Minute())
 )
 
 // 判断所给路径是否为文件夹
@@ -72,6 +73,7 @@ func getNSEnv() string {
 func init() {
 	flag.StringVar(&tpl, "tpl", "", "helm tpl flag value")
 	flag.BoolVar(&tplOnly, "tplonly", false, "tpl only run")
+	flag.BoolVar(&helmDeopy, "helmdeploy", false, "helm install ")
 	//flag.StringVar(&stringflag, "stringflag", "default", "string flag value")
 
 	_, currentFileName, _, _ = runtime.Caller(0)
@@ -90,7 +92,6 @@ func init() {
 		os.MkdirAll(tmpDir, os.ModePerm)
 	}
 	newImageTagFile = path.Join(helm_path, "NewImageTag")
-
 }
 
 func RunCommand(command string) error {
@@ -213,9 +214,13 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	log.Println(helm_upgrade_cmd)
-	std, stderr := RunCommandStd(helm_upgrade_cmd)
-	log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
+
+	if helmDeopy {
+		log.Println(helm_upgrade_cmd)
+		std, stderr := RunCommandStd(helm_upgrade_cmd)
+		log.Printf("std:%v stderr:%v\n", std.String(), stderr.String())
+	}
+
 	//log.Println("sleep 10s")
 	//time.Sleep(10 * time.Second)
 	//log.Println(helm_install_cmd)
@@ -391,7 +396,8 @@ func readFile(filename string) string {
 func writeFile(filename, content string) {
 	//创建一个新文件，写入内容 5 句 “http://c.biancheng.net/golang/”
 	//filePath := "e:/code/golang.txt"
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
+
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
 	if err != nil {
 		//fmt.Println("文件打开失败", err)
 		panic(err)

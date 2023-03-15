@@ -55,6 +55,7 @@ type ConditionItem struct {
 
 // AssociationParams  association params
 type AssociationParams struct {
+	Down      uint8                      `json:"down"`
 	Page      metadata.BasePage          `json:"page,omitempty"`
 	Fields    map[string][]string        `json:"fields,omitempty"`
 	Condition map[string][]ConditionItem `json:"condition,omitempty"`

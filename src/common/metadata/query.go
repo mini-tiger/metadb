@@ -41,6 +41,12 @@ type QueryCondition struct {
 	DisableCounter bool           `json:"disable_counter"`
 }
 
+// QueryCondition the common query condition definition
+type QueryAsstCondition struct {
+	Down uint8 `json:"down"`
+	*QueryCondition
+}
+
 // IsIllegal  limit is illegal, if limit = 0; change to default page size
 func (qc *QueryCondition) IsIllegal() bool {
 	if qc.Page.Limit == 0 {

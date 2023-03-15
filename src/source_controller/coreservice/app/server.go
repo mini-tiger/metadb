@@ -101,17 +101,18 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 	// cache redis load hotData  2023-1-10 by t.j
 	// 初始化 redis conn
 	cache.InitCli(ctx, redisConf, engine.RedisClient)
-	// 同步 cc_objDesc表中包含唯一校验字段的obj
+	// 同步 cc_objDesc表中包含唯一校验字段的obj,todo need watch mongodb stream update
 	cache.SyncObjCache()
 	// redis 的crud chan, 为了快速提取数据 ,rediskey  ex:   cc:objdata:datacenter:S00312
-	cache.SyncCacheData()
-	// sendData 等待数据 crud 改变redsi中数据
-	cache.WaitSendCacheData()
+	//cache.SyncCacheData()
+
+	// sendData 等待数据 crud 改变redis中数据
+	//cache.WaitSendCacheData()
 
 	err = backbone.StartServer(ctx, cancel, engine, coreService.WebService(), true)
 
 	// 预加载 已存在 obj 数据加载到redis xxx 执行一次 阻塞
-	cache.ObjAllDataInitCache()
+	//cache.ObjAllDataInitCache()
 
 	if err != nil {
 		return err

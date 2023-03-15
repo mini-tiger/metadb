@@ -280,7 +280,7 @@ func Run(ctx context.Context, cancel context.CancelFunc, op *options.ServerOptio
 		return fmt.Errorf("create new eventserver, %+v", err)
 	}
 	//eventServer.config.Redis = eventServer.engine.RedisConf
-	// run new event server.
+	// xxx run new event server.
 	if err := eventServer.Run(); err != nil {
 		return err
 	}

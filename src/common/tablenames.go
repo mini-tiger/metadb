@@ -44,6 +44,8 @@ const (
 	BKTableNameBaseProcess = "cc_Process"
 	BKTableNameDelArchive  = "cc_DelArchive"
 
+	// init data collection
+	BKTableNameInitDataVer      = "cc_InitDataVer"
 	BKTableNameModuleHostConfig = "cc_ModuleHostConfig"
 	BKTableNameSystem           = "cc_System"
 	BKTableNameHistory          = "cc_History"

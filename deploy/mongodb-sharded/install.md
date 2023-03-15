@@ -1,0 +1,1 @@
+helm install -n cmdb-neolink mongo-shard -f values.yaml .
