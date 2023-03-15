@@ -1,4 +1,6 @@
+{{ $prefix := .Values.prefix}}
 ---
+{{- if .Values.ingress.enable }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -18,7 +20,7 @@ spec:
 
           - backend:
               service:
-                name: webserver-svc
+                name: {{ $prefix }}-webserver-svc
                 port:
                   number: 8090
             path: /
@@ -43,8 +45,9 @@ spec:
 
           - backend:
               service:
-                name: apiserver-svc
+                name: {{ $prefix }}-apiserver-svc
                 port:
                   number: 8080
             path: /
             pathType: ImplementationSpecific
+{{ end }}

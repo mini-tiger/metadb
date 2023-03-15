@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: init-mongodb-data-job
+  name: {{ .Values.prefix }}-init-mongodb-data-job
 #  namespace: cmdbv4
 spec:
   #  backoffLimit: 5

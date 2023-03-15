@@ -2,38 +2,48 @@ apps:
   - name: adminserver
     port: 60004
 #    nodePort: 30971
+    enable: false
   - name: webserver
-    ports:
-      - name: http
-        port: 8090
-        nodePort: 32168
-      - name: extend
-        port: 8081
-        nodePort: 32165
+    port: 8090
+    nodePort: 32168
+    enable: true
   - name: apiserver
     port: 8080
+    enable: true
     nodePort: 31922
   - name: coreservice
     port: 50009
 #    nodePort: 32006
     cacheAffinity: false
+    enable: false
   - name: toposerver
     port: 60002
+    enable: false
   - name: hostserver
     port: 60001
+    enable: false
   - name: operationserver
     port: 60011
+    enable: false
   - name: cacheservice
     port: 50010
+    enable: false
   - name: cloudserver
     port: 60013
+    enable: false
   - name: eventserver
     port: 60009
+    enable: false
   - name: procserver
     port: 60003
+    enable: false
   - name: taskserver
     port: 60012
+    enable: false
 
+prefix: lmanager-cmdb
+ingress:
+    enable: false
 image:
   repository: harbor.dev.21vianet.com/cmdb/
   tag: {{.version}}

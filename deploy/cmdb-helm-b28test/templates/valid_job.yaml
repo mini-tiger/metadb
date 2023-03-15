@@ -16,7 +16,7 @@ metadata:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: init-mongodb-sharded-job
+  name: {{ .Values.prefix }}-init-mongodb-sharded-job
 #  namespace: cmdbv4
 spec:
   #  backoffLimit: 5
