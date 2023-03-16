@@ -1,4 +1,5 @@
 {{ $mongoShardNode := .Values.env.mongo_shard_node}}
+{{ $prefix := printf "%s-" .Values.prefix}}
 ---
 apiVersion: v1
 data:
@@ -16,7 +17,7 @@ metadata:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.prefix }}-init-mongodb-sharded-job
+  name: {{ $prefix }}init-mongodb-sharded-job
 #  namespace: cmdbv4
 spec:
   #  backoffLimit: 5
@@ -43,7 +44,7 @@ spec:
           env:
             {{- include "mytemplate" . | indent 12 }}
           image: harbor.dev.21vianet.com/taojun/mycurl:centos
-          command: ["bash","-c","/data/loopreq.sh http://adminserver-svc:60004/migrate/v3/searchcollectionvalid"]
+          command: ["bash","-c","/data/loopreq.sh http://{{ $prefix }}adminserver-svc:60004/migrate/v3/searchcollectionvalid"]
           #command: ["sh","-c","sleep 999d"]
           volumeMounts:
             - mountPath: /data/loopreq.sh

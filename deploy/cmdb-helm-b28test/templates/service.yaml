@@ -1,19 +1,20 @@
-{{ $prefix := .Values.prefix}}
+{{ $prefix := printf "%s-" .Values.prefix}}
 {{- range .Values.apps }}
   {{- with . }}
-  {{- if .enable }}
+
 ---
 apiVersion: v1
 kind: Service
 metadata: 
-  name: {{ $prefix }}-{{ .name }}-svc
+  name: {{ $prefix }}{{ .name }}-svc
   labels: 
-    app: {{ $prefix }}-{{ .name }}-svc
+    app: {{ $prefix }}{{ .name }}-svc
   annotations:
     timestamp: {{ now | quote }}
 spec:
   selector:
-    app: {{ $prefix }}-{{ .name }}
+    app: {{ $prefix }}{{ .name }}
+  {{- if .enable }}
   type: NodePort
   ports:
   - port: {{ .port }}
@@ -21,9 +22,17 @@ spec:
     {{- if .nodePort}}
     nodePort: {{ .nodePort}}
     {{- end}}
-  {{- end}}
+
+  {{- else }}
+  type: ClusterIP
+  ports:
+    - port: {{ .port }}
+      targetPort: {{ .port }}
+      {{- if .nodePort }}
+      nodePort: {{ .nodePort }}
+      {{- end }}
   {{- end}}
 
-
+  {{- end}}
 ---
 {{- end}}

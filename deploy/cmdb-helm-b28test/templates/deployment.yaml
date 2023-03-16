@@ -6,26 +6,26 @@
 {{ $cache := .Values.cache.enabled}}
 {{ $cacheLabels := .Values.cache.labels}}
 {{ $mongoCluster := .Values.env.mongo_cluster}}
-{{ $prefix := .Values.prefix}}
+{{ $prefix := printf "%s-" .Values.prefix}}
 {{ $mongoShardNode := .Values.env.mongo_shard_node}}
 {{- range .Values.apps }}
   {{- with . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ $prefix }}-{{ .name }}
+  name: {{ $prefix }}{{ .name }}
   labels:
-    app:  {{ $prefix }}-{{ .name }}
+    app:  {{ $prefix }}{{ .name }}
 spec:
   replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app:  {{ $prefix }}-{{ .name }}
+      app:  {{ $prefix }}{{ .name }}
   template:
     metadata:
       labels:
-        app:  {{ $prefix }}-{{ .name }}
+        app:  {{ $prefix }}{{ .name }}
 #      annotations:
 #        timestamp: {{ now | quote }}
     spec:

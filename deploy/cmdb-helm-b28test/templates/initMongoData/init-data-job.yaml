@@ -1,8 +1,9 @@
+{{ $prefix := printf "%s-" .Values.prefix}}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.prefix }}-init-mongodb-data-job
+  name: {{ $prefix }}init-mongodb-data-job
 #  namespace: cmdbv4
 spec:
   #  backoffLimit: 5
@@ -12,7 +13,7 @@ spec:
       containers:
         - name: mongodb-data-init-finish
           image: harbor.dev.21vianet.com/taojun/mycurl:centos
-          command: [ "bash","-c","/data/check_200.sh http://adminserver-svc:60004/UpdateSequence" ]
+          command: [ "bash","-c","/data/check_200.sh http://{{ $prefix }}adminserver-svc:60004/UpdateSequence" ]
 #          command: ["bash",  "-c", "sleep 999d"]
           volumeMounts:
             - mountPath: /data/check_200.sh
@@ -25,7 +26,7 @@ spec:
           env:
             {{- include "mytemplate" . | indent 12 }}
           image: harbor.dev.21vianet.com/taojun/mycurl:centos
-          command: [ "bash","-c","/data/check_200.sh http://adminserver-svc:60004/FindInitBaseData" ]
+          command: [ "bash","-c","/data/check_200.sh http://{{ $prefix }}adminserver-svc:60004/FindInitBaseData" ]
           #command: ["sh","-c","sleep 999d"]
           volumeMounts:
             - mountPath: /data/check_200.sh
@@ -36,7 +37,7 @@ spec:
           env:
             {{- include "mytemplate" . | indent 12 }}
           image: harbor.dev.21vianet.com/taojun/mongodb-sharded:6.0.1-debian-11-r10
-          command: ["bash","-c","pushd /data/; ./checkandimport.sh  http://adminserver-svc:60004/find/init_mongodb_data ${mongoShardNode}"]
+          command: ["bash","-c","pushd /data/; ./checkandimport.sh  http://{{ $prefix }}adminserver-svc:60004/find/init_mongodb_data ${mongoShardNode}"]
 #          command: ["bash",  "-c", "sleep 999d"]
           volumeMounts:
             - mountPath: /data/checkandimport.sh
