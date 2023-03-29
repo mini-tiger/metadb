@@ -1,8 +1,8 @@
 <template>
   <div class="wrapper">
-    <form class="form" method="POST">
+    <form class="form">
       <h1 class="title">
-        <img class="logo" src="./assets/blueking_cn.svg" alt="logo" width="178" height="33">
+        <img class="logo" src="../assets/images/shijihulianLogo.png" alt="logo" height="120">
       </h1>
       <div class="form-error" ref="error">{{error}}</div>
       <div class="form-item">
@@ -13,7 +13,7 @@
         <img class="form-item-icon" src="./assets/password.svg" width="16" height="16">
         <input class="password" id="password" type="password" name="password" placeholder="密码" v-model.trim="password">
       </div>
-      <button class="form-submit" type="submit" @click="handleSubmit">登录</button>
+      <button class="form-submit" type="submit" @click.stop.prevent="handleSubmit">登录</button>
     </form>
   </div>
 </template>
@@ -28,15 +28,16 @@
       }
     },
     methods: {
-      handleSubmit(event) {
+      handleSubmit() {
         if (!this.username.length) {
           this.error = '请输入用户名'
-          event.preventDefault()
-          return
-        }
-        if (!this.password.length) {
+        } else if (!this.password.length) {
           this.error = '请输入密码'
-          event.preventDefault()
+        } else if (this.username !== 'admin' && this.password !== 'admin') {
+          this.error = '用户名密码错误'
+        } else {
+          window.localStorage.setItem('loginStatus', '1')
+          this.$router.push('/')
         }
       }
     }

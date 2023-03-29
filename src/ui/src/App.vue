@@ -8,7 +8,7 @@
       <span class="tips-text">{{$t('您的浏览器非Chrome，建议您使用最新版本的Chrome浏览，以保证最好的体验效果')}}</span>
       <i class="tips-icon bk-icon icon-close-circle-shape" @click="showBrowserTips = false"></i>
     </div>
-    <the-header></the-header>
+    <the-header v-if="currentRoute !== '/login'"></the-header>
     <router-view class="views-layout" :name="topView" ref="topView"></router-view>
     <the-permission-modal ref="permissionModal"></the-permission-modal>
     <the-login-modal ref="loginModal"
@@ -52,6 +52,9 @@
       topView() {
         const [topRoute] = this.$route.matched
         return (topRoute && topRoute.meta.view) || 'default'
+      },
+      currentRoute() {
+        return this.$route.fullPath
       },
       loginUrl() {
         if (process.env.NODE_ENV === 'development') {

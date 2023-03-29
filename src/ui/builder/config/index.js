@@ -23,9 +23,9 @@ process.CMDB_CONFIG = config
 const dev = {
   // custom config
   config: Object.assign({}, config, {
-    API_URL: JSON.stringify('http://{host}:{port}/proxy/'),
+    API_URL: JSON.stringify('http://localhost:9090/'),
     API_VERSION: JSON.stringify('v3'),
-    API_LOGIN: JSON.stringify(''),
+    API_LOGIN: JSON.stringify('login'),
     AGENT_URL: JSON.stringify(''),
     AUTH_SCHEME: JSON.stringify('internal'),
     AUTH_CENTER: JSON.stringify({}),
@@ -49,6 +49,11 @@ const dev = {
       pathRewrite: {
         '^/proxy': ''
       }
+    },
+    '/api/*': {
+      logLevel: 'info',
+      changeOrigin: true,
+      target: 'http://172.22.50.25:32168/'
     }
   },
   // Various Dev Server settings

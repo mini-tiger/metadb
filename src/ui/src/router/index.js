@@ -67,6 +67,11 @@ const router = new Router({
     ...statusRouters,
     ...hostLandingViews,
     {
+      name: 'login',
+      path: '/login',
+      component: () => import('../login/index.vue'),
+    },
+    {
       name: MENU_ENTRY,
       component: dynamicRouterView,
       children: indexViews,
@@ -206,6 +211,12 @@ router.beforeEach((to, from, next) => {
         throw new StatusError({ name: '404' })
       }
       await checkViewAuthorize(to)
+      if (to.path !== '/login' && window.localStorage.getItem('loginStatus') !== '1') {
+        return next('login')
+      }
+      if (to.path === '/login' && window.localStorage.getItem('loginStatus') === '1') {
+        return  next('/')
+      }
       return next()
     } catch (e) {
       console.error(e)

@@ -15,7 +15,7 @@ module.exports = {
 
   entry: {
     app: './src/main.js',
-    login: './src/login/index.js'
+    // login: './src/login/index.js'
   },
 
   output: {
