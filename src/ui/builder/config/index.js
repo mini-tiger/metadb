@@ -40,7 +40,7 @@ const dev = {
 
   // Paths
   assetsSubDirectory: '',
-  assetsPublicPath: '/static/',
+  assetsPublicPath: '',
   proxyTable: {
     '/proxy': {
       logLevel: 'info',
@@ -125,7 +125,7 @@ module.exports = {
     assetsRoot: `${path.resolve(config.BUILD_OUTPUT)}/web`,
 
     assetsSubDirectory: '',
-    assetsPublicPath: '/static/',
+    assetsPublicPath: '/',
 
     /**
          * Source Maps
