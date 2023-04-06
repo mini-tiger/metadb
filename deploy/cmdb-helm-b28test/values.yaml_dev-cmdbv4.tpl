@@ -22,24 +22,24 @@ apps:
   - name: hostserver
     port: 60001
     enable: false
-  - name: operationserver
-    port: 60011
-    enable: false
-  - name: cacheservice
-    port: 50010
-    enable: false
-  - name: cloudserver
-    port: 60013
-    enable: false
-  - name: eventserver
-    port: 60009
-    enable: false
-  - name: procserver
-    port: 60003
-    enable: false
-  - name: taskserver
-    port: 60012
-    enable: false
+#  - name: operationserver
+#    port: 60011
+#    enable: false
+#  - name: cacheservice
+#    port: 50010
+#    enable: false
+#  - name: cloudserver
+#    port: 60013
+#    enable: false
+#  - name: eventserver
+#    port: 60009
+#    enable: false
+#  - name: procserver
+#    port: 60003
+#    enable: false
+#  - name: taskserver
+#    port: 60012
+#    enable: false
 prefix: lmanager-cmdb
 ingress:
     enable: false
