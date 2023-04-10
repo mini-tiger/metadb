@@ -54,6 +54,11 @@ const dev = {
       logLevel: 'info',
       changeOrigin: true,
       target: 'http://172.22.50.25:32168/'
+    },
+    '/ldap/*': {
+      logLevel: 'info',
+      changeOrigin: true,
+      target: 'http://172.22.50.191:8090/'
     }
   },
   // Various Dev Server settings

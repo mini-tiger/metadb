@@ -19,6 +19,8 @@
 </template>
 
 <script>
+  import Axios from 'axios'
+
   export default {
     data() {
       return {
@@ -33,11 +35,24 @@
           this.error = '请输入用户名'
         } else if (!this.password.length) {
           this.error = '请输入密码'
-        } else if (this.username !== 'admin' && this.password !== 'admin') {
-          this.error = '用户名密码错误'
         } else {
-          window.localStorage.setItem('loginStatus', '1')
-          this.$router.push('/')
+          // axios实例
+          const axiosInstance = Axios.create({
+            baseURL: '/',
+            xsrfCookieName: 'data_csrftoken',
+            xsrfHeaderName: 'X-CSRFToken',
+            withCredentials: true
+          })
+          const formData = new FormData()
+          formData.set('username', window.btoa(this.username))
+          formData.set('password', window.btoa(this.password))
+          axiosInstance.post('ldap/auth', formData).then(() => {
+            window.User.name = this.username
+            window.localStorage.setItem('loginStatus', '1')
+            this.$router.push('/')
+          }).catch(() => {
+            this.error = '鉴权失败'
+          })
         }
       }
     }
