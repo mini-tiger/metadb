@@ -282,7 +282,7 @@ func (s *Service) BuildDownLoadExcelTemplate(c *gin.Context) {
 		logics.AddDownExcelHttpHeader(c, fmt.Sprintf("bk_cmdb_inst_%s.xlsx", objID))
 	}
 
-	// http.ServeFile(c.Writer, c.Request, file)
+	http.ServeFile(c.Writer, c.Request, file)
 	c.File(file)
 	if err := os.Remove(file); err != nil {
 		blog.Errorf("BuildDownLoadExcelTemplate success, but remove template file after response failed, err: %+v, rid: %s", err, rid)
