@@ -1,0 +1,45 @@
+---
+  {{ $prefix := printf "%s-" .Values.prefix}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $prefix }}{{ .Values.ui.name }}
+  labels:
+    app:  {{ $prefix }}{{ .Values.ui.name }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app:  {{ $prefix }}{{ .Values.ui.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $prefix }}{{ .Values.ui.name }}
+    spec:
+      containers:
+          - image: {{ .Values.ui.image }}
+            imagePullPolicy: Always
+            name: {{ .Values.ui.name }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ $prefix }}{{ .Values.ui.name }}-svc
+
+  name: {{ $prefix }}{{ .Values.ui.name }}-svc
+
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+    - nodePort: {{ .Values.ui.nodeport }}
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    app: {{ $prefix }}{{ .Values.ui.name }}
+  sessionAffinity: None
+  type: NodePort
+
