@@ -152,8 +152,8 @@ watch:
   usr: $mongo_user
   pwd: "$mongo_pass"
   database: $db
-  maxOpenConns: 10
-  maxIdleConns: 5
+  maxOpenConns: 100
+  maxIdleConns: 50
   mechanism: SCRAM-SHA-1
   rsName: $rs_name
   socketTimeoutSeconds: 10
@@ -164,12 +164,14 @@ watch:
     mongo_cluster = mongo_cluster_v
     mongo_shard_node_watch = ''
     if mongo_cluster in "shard":
-        mongo_shard_node_watch = "mongodb://cc:cc@{node}/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true".format(
+        mongo_shard_node_watch = "mongodb://cc:cc@{node}/?authMechanism=SCRAM-SHA-256&authSource=cmdb".format(
             node=mongo_shard_node_v)
         mongo_shard_node_list = mongo_shard_node_v.split(",")
         mongo_shard_node_first = mongo_shard_node_list[0]
-        mongo_shard_node = "mongodb://cc:cc@{node}/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true".format(
-            node=mongo_shard_node_first)
+        # mongo_shard_node = "mongodb://cc:cc@{node}/?authMechanism=SCRAM-SHA-256&authSource=cmdb&directConnection=true".format(
+        #     node=mongo_shard_node_first)
+        mongo_shard_node = "mongodb://cc:cc@{node}/?authMechanism=SCRAM-SHA-256&authSource=cmdb".format(
+            node=mongo_shard_node_v)
     # print(context)
     # print(mongo_shard_node)
     context["mongo_shard_node"]= mongo_shard_node
