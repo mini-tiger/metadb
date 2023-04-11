@@ -12,7 +12,10 @@
 
 package metadata
 
-import "time"
+import (
+	"go.mongodb.org/mongo-driver/mongo"
+	"time"
+)
 
 type TxnOption struct {
 	// transaction timeout time
@@ -38,4 +41,11 @@ type AbortTransactionResult struct {
 type AbortTransactionResponse struct {
 	BaseResp               `json:",inline"`
 	AbortTransactionResult `json:"data"`
+}
+
+type SessionTxnCtx struct {
+	mongo.SessionContext
+	TxnNumber int64
+	SessionID string
+	Time      time.Time
 }
