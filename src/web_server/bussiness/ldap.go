@@ -1,4 +1,4 @@
-package bussiness
+package auth
 
 import (
 	"crypto/tls"
@@ -7,38 +7,40 @@ import (
 	"github.com/go-ldap/ldap"
 )
 
-func abc() {
-
-	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", "21vianet.com", 3268))
-	if err != nil {
-		fmt.Println("连接失败", err)
-	}
-
-	sr, err := l.SimpleBind(&ldap.SimpleBindRequest{
-		Username: "uid=tao.jun,dc=21vianet,dc=com",
-		Password: "Taojun207!#",
-	})
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println(sr)
-
+type LdapAuthSrvInfo struct {
+	BindUsername, BindPassword string
+	TcpSrv                     string
+	BaseDn                     string
 }
 
-func LdapUserAuthentication(username, password string) (*ldap.Entry, error) {
+type LdapAuthBasic struct {
+	*LdapAuthSrvInfo
+	Username, Password string
+}
+
+var la *LdapAuthSrvInfo = &LdapAuthSrvInfo{
+	BindUsername: "cn=gitadm,ou=serverusers,ou=21vianet,dc=21vianet,dc=com",
+	BindPassword: "21VIAnet@G!t157",
+	TcpSrv:       "21vianet.com",
+	BaseDn:       "ou=21vianet,dc=21vianet,dc=com",
+}
+
+func (ld *LdapAuthBasic) LdapUserAuthentication() (*ldap.Entry, error) {
 	// The username and password we want to check
+
 	// 用来认证的用户名和密码
-	//username := "tao.jun"
-	//password := "Taojun207!@#"
+	username := ld.Username
+	password := ld.Password
 
 	// 用来获取查询权限的 bind 用户.如果 ldap 禁止了匿名查询,那我们就需要先用这个帐户 bind 以下才能开始查询
 	// bind 的账号通常要使用完整的 DN 信息.例如 cn=manager,dc=example,dc=org
 	// 在 AD 上,则可以用诸如 mananger@example.org 的方式来 bind
-	bindusername := "cn=gitadm,ou=serverusers,ou=21vianet,dc=21vianet,dc=com"
-	bindpassword := "21VIAnet@G!t157"
-
-	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", "21vianet.com", 3268))
+	//bindusername := "cn=gitadm,ou=serverusers,ou=21vianet,dc=21vianet,dc=com"
+	//bindpassword := "21VIAnet@G!t157"
+	bindusername := la.BindUsername
+	bindpassword := la.BindPassword
+	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", la.TcpSrv, 3268))
+	//l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", "21vianet.com", 3268))
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +65,8 @@ func LdapUserAuthentication(username, password string) (*ldap.Entry, error) {
 	// 这样我们就有查询权限了,可以构造查询请求了
 	searchRequest := ldap.NewSearchRequest(
 		// 这里是 basedn,我们将从这个节点开始搜索
-		"ou=21vianet,dc=21vianet,dc=com",
+		//"ou=21vianet,dc=21vianet,dc=com",
+		la.BaseDn,
 		// 这里几个参数分别是 scope, derefAliases, sizeLimit, timeLimit,  typesOnly
 		// 详情可以参考 RFC4511 中的定义,文末有链接
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
