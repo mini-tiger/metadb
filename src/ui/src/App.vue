@@ -24,7 +24,6 @@
   import thePermissionModal from '@/components/modal/permission'
   import theLoginModal from '@blueking/paas-login'
   import { addResizeListener, removeResizeListener } from '@/utils/resize-events'
-  import { MENU_INDEX } from '@/dictionary/menu-symbol'
   import { mapGetters } from 'vuex'
   export default {
     name: 'app',
@@ -43,9 +42,6 @@
     computed: {
       ...mapGetters(['globalLoading', 'mainFullScreen']),
       ...mapGetters('userCustom', ['usercustom', 'firstEntryKey', 'classifyNavigationKey']),
-      isIndex() {
-        return this.$route.name === MENU_INDEX
-      },
       hideBreadcrumbs() {
         return !(this.$route.meta.layout || {}).breadcrumbs
       },

@@ -26,7 +26,6 @@ import {
 } from '@/dictionary/menu-symbol'
 
 import {
-  indexViews,
   hostLandingViews,
   businessViews,
   resourceViews,
@@ -74,9 +73,8 @@ const router = new Router({
     {
       name: MENU_ENTRY,
       component: dynamicRouterView,
-      children: indexViews,
       path: '/',
-      redirect: '/index'
+      redirect: '/business'
     },
     {
       name: MENU_BUSINESS,
