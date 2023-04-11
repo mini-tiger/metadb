@@ -35,13 +35,13 @@ const getCommonPlugins = config => ([
     excludeChunks: ['login'],
     minify: isProd // default eq webpack mode
   }),
-  new HtmlWebpackPlugin({
-    filename: 'login.html', // dest, relative output.path
-    template: 'login.html',
-    config: modeValue(config.build.config, config.dev.config),
-    templateParameters: modeValue(prodEnv, devEnv),
-    excludeChunks: ['app']
-  }),
+  // new HtmlWebpackPlugin({
+  //   filename: 'login.html', // dest, relative output.path
+  //   template: 'login.html',
+  //   config: modeValue(config.build.config, config.dev.config),
+  //   templateParameters: modeValue(prodEnv, devEnv),
+  //   excludeChunks: ['app']
+  // }),
 
   new CopyPlugin({
     patterns: [

@@ -8,7 +8,7 @@ const parseArgs = require('minimist')
 
 const config = {
   BUILD_TITLE: '',
-  BUILD_OUTPUT: '../bin/enterprise/cmdb'
+  BUILD_OUTPUT: '../../Dockerfile/ui'
 }
 
 const argv = parseArgs(process.argv.slice(2))
@@ -23,9 +23,9 @@ process.CMDB_CONFIG = config
 const dev = {
   // custom config
   config: Object.assign({}, config, {
-    API_URL: JSON.stringify('http://{host}:{port}/proxy/'),
+    API_URL: JSON.stringify('http://localhost:9090/'),
     API_VERSION: JSON.stringify('v3'),
-    API_LOGIN: JSON.stringify(''),
+    API_LOGIN: JSON.stringify('login'),
     AGENT_URL: JSON.stringify(''),
     AUTH_SCHEME: JSON.stringify('internal'),
     AUTH_CENTER: JSON.stringify({}),
@@ -40,7 +40,7 @@ const dev = {
 
   // Paths
   assetsSubDirectory: '',
-  assetsPublicPath: '/static/',
+  assetsPublicPath: '',
   proxyTable: {
     '/proxy': {
       logLevel: 'info',
@@ -49,6 +49,16 @@ const dev = {
       pathRewrite: {
         '^/proxy': ''
       }
+    },
+    '/api/*': {
+      logLevel: 'info',
+      changeOrigin: true,
+      target: 'http://172.22.50.25:32168/'
+    },
+    '/ldap/*': {
+      logLevel: 'info',
+      changeOrigin: true,
+      target: 'http://172.22.50.191:8090/'
     }
   },
   // Various Dev Server settings
@@ -120,7 +130,7 @@ module.exports = {
     assetsRoot: `${path.resolve(config.BUILD_OUTPUT)}/web`,
 
     assetsSubDirectory: '',
-    assetsPublicPath: '/static/',
+    assetsPublicPath: '/',
 
     /**
          * Source Maps

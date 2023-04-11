@@ -26,7 +26,6 @@ import {
 } from '@/dictionary/menu-symbol'
 
 import {
-  indexViews,
   hostLandingViews,
   businessViews,
   resourceViews,
@@ -67,11 +66,15 @@ const router = new Router({
     ...statusRouters,
     ...hostLandingViews,
     {
+      name: 'login',
+      path: '/login',
+      component: () => import('../login/index.vue'),
+    },
+    {
       name: MENU_ENTRY,
       component: dynamicRouterView,
-      children: indexViews,
       path: '/',
-      redirect: '/index'
+      redirect: '/business'
     },
     {
       name: MENU_BUSINESS,
@@ -206,6 +209,12 @@ router.beforeEach((to, from, next) => {
         throw new StatusError({ name: '404' })
       }
       await checkViewAuthorize(to)
+      if (to.path !== '/login' && window.localStorage.getItem('loginStatus') !== '1') {
+        return next('login')
+      }
+      if (to.path === '/login' && window.localStorage.getItem('loginStatus') === '1') {
+        return  next('/')
+      }
       return next()
     } catch (e) {
       console.error(e)

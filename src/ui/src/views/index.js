@@ -104,7 +104,6 @@ export const platformManagementViews = injectStatusComponents(flatternViews([
 ]))
 
 export default {
-  ...indexViews,
   ...hostLandingViews,
   ...businessViews,
   ...resourceViews,

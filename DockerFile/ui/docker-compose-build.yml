@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  matedb-ui:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile-build
+    image: cmdb/matedb-ui:1.1.0
+    ports: 
+      - 80:80
