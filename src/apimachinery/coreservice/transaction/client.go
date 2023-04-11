@@ -30,6 +30,7 @@ import (
 )
 
 type Transaction interface {
+	StartTransaction(ctx context.Context, h http.Header) error
 	// CommitTransaction is to commit the transaction.
 	CommitTransaction(ctx context.Context, h http.Header) error
 	// AbortTransaction is to abort the transaction.
@@ -75,7 +76,6 @@ func (t *txn) AutoRunTxn(ctx context.Context, h http.Header, run func() error, o
 	if !retry {
 		return nil
 	}
-
 	// if need to retry, retry for at most 3 times, each wait for a longer time than the previous one
 	rid := util.GetHTTPCCRequestID(h)
 	appCode := h.Get(common.BKHTTPRequestAppCode)
@@ -124,6 +124,38 @@ type transaction struct {
 	// txnNumber ttl in redis
 	timeout time.Duration
 	client  rest.ClientInterface
+}
+
+// call core service to commit transaction
+func (t *transaction) StartTransaction(ctx context.Context, h http.Header) error {
+	if t.locked {
+		panic("invalid transaction usage.")
+	}
+	//t.locked = true
+
+	subPath := "/start/transaction/session"
+	body := metadata.TxnCapable{
+		Timeout:   t.timeout,
+		SessionID: t.sessionID,
+	}
+	resp := new(metadata.BaseResp)
+	err := t.client.Post().
+		WithContext(ctx).
+		Body(body).
+		SubResourcef(subPath).
+		WithHeaders(h).
+		Do().
+		Into(resp)
+
+	if err != nil {
+		return err
+	}
+
+	if !resp.Result {
+		return ccErr.New(resp.Code, resp.ErrMsg)
+	}
+
+	return nil
 }
 
 // call core service to commit transaction
@@ -216,6 +248,13 @@ func (t *transaction) autoRun(ctx context.Context, h http.Header, run func() err
 	if t.locked {
 		panic("invalid transaction usage.")
 	}
+
+	err = t.StartTransaction(ctx, h)
+	if err != nil {
+		blog.ErrorfDepthf(2, "start the transaction failed, err: %v, rid: %s", err, rid)
+		return false, err
+	}
+	blog.V(4).InfoDepthf(2, "start the transaction success. rid: %s", rid)
 
 	runErr := run()
 	if runErr != nil {

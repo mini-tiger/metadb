@@ -1201,6 +1201,20 @@ func (c *commonInst) FindInstByAssociationInst(kit *rest.Kit, objID string, asst
 		}
 	}
 
+	if asstParamCond.Mult == common.BKDBOR || asstParamCond.Mult == common.BKDBAND {
+		bk_obj_id := instCond["bk_obj_id"]
+		delete(instCond, "bk_obj_id")
+		instCondList := make([]interface{}, 0, len(instCond))
+		for key, value := range instCond {
+
+			instCondList = append(instCondList, map[string]interface{}{key: value})
+		}
+
+		instCond = make(map[string]interface{})
+		instCond["bk_obj_id"] = bk_obj_id
+		instCond[asstParamCond.Mult] = instCondList
+	}
+
 	query := &metadata.QueryInput{}
 	query.Condition = instCond
 	query.TimeCondition = asstParamCond.TimeCondition
@@ -1226,6 +1240,7 @@ func (c *commonInst) FindInstByAssociationInstAsst(kit *rest.Kit, objID string, 
 	for keyObjID, objs := range asstParamCond.Condition {
 		// Extract the ID of the instance according to the associated object.
 		cond := map[string]interface{}{}
+
 		if common.GetObjByType(keyObjID) == common.BKInnerObjIDObject {
 			cond[common.BKObjIDField] = keyObjID
 		}
