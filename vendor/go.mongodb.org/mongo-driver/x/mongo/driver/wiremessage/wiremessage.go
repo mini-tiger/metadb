@@ -1,3 +1,9 @@
+// Copyright (C) MongoDB, Inc. 2022-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package wiremessage
 
 import (
@@ -78,7 +84,7 @@ type QueryFlag int32
 const (
 	_ QueryFlag = 1 << iota
 	TailableCursor
-	SlaveOK
+	SecondaryOK
 	OplogReplay
 	NoCursorTimeout
 	AwaitData
@@ -92,8 +98,8 @@ func (qf QueryFlag) String() string {
 	if qf&TailableCursor == TailableCursor {
 		strs = append(strs, "TailableCursor")
 	}
-	if qf&SlaveOK == SlaveOK {
-		strs = append(strs, "SlaveOK")
+	if qf&SecondaryOK == SecondaryOK {
+		strs = append(strs, "SecondaryOK")
 	}
 	if qf&OplogReplay == OplogReplay {
 		strs = append(strs, "OplogReplay")
@@ -181,6 +187,22 @@ const (
 	CompressorZLib
 	CompressorZstd
 )
+
+// String implements the fmt.Stringer interface.
+func (id CompressorID) String() string {
+	switch id {
+	case CompressorNoOp:
+		return "CompressorNoOp"
+	case CompressorSnappy:
+		return "CompressorSnappy"
+	case CompressorZLib:
+		return "CompressorZLib"
+	case CompressorZstd:
+		return "CompressorZstd"
+	default:
+		return "CompressorInvalid"
+	}
+}
 
 const (
 	// DefaultZlibLevel is the default level for zlib compression
@@ -352,7 +374,8 @@ func ReadMsgSectionSingleDocument(src []byte) (doc bsoncore.Document, rem []byte
 	return bsoncore.ReadDocument(src)
 }
 
-// ReadMsgSectionDocumentSequence reads an identifier and document sequence from src.
+// ReadMsgSectionDocumentSequence reads an identifier and document sequence from src and returns the document sequence
+// data parsed into a slice of BSON documents.
 func ReadMsgSectionDocumentSequence(src []byte) (identifier string, docs []bsoncore.Document, rem []byte, ok bool) {
 	length, rem, ok := readi32(src)
 	if !ok || int(length) > len(src) {
@@ -380,6 +403,26 @@ func ReadMsgSectionDocumentSequence(src []byte) (identifier string, docs []bsonc
 	}
 
 	return identifier, docs, ret, true
+}
+
+// ReadMsgSectionRawDocumentSequence reads an identifier and document sequence from src and returns the raw document
+// sequence data.
+func ReadMsgSectionRawDocumentSequence(src []byte) (identifier string, data []byte, rem []byte, ok bool) {
+	length, rem, ok := readi32(src)
+	if !ok || int(length) > len(src) {
+		return "", nil, rem, false
+	}
+
+	// After these assignments, rem will be the data containing the identifier string + the document sequence bytes and
+	// rest will be the rest of the wire message after this document sequence.
+	rem, rest := rem[:length-4], rem[length-4:]
+
+	identifier, rem, ok = readcstring(rem)
+	if !ok {
+		return "", nil, rem, false
+	}
+
+	return identifier, rem, rest, true
 }
 
 // ReadMsgChecksum reads a checksum from src.
@@ -469,7 +512,9 @@ func ReadCompressedOriginalOpCode(src []byte) (opcode OpCode, rem []byte, ok boo
 
 // ReadCompressedUncompressedSize reads the uncompressed size of a
 // compressed wiremessage to dst.
-func ReadCompressedUncompressedSize(src []byte) (size int32, rem []byte, ok bool) { return readi32(src) }
+func ReadCompressedUncompressedSize(src []byte) (size int32, rem []byte, ok bool) {
+	return readi32(src)
+}
 
 // ReadCompressedCompressorID reads the ID of the compressor to dst.
 func ReadCompressedCompressorID(src []byte) (id CompressorID, rem []byte, ok bool) {

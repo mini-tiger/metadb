@@ -10,25 +10,30 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/event"
+	"go.mongodb.org/mongo-driver/internal"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
+	"go.mongodb.org/mongo-driver/x/mongo/driver"
 )
 
 var (
-	// Background is a no-op context.
-	Background = context.Background()
 	// MajorityWc is the majority write concern.
 	MajorityWc = writeconcern.New(writeconcern.WMajority())
 	// PrimaryRp is the primary read preference.
 	PrimaryRp = readpref.Primary()
+	// SecondaryRp is the secondary read preference.
+	SecondaryRp = readpref.Secondary()
 	// LocalRc is the local read concern
 	LocalRc = readconcern.Local()
 	// MajorityRc is the majority read concern
@@ -40,7 +45,7 @@ const (
 )
 
 // FailPoint is a representation of a server fail point.
-// See https://github.com/mongodb/specifications/tree/master/source/transactions/tests#server-fail-point
+// See https://github.com/mongodb/specifications/tree/HEAD/source/transactions/tests#server-fail-point
 // for more information regarding fail points.
 type FailPoint struct {
 	ConfigureFailPoint string `bson:"configureFailPoint"`
@@ -57,39 +62,55 @@ type FailPointMode struct {
 
 // FailPointData is a representation of the FailPoint.Data field.
 type FailPointData struct {
-	FailCommands                  []string `bson:"failCommands,omitempty"`
-	CloseConnection               bool     `bson:"closeConnection,omitempty"`
-	ErrorCode                     int32    `bson:"errorCode,omitempty"`
-	FailBeforeCommitExceptionCode int32    `bson:"failBeforeCommitExceptionCode,omitempty"`
-	WriteConcernError             *struct {
-		Code   int32  `bson:"code"`
-		Name   string `bson:"codeName"`
-		Errmsg string `bson:"errmsg"`
-	} `bson:"writeConcernError,omitempty"`
-	BlockConnection bool   `bson:"blockConnection,omitempty"`
-	BlockTimeMS     int32  `bson:"blockTimeMS,omitempty"`
-	AppName         string `bson:"appName,omitempty"`
+	FailCommands                  []string               `bson:"failCommands,omitempty"`
+	CloseConnection               bool                   `bson:"closeConnection,omitempty"`
+	ErrorCode                     int32                  `bson:"errorCode,omitempty"`
+	FailBeforeCommitExceptionCode int32                  `bson:"failBeforeCommitExceptionCode,omitempty"`
+	ErrorLabels                   *[]string              `bson:"errorLabels,omitempty"`
+	WriteConcernError             *WriteConcernErrorData `bson:"writeConcernError,omitempty"`
+	BlockConnection               bool                   `bson:"blockConnection,omitempty"`
+	BlockTimeMS                   int32                  `bson:"blockTimeMS,omitempty"`
+	AppName                       string                 `bson:"appName,omitempty"`
+}
+
+// WriteConcernErrorData is a representation of the FailPoint.Data.WriteConcern field.
+type WriteConcernErrorData struct {
+	Code        int32     `bson:"code"`
+	Name        string    `bson:"codeName"`
+	Errmsg      string    `bson:"errmsg"`
+	ErrorLabels *[]string `bson:"errorLabels,omitempty"`
+	ErrInfo     bson.Raw  `bson:"errInfo,omitempty"`
 }
 
 // T is a wrapper around testing.T.
 type T struct {
+	// connsCheckedOut is the net number of connections checked out during test execution.
+	// It must be accessed using the atomic package and should be at the beginning of the struct.
+	// - atomic bug: https://pkg.go.dev/sync/atomic#pkg-note-BUG
+	// - suggested layout: https://go101.org/article/memory-layout.html
+	connsCheckedOut int64
+
 	*testing.T
 
 	// members for only this T instance
-	createClient     *bool
-	runOn            []RunOnBlock
-	mockDeployment   *mockDeployment // nil if the test is not being run against a mock
-	mockResponses    []bson.D
-	createdColls     []*mongo.Collection // collections created in this test
-	dbName, collName string
-	failPointNames   []string
-	minServerVersion string
-	maxServerVersion string
-	validTopologies  []TopologyKind
-	auth             *bool
-	enterprise       *bool
-	collCreateOpts   bson.D
-	connsCheckedOut  int // net number of connections checked out during test execution
+	createClient      *bool
+	createCollection  *bool
+	runOn             []RunOnBlock
+	mockDeployment    *mockDeployment // nil if the test is not being run against a mock
+	mockResponses     []bson.D
+	createdColls      []*Collection // collections created in this test
+	proxyDialer       *proxyDialer
+	dbName, collName  string
+	failPointNames    []string
+	minServerVersion  string
+	maxServerVersion  string
+	validTopologies   []TopologyKind
+	auth              *bool
+	enterprise        *bool
+	dataLake          *bool
+	ssl               *bool
+	collCreateOpts    *options.CreateCollectionOptions
+	requireAPIVersion *bool
 
 	// options copied to sub-tests
 	clientType  ClientType
@@ -100,9 +121,10 @@ type T struct {
 	baseOpts *Options // used to create subtests
 
 	// command monitoring channels
-	started   []*event.CommandStartedEvent
-	succeeded []*event.CommandSucceededEvent
-	failed    []*event.CommandFailedEvent
+	monitorLock sync.Mutex
+	started     []*event.CommandStartedEvent
+	succeeded   []*event.CommandSucceededEvent
+	failed      []*event.CommandFailedEvent
 
 	Client *mongo.Client
 	DB     *mongo.Database
@@ -119,8 +141,8 @@ func newT(wrapped *testing.T, opts ...*Options) *T {
 		}
 	}
 
-	if t.shouldSkip() {
-		t.Skip("no matching environmental constraint found")
+	if err := t.verifyConstraints(); err != nil {
+		t.Skipf("skipping due to environmental constraints: %v", err)
 	}
 
 	if t.collName == "" {
@@ -143,6 +165,12 @@ func newT(wrapped *testing.T, opts ...*Options) *T {
 // New creates a new T instance with the given options. If the current environment does not satisfy constraints
 // specified in the options, the test will be skipped automatically.
 func New(wrapped *testing.T, opts ...*Options) *T {
+	// All tests that use mtest.New() are expected to be integration tests, so skip them when the
+	// -short flag is included in the "go test" command.
+	if testing.Short() {
+		wrapped.Skip("skipping mtest integration test in short mode")
+	}
+
 	t := newT(wrapped, opts...)
 
 	// only create a client if it needs to be shared in sub-tests
@@ -168,7 +196,7 @@ func (t *T) Close() {
 
 	// always disconnect the client regardless of clientType because Client.Disconnect will work against
 	// all deployments
-	_ = t.Client.Disconnect(Background)
+	_ = t.Client.Disconnect(context.Background())
 }
 
 // Run creates a new T instance for a sub-test and runs the given callback. It also creates a new collection using the
@@ -215,7 +243,7 @@ func (t *T) RunOpts(name string, opts *Options, callback func(*T)) {
 			// store number of sessions and connections checked out here but assert that they're equal to 0 after
 			// cleaning up test resources to make sure resources are always cleared
 			sessions := sub.Client.NumberSessionsInProgress()
-			conns := sub.connsCheckedOut
+			conns := sub.NumberConnectionsCheckedOut()
 
 			if sub.clientType != Mock {
 				sub.ClearFailPoints()
@@ -223,7 +251,7 @@ func (t *T) RunOpts(name string, opts *Options, callback func(*T)) {
 			}
 			// only disconnect client if it's not being shared
 			if sub.shareClient == nil || !*sub.shareClient {
-				_ = sub.Client.Disconnect(Background)
+				_ = sub.Client.Disconnect(context.Background())
 			}
 			assert.Equal(sub, 0, sessions, "%v sessions checked out", sessions)
 			assert.Equal(sub, 0, conns, "%v connections checked out", conns)
@@ -249,6 +277,8 @@ func (t *T) ClearMockResponses() {
 // GetStartedEvent returns the most recent CommandStartedEvent, or nil if one is not present.
 // This can only be called once per event.
 func (t *T) GetStartedEvent() *event.CommandStartedEvent {
+	// TODO(GODRIVER-2075): GetStartedEvent documents that it returns the most recent event, but actually returns the first
+	// TODO event. Update either the documentation or implementation.
 	if len(t.started) == 0 {
 		return nil
 	}
@@ -260,6 +290,8 @@ func (t *T) GetStartedEvent() *event.CommandStartedEvent {
 // GetSucceededEvent returns the most recent CommandSucceededEvent, or nil if one is not present.
 // This can only be called once per event.
 func (t *T) GetSucceededEvent() *event.CommandSucceededEvent {
+	// TODO(GODRIVER-2075): GetSucceededEvent documents that it returns the most recent event, but actually returns the
+	// TODO first event. Update either the documentation or implementation.
 	if len(t.succeeded) == 0 {
 		return nil
 	}
@@ -271,6 +303,8 @@ func (t *T) GetSucceededEvent() *event.CommandSucceededEvent {
 // GetFailedEvent returns the most recent CommandFailedEvent, or nil if one is not present.
 // This can only be called once per event.
 func (t *T) GetFailedEvent() *event.CommandFailedEvent {
+	// TODO(GODRIVER-2075): GetFailedEvent documents that it returns the most recent event, but actually  returns the first
+	// TODO event. Update either the documentation or implementation.
 	if len(t.failed) == 0 {
 		return nil
 	}
@@ -297,6 +331,59 @@ func (t *T) GetAllFailedEvents() []*event.CommandFailedEvent {
 	return t.failed
 }
 
+// FilterStartedEvents filters the existing CommandStartedEvent instances for this test using the provided filter
+// callback. An event will be retained if the filter returns true. The list of filtered events will be used to overwrite
+// the list of events for this test and will therefore change the output of t.GetAllStartedEvents().
+func (t *T) FilterStartedEvents(filter func(*event.CommandStartedEvent) bool) {
+	var newEvents []*event.CommandStartedEvent
+	for _, evt := range t.started {
+		if filter(evt) {
+			newEvents = append(newEvents, evt)
+		}
+	}
+	t.started = newEvents
+}
+
+// FilterSucceededEvents filters the existing CommandSucceededEvent instances for this test using the provided filter
+// callback. An event will be retained if the filter returns true. The list of filtered events will be used to overwrite
+// the list of events for this test and will therefore change the output of t.GetAllSucceededEvents().
+func (t *T) FilterSucceededEvents(filter func(*event.CommandSucceededEvent) bool) {
+	var newEvents []*event.CommandSucceededEvent
+	for _, evt := range t.succeeded {
+		if filter(evt) {
+			newEvents = append(newEvents, evt)
+		}
+	}
+	t.succeeded = newEvents
+}
+
+// FilterFailedEvents filters the existing CommandFailedEVent instances for this test using the provided filter
+// callback. An event will be retained if the filter returns true. The list of filtered events will be used to overwrite
+// the list of events for this test and will therefore change the output of t.GetAllFailedEvents().
+func (t *T) FilterFailedEvents(filter func(*event.CommandFailedEvent) bool) {
+	var newEvents []*event.CommandFailedEvent
+	for _, evt := range t.failed {
+		if filter(evt) {
+			newEvents = append(newEvents, evt)
+		}
+	}
+	t.failed = newEvents
+}
+
+// GetProxiedMessages returns the messages proxied to the server by the test. If the client type is not Proxy, this
+// returns nil.
+func (t *T) GetProxiedMessages() []*ProxyMessage {
+	if t.proxyDialer == nil {
+		return nil
+	}
+	return t.proxyDialer.Messages()
+}
+
+// NumberConnectionsCheckedOut returns the number of connections checked out from the test Client.
+func (t *T) NumberConnectionsCheckedOut() int {
+	return int(atomic.LoadInt64(&t.connsCheckedOut))
+}
+
 // ClearEvents clears the existing command monitoring events.
 func (t *T) ClearEvents() {
 	t.started = t.started[:0]
@@ -313,82 +400,129 @@ func (t *T) ResetClient(opts *options.ClientOptions) {
 		t.clientOpts = opts
 	}
 
-	_ = t.Client.Disconnect(Background)
+	_ = t.Client.Disconnect(context.Background())
 	t.createTestClient()
 	t.DB = t.Client.Database(t.dbName)
-	t.Coll = t.DB.Collection(t.collName)
+	t.Coll = t.DB.Collection(t.collName, t.collOpts)
 
-	created := make([]*mongo.Collection, len(t.createdColls))
-	for i, coll := range t.createdColls {
-		if coll.Name() == t.collName {
-			created[i] = t.Coll
+	for _, coll := range t.createdColls {
+		// If the collection was created using a different Client, it doesn't need to be reset.
+		if coll.hasDifferentClient {
 			continue
 		}
 
-		created[i] = t.DB.Collection(coll.Name())
+		// If the namespace is the same as t.Coll, we can use t.Coll.
+		if coll.created.Name() == t.collName && coll.created.Database().Name() == t.dbName {
+			coll.created = t.Coll
+			continue
+		}
+
+		// Otherwise, reset the collection to use the new Client.
+		coll.created = t.Client.Database(coll.DB).Collection(coll.Name, coll.Opts)
 	}
-	t.createdColls = created
 }
 
 // Collection is used to configure a new collection created during a test.
 type Collection struct {
-	Name       string
-	DB         string        // defaults to mt.DB.Name() if not specified
-	Client     *mongo.Client // defaults to mt.Client if not specified
-	Opts       *options.CollectionOptions
-	CreateOpts bson.D
-}
-
-// returns database to use for creating a new collection
-func (t *T) extractDatabase(coll Collection) *mongo.Database {
-	// default to t.DB unless coll overrides it
-	var createNewDb bool
-	dbName := t.DB.Name()
-	if coll.DB != "" {
-		createNewDb = true
-		dbName = coll.DB
-	}
-
-	// if a client is specified, a new database must be created
-	if coll.Client != nil {
-		return coll.Client.Database(dbName)
-	}
-	// if dbName is the same as t.DB.Name(), t.DB can be used
-	if !createNewDb {
-		return t.DB
-	}
-	// a new database must be created from t.Client
-	return t.Client.Database(dbName)
+	Name               string
+	DB                 string        // defaults to mt.DB.Name() if not specified
+	Client             *mongo.Client // defaults to mt.Client if not specified
+	Opts               *options.CollectionOptions
+	CreateOpts         *options.CreateCollectionOptions
+	ViewOn             string
+	ViewPipeline       interface{}
+	hasDifferentClient bool
+	created            *mongo.Collection // the actual collection that was created
 }
 
 // CreateCollection creates a new collection with the given configuration. The collection will be dropped after the test
 // finishes running. If createOnServer is true, the function ensures that the collection has been created server-side
 // by running the create command. The create command will appear in command monitoring channels.
 func (t *T) CreateCollection(coll Collection, createOnServer bool) *mongo.Collection {
-	db := t.extractDatabase(coll)
-	if createOnServer && t.clientType != Mock {
-		cmd := bson.D{{"create", coll.Name}}
-		cmd = append(cmd, coll.CreateOpts...)
+	if coll.DB == "" {
+		coll.DB = t.DB.Name()
+	}
+	if coll.Client == nil {
+		coll.Client = t.Client
+	}
+	coll.hasDifferentClient = coll.Client != t.Client
 
-		if err := db.RunCommand(Background, cmd).Err(); err != nil {
+	db := coll.Client.Database(coll.DB)
+
+	if coll.CreateOpts != nil && coll.CreateOpts.EncryptedFields != nil {
+		// An encrypted collection consists of a data collection and three state collections.
+		// Aborted test runs may leave these collections.
+		// Drop all four collections to avoid a quiet failure to create all collections.
+		DropEncryptedCollection(t, db.Collection(coll.Name), coll.CreateOpts.EncryptedFields)
+	}
+
+	if createOnServer && t.clientType != Mock {
+		var err error
+		if coll.ViewOn != "" {
+			err = db.CreateView(context.Background(), coll.Name, coll.ViewOn, coll.ViewPipeline)
+		} else {
+			err = db.CreateCollection(context.Background(), coll.Name, coll.CreateOpts)
+		}
+
+		// ignore ErrUnacknowledgedWrite. Client may be configured with unacknowledged write concern.
+		if err != nil && err != driver.ErrUnacknowledgedWrite {
 			// ignore NamespaceExists errors for idempotency
 
 			cmdErr, ok := err.(mongo.CommandError)
 			if !ok || cmdErr.Code != namespaceExistsErrCode {
-				t.Fatalf("error creating collection %v on server: %v", coll.Name, err)
+				t.Fatalf("error creating collection or view: %v on server: %v", coll.Name, err)
 			}
 		}
 	}
 
-	created := db.Collection(coll.Name, coll.Opts)
-	t.createdColls = append(t.createdColls, created)
-	return created
+	coll.created = db.Collection(coll.Name, coll.Opts)
+	t.createdColls = append(t.createdColls, &coll)
+	return coll.created
+}
+
+// DropEncryptedCollection drops a collection with EncryptedFields.
+// The EncryptedFields option is not supported in Collection.Drop(). See GODRIVER-2413.
+func DropEncryptedCollection(t *T, coll *mongo.Collection, encryptedFields interface{}) {
+	t.Helper()
+
+	var efBSON bsoncore.Document
+	efBSON, err := bson.Marshal(encryptedFields)
+	assert.Nil(t, err, "error in Marshal: %v", err)
+
+	// Drop the three encryption-related, associated collections: `escCollection`, `eccCollection` and `ecocCollection`.
+	// Drop ESCCollection.
+	escCollection, err := internal.GetEncryptedStateCollectionName(efBSON, coll.Name(), internal.EncryptedStateCollection)
+	assert.Nil(t, err, "error in getEncryptedStateCollectionName: %v", err)
+	err = coll.Database().Collection(escCollection).Drop(context.Background())
+	assert.Nil(t, err, "error in Drop: %v", err)
+
+	// Drop ECCCollection.
+	eccCollection, err := internal.GetEncryptedStateCollectionName(efBSON, coll.Name(), internal.EncryptedCacheCollection)
+	assert.Nil(t, err, "error in getEncryptedStateCollectionName: %v", err)
+	err = coll.Database().Collection(eccCollection).Drop(context.Background())
+	assert.Nil(t, err, "error in Drop: %v", err)
+
+	// Drop ECOCCollection.
+	ecocCollection, err := internal.GetEncryptedStateCollectionName(efBSON, coll.Name(), internal.EncryptedCompactionCollection)
+	assert.Nil(t, err, "error in getEncryptedStateCollectionName: %v", err)
+	err = coll.Database().Collection(ecocCollection).Drop(context.Background())
+	assert.Nil(t, err, "error in Drop: %v", err)
+
+	// Drop the data collection.
+	err = coll.Drop(context.Background())
+	assert.Nil(t, err, "error in Drop: %v", err)
 }
 
 // ClearCollections drops all collections previously created by this test.
 func (t *T) ClearCollections() {
-	for _, coll := range t.createdColls {
-		_ = coll.Drop(Background)
+	// Collections should not be dropped when testing against Atlas Data Lake because the data is pre-inserted.
+	if !testContext.dataLake {
+		for _, coll := range t.createdColls {
+			if coll.CreateOpts != nil && coll.CreateOpts.EncryptedFields != nil {
+				DropEncryptedCollection(t, coll.created, coll.CreateOpts.EncryptedFields)
+			}
+			_ = coll.created.Drop(context.Background())
+		}
 	}
 	t.createdColls = t.createdColls[:0]
 }
@@ -415,11 +549,23 @@ func (t *T) SetFailPoint(fp FailPoint) {
 		}
 	}
 
-	admin := t.Client.Database("admin")
-	if err := admin.RunCommand(Background, fp).Err(); err != nil {
-		t.Fatalf("error creating fail point on server: %v", err)
+	if err := SetFailPoint(fp, t.Client); err != nil {
+		t.Fatal(err)
 	}
 	t.failPointNames = append(t.failPointNames, fp.ConfigureFailPoint)
+}
+
+// SetFailPointFromDocument sets the fail point represented by the given document for the client associated with T. This
+// method assumes that the given document is in the form {configureFailPoint: <failPointName>, ...}. Commands to create
+// the failpoint will appear in command monitoring channels. The fail point will be automatically disabled after this
+// test has run.
+func (t *T) SetFailPointFromDocument(fp bson.Raw) {
+	if err := SetRawFailPoint(fp, t.Client); err != nil {
+		t.Fatal(err)
+	}
+
+	name := fp.Index(0).Value().StringValue()
+	t.failPointNames = append(t.failPointNames, name)
 }
 
 // TrackFailPoint adds the given fail point to the list of fail points to be disabled when the current test finishes.
@@ -436,27 +582,12 @@ func (t *T) ClearFailPoints() {
 			{"configureFailPoint", fp},
 			{"mode", "off"},
 		}
-		err := db.RunCommand(Background, cmd).Err()
+		err := db.RunCommand(context.Background(), cmd).Err()
 		if err != nil {
 			t.Fatalf("error clearing fail point %s: %v", fp, err)
 		}
 	}
 	t.failPointNames = t.failPointNames[:0]
-}
-
-// AuthEnabled returns whether or not this test is running in an environment with auth.
-func (t *T) AuthEnabled() bool {
-	return testContext.authEnabled
-}
-
-// TopologyKind returns the topology kind of the environment
-func (t *T) TopologyKind() TopologyKind {
-	return testContext.topoKind
-}
-
-// ConnString returns the connection string used to create the client for this test.
-func (t *T) ConnString() string {
-	return testContext.connString.Original
 }
 
 // CloneDatabase modifies the default database for this test to match the given options.
@@ -469,12 +600,6 @@ func (t *T) CloneCollection(opts *options.CollectionOptions) {
 	var err error
 	t.Coll, err = t.Coll.Clone(opts)
 	assert.Nil(t, err, "error cloning collection: %v", err)
-}
-
-// GlobalClient returns a client configured with read concern majority, write concern majority, and read preference
-// primary. The returned client is not tied to the receiver and is valid outside the lifetime of the receiver.
-func (T) GlobalClient() *mongo.Client {
-	return testContext.client
 }
 
 func sanitizeCollectionName(db string, coll string) string {
@@ -496,15 +621,25 @@ func (t *T) createTestClient() {
 		// default opts
 		clientOpts = options.Client().SetWriteConcern(MajorityWc).SetReadPreference(PrimaryRp)
 	}
+	// set ServerAPIOptions to latest version if required
+	if clientOpts.Deployment == nil && t.clientType != Mock && clientOpts.ServerAPIOptions == nil && testContext.requireAPIVersion {
+		clientOpts.SetServerAPIOptions(options.ServerAPI(driver.TestServerAPIVersion))
+	}
 	// command monitor
 	clientOpts.SetMonitor(&event.CommandMonitor{
 		Started: func(_ context.Context, cse *event.CommandStartedEvent) {
+			t.monitorLock.Lock()
+			defer t.monitorLock.Unlock()
 			t.started = append(t.started, cse)
 		},
 		Succeeded: func(_ context.Context, cse *event.CommandSucceededEvent) {
+			t.monitorLock.Lock()
+			defer t.monitorLock.Unlock()
 			t.succeeded = append(t.succeeded, cse)
 		},
 		Failed: func(_ context.Context, cfe *event.CommandFailedEvent) {
+			t.monitorLock.Lock()
+			defer t.monitorLock.Unlock()
 			t.failed = append(t.failed, cfe)
 		},
 	})
@@ -520,9 +655,9 @@ func (t *T) createTestClient() {
 
 				switch evt.Type {
 				case event.GetSucceeded:
-					t.connsCheckedOut++
+					atomic.AddInt64(&t.connsCheckedOut, 1)
 				case event.ConnectionReturned:
-					t.connsCheckedOut--
+					atomic.AddInt64(&t.connsCheckedOut, -1)
 				}
 			},
 		})
@@ -530,27 +665,40 @@ func (t *T) createTestClient() {
 
 	var err error
 	switch t.clientType {
-	case Default:
-		// only specify URI if the deployment is not set to avoid setting topology/server options along with the deployment
-		if clientOpts.Deployment == nil {
-			clientOpts.ApplyURI(testContext.connString.Original)
-		}
-		t.Client, err = mongo.NewClient(clientOpts)
 	case Pinned:
 		// pin to first mongos
-		clientOpts.ApplyURI(testContext.connString.Original).SetHosts([]string{testContext.connString.Hosts[0]})
-		t.Client, err = mongo.NewClient(clientOpts)
+		pinnedHostList := []string{testContext.connString.Hosts[0]}
+		uriOpts := options.Client().ApplyURI(testContext.connString.Original).SetHosts(pinnedHostList)
+		t.Client, err = mongo.NewClient(uriOpts, clientOpts)
 	case Mock:
 		// clear pool monitor to avoid configuration error
 		clientOpts.PoolMonitor = nil
 		t.mockDeployment = newMockDeployment()
 		clientOpts.Deployment = t.mockDeployment
 		t.Client, err = mongo.NewClient(clientOpts)
+	case Proxy:
+		t.proxyDialer = newProxyDialer()
+		clientOpts.SetDialer(t.proxyDialer)
+
+		// After setting the Dialer, fall-through to the Default case to apply the correct URI
+		fallthrough
+	case Default:
+		// Use a different set of options to specify the URI because clientOpts may already have a URI or host seedlist
+		// specified.
+		var uriOpts *options.ClientOptions
+		if clientOpts.Deployment == nil {
+			// Only specify URI if the deployment is not set to avoid setting topology/server options along with the
+			// deployment.
+			uriOpts = options.Client().ApplyURI(testContext.connString.Original)
+		}
+
+		// Pass in uriOpts first so clientOpts wins if there are any conflicting settings.
+		t.Client, err = mongo.NewClient(uriOpts, clientOpts)
 	}
 	if err != nil {
 		t.Fatalf("error creating client: %v", err)
 	}
-	if err := t.Client.Connect(Background); err != nil {
+	if err := t.Client.Connect(context.Background()); err != nil {
 		t.Fatalf("error connecting client: %v", err)
 	}
 }
@@ -558,72 +706,175 @@ func (t *T) createTestClient() {
 func (t *T) createTestCollection() {
 	t.DB = t.Client.Database(t.dbName)
 	t.createdColls = t.createdColls[:0]
+
+	// Collections should not be explicitly created when testing against Atlas Data Lake because they already exist in
+	// the server with pre-seeded data.
+	createOnServer := (t.createCollection == nil || *t.createCollection) && !testContext.dataLake
 	t.Coll = t.CreateCollection(Collection{
 		Name:       t.collName,
 		CreateOpts: t.collCreateOpts,
 		Opts:       t.collOpts,
-	}, true)
+	}, createOnServer)
 }
 
-// matchesServerVersion checks if the current server version is in the range [min, max]. Server versions will only be
-// compared if they are non-empty.
-func matchesServerVersion(min, max string) bool {
-	if min != "" && compareVersions(testContext.serverVersion, min) < 0 {
-		return false
+// verifyVersionConstraints returns an error if the cluster's server version is not in the range [min, max]. Server
+// versions will only be checked if they are non-empty.
+func verifyVersionConstraints(min, max string) error {
+	if min != "" && CompareServerVersions(testContext.serverVersion, min) < 0 {
+		return fmt.Errorf("server version %q is lower than min required version %q", testContext.serverVersion, min)
 	}
-	return max == "" || compareVersions(testContext.serverVersion, max) <= 0
+	if max != "" && CompareServerVersions(testContext.serverVersion, max) > 0 {
+		return fmt.Errorf("server version %q is higher than max version %q", testContext.serverVersion, max)
+	}
+	return nil
 }
 
-// matchesTopology checks if the current topology is present in topologies.
-// if topologies is empty, true is returned without any additional checks.
-func matchesTopology(topologies []TopologyKind) bool {
+// verifyTopologyConstraints returns an error if the cluster's topology kind does not match one of the provided
+// kinds. If the topologies slice is empty, nil is returned without any additional checks.
+func verifyTopologyConstraints(topologies []TopologyKind) error {
 	if len(topologies) == 0 {
-		return true
+		return nil
 	}
 
 	for _, topo := range topologies {
-		if topo == testContext.topoKind {
-			return true
+		// For ShardedReplicaSet, we won't get an exact match because testContext.topoKind will be Sharded so we do an
+		// additional comparison with the testContext.shardedReplicaSet field.
+		if topo == testContext.topoKind || (topo == ShardedReplicaSet && testContext.shardedReplicaSet) {
+			return nil
 		}
 	}
-	return false
+	return fmt.Errorf("topology kind %q does not match any of the required kinds %q", testContext.topoKind, topologies)
 }
 
-// matchesRunOnBlock returns true if the current environmental constraints match the given RunOnBlock.
-func matchesRunOnBlock(rob RunOnBlock) bool {
-	if !matchesServerVersion(rob.MinServerVersion, rob.MaxServerVersion) {
-		return false
+func verifyServerParametersConstraints(serverParameters map[string]bson.RawValue) error {
+	for param, expected := range serverParameters {
+		actual, err := testContext.serverParameters.LookupErr(param)
+		if err != nil {
+			return fmt.Errorf("server does not support parameter %q", param)
+		}
+		if !expected.Equal(actual) {
+			return fmt.Errorf("mismatched values for server parameter %q; expected %s, got %s", param, expected, actual)
+		}
 	}
-	return matchesTopology(rob.Topology)
+	return nil
 }
 
-func (t *T) shouldSkip() bool {
+func verifyAuthConstraint(expected *bool) error {
+	if expected != nil && *expected != testContext.authEnabled {
+		return fmt.Errorf("test requires auth value: %v, cluster auth value: %v", *expected, testContext.authEnabled)
+	}
+	return nil
+}
+
+func verifyServerlessConstraint(expected string) error {
+	switch expected {
+	case "require":
+		if !testContext.serverless {
+			return fmt.Errorf("test requires serverless")
+		}
+	case "forbid":
+		if testContext.serverless {
+			return fmt.Errorf("test forbids serverless")
+		}
+	case "allow", "":
+	default:
+		return fmt.Errorf("invalid value for serverless: %s", expected)
+	}
+	return nil
+}
+
+// verifyRunOnBlockConstraint returns an error if the current environment does not match the provided RunOnBlock.
+func verifyRunOnBlockConstraint(rob RunOnBlock) error {
+	if err := verifyVersionConstraints(rob.MinServerVersion, rob.MaxServerVersion); err != nil {
+		return err
+	}
+	if err := verifyTopologyConstraints(rob.Topology); err != nil {
+		return err
+	}
+
+	// Tests in the unified test format have runOn.auth to indicate whether the
+	// test should be run against an auth-enabled configuration. SDAM integration
+	// spec tests have runOn.authEnabled to indicate the same thing. Use whichever
+	// is set for verifyAuthConstraint().
+	auth := rob.Auth
+	if rob.AuthEnabled != nil {
+		if auth != nil {
+			return fmt.Errorf("runOnBlock cannot specify both auth and authEnabled")
+		}
+		auth = rob.AuthEnabled
+	}
+	if err := verifyAuthConstraint(auth); err != nil {
+		return err
+	}
+
+	if err := verifyServerlessConstraint(rob.Serverless); err != nil {
+		return err
+	}
+	if err := verifyServerParametersConstraints(rob.ServerParameters); err != nil {
+		return err
+	}
+
+	if rob.CSFLE != nil {
+		if *rob.CSFLE && !IsCSFLEEnabled() {
+			return fmt.Errorf("runOnBlock requires CSFLE to be enabled. Build with the cse tag to enable")
+		} else if !*rob.CSFLE && IsCSFLEEnabled() {
+			return fmt.Errorf("runOnBlock requires CSFLE to be disabled. Build without the cse tag to disable")
+		}
+		if *rob.CSFLE {
+			if err := verifyVersionConstraints("4.2", ""); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// verifyConstraints returns an error if the current environment does not match the constraints specified for the test.
+func (t *T) verifyConstraints() error {
 	// Check constraints not specified as runOn blocks
-	if !matchesServerVersion(t.minServerVersion, t.maxServerVersion) {
-		return true
+	if err := verifyVersionConstraints(t.minServerVersion, t.maxServerVersion); err != nil {
+		return err
 	}
-	if !matchesTopology(t.validTopologies) {
-		return true
+	if err := verifyTopologyConstraints(t.validTopologies); err != nil {
+		return err
 	}
-	if t.auth != nil && *t.auth != testContext.authEnabled {
-		return true
+	if err := verifyAuthConstraint(t.auth); err != nil {
+		return err
+	}
+	if t.ssl != nil && *t.ssl != testContext.sslEnabled {
+		return fmt.Errorf("test requires ssl value: %v, cluster ssl value: %v", *t.ssl, testContext.sslEnabled)
 	}
 	if t.enterprise != nil && *t.enterprise != testContext.enterpriseServer {
-		return true
+		return fmt.Errorf("test requires enterprise value: %v, cluster enterprise value: %v", *t.enterprise,
+			testContext.enterpriseServer)
+	}
+	if t.dataLake != nil && *t.dataLake != testContext.dataLake {
+		return fmt.Errorf("test requires cluster to be data lake: %v, cluster is data lake: %v", *t.dataLake,
+			testContext.dataLake)
+	}
+	if t.requireAPIVersion != nil && *t.requireAPIVersion != testContext.requireAPIVersion {
+		return fmt.Errorf("test requires RequireAPIVersion value: %v, local RequireAPIVersion value: %v", *t.requireAPIVersion,
+			testContext.requireAPIVersion)
 	}
 
-	// Check runOn blocks
-	// The test can be executed if there are no blocks or at least block matches the current test setup.
+	// Check runOn blocks. The test can be executed if there are no blocks or at least block matches the current test
+	// setup.
 	if len(t.runOn) == 0 {
-		return false
+		return nil
 	}
+
+	// Stop once we find a RunOnBlock that matches the current environment. Record all errors as we go because if we
+	// don't find any matching blocks, we want to report the comparison errors for each block.
+	runOnErrors := make([]error, 0, len(t.runOn))
 	for _, runOn := range t.runOn {
-		if matchesRunOnBlock(runOn) {
-			return false
+		err := verifyRunOnBlockConstraint(runOn)
+		if err == nil {
+			return nil
 		}
+
+		runOnErrors = append(runOnErrors, err)
 	}
-	// no matching block found
-	return true
+	return fmt.Errorf("no matching RunOnBlock; comparison errors: %v", runOnErrors)
 }
 
 func (t *T) interfaceToInt32(i interface{}) (int32, error) {

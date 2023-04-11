@@ -7,6 +7,7 @@
 package primitive
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -48,6 +49,8 @@ func TestPrimitiveIsZero(t *testing.T) {
 		nonzero zeroer
 	}{
 		{"binary", Binary{}, Binary{Data: []byte{0x01, 0x02, 0x03}, Subtype: 0xFF}},
+		{"decimal128", Decimal128{}, NewDecimal128(1, 2)},
+		{"objectID", ObjectID{}, NewObjectID()},
 		{"regex", Regex{}, Regex{Pattern: "foo", Options: "bar"}},
 		{"dbPointer", DBPointer{}, DBPointer{DB: "foobar", Pointer: ObjectID{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C}}},
 		{"timestamp", Timestamp{}, Timestamp{T: 12345, I: 67890}},
@@ -82,6 +85,26 @@ func TestRegexCompare(t *testing.T) {
 }
 
 func TestDateTime(t *testing.T) {
+	t.Run("json", func(t *testing.T) {
+		t.Run("round trip", func(t *testing.T) {
+			original := DateTime(1000)
+			jsonBytes, err := json.Marshal(original)
+			assert.Nil(t, err, "Marshal error: %v", err)
+
+			var unmarshalled DateTime
+			err = json.Unmarshal(jsonBytes, &unmarshalled)
+			assert.Nil(t, err, "Unmarshal error: %v", err)
+
+			assert.Equal(t, original, unmarshalled, "expected DateTime %v, got %v", original, unmarshalled)
+		})
+		t.Run("decode null", func(t *testing.T) {
+			jsonBytes := []byte("null")
+			var dt DateTime
+			err := json.Unmarshal(jsonBytes, &dt)
+			assert.Nil(t, err, "Unmarshal error: %v", err)
+			assert.Equal(t, DateTime(0), dt, "expected DateTime value to be 0, got %v", dt)
+		})
+	})
 	t.Run("NewDateTimeFromTime", func(t *testing.T) {
 		t.Run("range is not limited", func(t *testing.T) {
 			// If the implementation internally calls time.Time.UnixNano(), the constructor cannot handle times after

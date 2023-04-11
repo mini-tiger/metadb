@@ -91,14 +91,14 @@ func NewMgo(config MongoConf, timeout time.Duration) (*Mongo, error) {
 		uri = config.URI
 
 	} else {
-		var direct = true
-		conOpt.Direct = &direct
+		//var direct = true
+		//conOpt.Direct = &direct
 		uri = config.ShardUri
-		//请求确认写操作传播到大多数mongod实例
-		wc := writeconcern.New(writeconcern.WMajority())
-		wc = wc.WithOptions(writeconcern.J(true))
-		wc = wc.WithOptions(writeconcern.WTimeout(15 * time.Second))
-		//读关注
+		// 写关注
+		wc := writeconcern.New(writeconcern.WMajority()) // 请求确认写操作传播到大多数mongod实例
+		//wc = wc.WithOptions(writeconcern.J(true))
+		wc = wc.WithOptions(writeconcern.WTimeout(30 * time.Second))
+		// 读关注
 		conOpt.SetReadConcern(readconcern.Majority()) //指定查询应返回实例的最新数据确认为，已写入副本集中的大多数成员
 		conOpt.SetWriteConcern(wc)
 	}
@@ -813,6 +813,34 @@ func (c *Mongo) RenameTable(ctx context.Context, prevName, currName string) erro
 	return c.dbc.Database("admin").RunCommand(ctx, cmd).Err()
 }
 
+func (c *Collection) RebuildMap(val interface{}) interface{} {
+	refValue := reflect.ValueOf(val)
+
+	if refValue.Kind() == reflect.Map && refValue.Len() > 1 {
+		mRange := refValue.MapRange()
+		var rebuildBsonE []bson.E
+		for {
+			if !mRange.Next() {
+				break
+			}
+			//fmt.Println(mm1Range.Key().String(), mm1Range.Value())
+			rebuildBsonE = append(rebuildBsonE, bson.E{Key: mRange.Key().String(),
+				Value: util.FormatValue(mRange.Value())})
+		}
+
+		return rebuildBsonE
+		//var De []bson.E = bson.D{
+		//	bson.E{Key: "scope_type", Value: 1},
+		//	bson.E{Key: "scope_id", Value: 1},
+		//	bson.E{Key: "node_type", Value: 1},
+		//	bson.E{Key: "bk_obj_id", Value: 1},
+		//	bson.E{Key: "bk_inst_id", Value: 1},
+		//}
+	}
+	return val
+
+}
+
 // CreateIndex 创建索引
 func (c *Collection) CreateIndex(ctx context.Context, index types.Index) error {
 	createIndexOpt := &options.IndexOptions{
@@ -827,11 +855,15 @@ func (c *Collection) CreateIndex(ctx context.Context, index types.Index) error {
 		createIndexOpt.SetExpireAfterSeconds(index.ExpireAfterSeconds)
 	}
 
+	//createIndexInfo := mongo.IndexModel{
+	//	Keys:    index.Keys,
+	//	Options: createIndexOpt,
+	//}
+	// xxx 兼容驱动 传入map无顺序
 	createIndexInfo := mongo.IndexModel{
-		Keys:    index.Keys,
+		Keys:    c.RebuildMap(index.Keys),
 		Options: createIndexOpt,
 	}
-
 	indexView := c.dbc.Database(c.dbname).Collection(c.collName).Indexes()
 	_, err := indexView.CreateOne(ctx, createIndexInfo)
 	if err != nil {

@@ -7,6 +7,7 @@
 package integration
 
 import (
+	"context"
 	"io/ioutil"
 	"path"
 	"testing"
@@ -17,7 +18,7 @@ import (
 )
 
 const (
-	monitoringTestDir = "../../data/command-monitoring"
+	monitoringTestDir = "../../data/command-monitoring/legacy"
 )
 
 type monitoringTestFile struct {
@@ -35,7 +36,7 @@ type monitoringTest struct {
 	MaxServerVersion  string               `bson:"ignore_if_server_version_greater_than"`
 	IgnoredTopologies []mtest.TopologyKind `bson:"ignore_if_topology_type"`
 	Operation         monitoringOperation  `bson:"operation"`
-	Expectations      []*expectation       `bson:"expectations"`
+	Expectations      *[]*expectation      `bson:"expectations"`
 }
 
 type monitoringOperation struct {
@@ -76,12 +77,12 @@ func runMonitoringTest(mt *mtest.T, test monitoringTest, testFile monitoringTest
 		// ignored topologies have to be handled separately because mtest only accepts topologies to run on, not
 		// topologies to ignore
 		for _, top := range test.IgnoredTopologies {
-			if top == mt.TopologyKind() {
+			if top == mtest.ClusterTopologyKind() {
 				mt.Skipf("skipping topology %v", top)
 			}
 		}
 
-		setupColl := mt.GlobalClient().Database(mt.DB.Name()).Collection(mt.Coll.Name())
+		setupColl := mtest.GlobalClient().Database(mt.DB.Name()).Collection(mt.Coll.Name())
 		insertDocuments(mt, setupColl, testFile.Data)
 		mt.ClearEvents()
 		runMonitoringOperation(mt, test.Operation)
@@ -100,7 +101,7 @@ func runMonitoringOperation(mt *mtest.T, operation monitoringOperation) {
 		if err != nil {
 			return
 		}
-		for cursor.Next(mtest.Background) {
+		for cursor.Next(context.Background()) {
 		}
 	case "bulkWrite":
 		_, _ = executeBulkWrite(mt, nil, operation.Arguments)
@@ -113,7 +114,7 @@ func runMonitoringOperation(mt *mtest.T, operation monitoringOperation) {
 		if err != nil {
 			return
 		}
-		for cursor.Next(mtest.Background) {
+		for cursor.Next(context.Background()) {
 		}
 	case "deleteOne":
 		_, _ = executeDeleteOne(mt, nil, operation.Arguments)

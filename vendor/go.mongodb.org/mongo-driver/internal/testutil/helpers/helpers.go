@@ -21,6 +21,7 @@ import (
 	"reflect"
 
 	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 )
 
@@ -103,11 +104,17 @@ func VerifyConnStringOptions(t *testing.T, cs connstring.ConnString, options map
 			require.Equal(t, convertToStringSlice(value), cs.Compressors)
 		case "connecttimeoutms":
 			require.Equal(t, value, float64(cs.ConnectTimeout/time.Millisecond))
+		case "directconnection":
+			require.True(t, cs.DirectConnectionSet)
+			require.Equal(t, value, cs.DirectConnection)
 		case "heartbeatfrequencyms":
 			require.Equal(t, value, float64(cs.HeartbeatInterval/time.Millisecond))
 		case "journal":
 			require.True(t, cs.JSet)
 			require.Equal(t, value, cs.J)
+		case "loadbalanced":
+			require.True(t, cs.LoadBalancedSet)
+			require.Equal(t, value, cs.LoadBalanced)
 		case "localthresholdms":
 			require.True(t, cs.LocalThresholdSet)
 			require.Equal(t, value, float64(cs.LocalThreshold/time.Millisecond))
@@ -143,6 +150,10 @@ func VerifyConnStringOptions(t *testing.T, cs connstring.ConnString, options map
 			require.Equal(t, value, cs.RetryWrites)
 		case "serverselectiontimeoutms":
 			require.Equal(t, value, float64(cs.ServerSelectionTimeout/time.Millisecond))
+		case "srvmaxhosts":
+			require.Equal(t, value, float64(cs.SRVMaxHosts))
+		case "srvservicename":
+			require.Equal(t, value, cs.SRVServiceName)
 		case "ssl", "tls":
 			require.Equal(t, value, cs.SSL)
 		case "sockettimeoutms":
@@ -174,12 +185,35 @@ func VerifyConnStringOptions(t *testing.T, cs connstring.ConnString, options map
 			require.Equal(t, value, float64(cs.ZlibLevel))
 		case "zstdcompressionlevel":
 			require.Equal(t, value, float64(cs.ZstdLevel))
+		case "tlsdisableocspendpointcheck":
+			require.Equal(t, value, cs.SSLDisableOCSPEndpointCheck)
 		default:
 			opt, ok := cs.UnknownOptions[key]
 			require.True(t, ok)
 			require.Contains(t, opt, fmt.Sprint(value))
 		}
 	}
+}
+
+// RawSliceToInterfaceSlice converts a []bson.Raw to []interface{}.
+func RawSliceToInterfaceSlice(elems []bson.Raw) []interface{} {
+	out := make([]interface{}, 0, len(elems))
+	for _, elem := range elems {
+		out = append(out, elem)
+	}
+	return out
+}
+
+// RawToInterfaceSlice converts a bson.Raw that is internally an array to []interface{}.
+func RawToInterfaceSlice(doc bson.Raw) []interface{} {
+	values, _ := doc.Values()
+
+	out := make([]interface{}, 0, len(values))
+	for _, val := range values {
+		out = append(out, val.Document())
+	}
+
+	return out
 }
 
 // Convert each interface{} value in the map to a string.

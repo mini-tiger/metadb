@@ -24,6 +24,10 @@ var (
 )
 
 func TestGridFS(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
 	cs := testutil.ConnString(t)
 	poolMonitor := &event.PoolMonitor{
 		Event: func(evt *event.PoolEvent) {
@@ -35,8 +39,16 @@ func TestGridFS(t *testing.T) {
 			}
 		},
 	}
-	clientOpts := options.Client().ApplyURI(cs.Original).SetReadPreference(readpref.Primary()).
-		SetWriteConcern(writeconcern.New(writeconcern.WMajority())).SetPoolMonitor(poolMonitor)
+	clientOpts := options.Client().
+		ApplyURI(cs.Original).
+		SetReadPreference(readpref.Primary()).
+		SetWriteConcern(writeconcern.New(writeconcern.WMajority())).
+		SetPoolMonitor(poolMonitor).
+		// Connect to a single host. For sharded clusters, this will pin to a single mongos, which avoids
+		// non-deterministic versioning errors in the server. This has no effect for replica sets because the driver
+		// will discover the other hosts during SDAM checks.
+		SetHosts(cs.Hosts[:1])
+
 	client, err := mongo.Connect(context.Background(), clientOpts)
 	assert.Nil(t, err, "Connect error: %v", err)
 	db := client.Database("gridfs")

@@ -1,3 +1,9 @@
+// Copyright (C) MongoDB, Inc. 2022-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package integration
 
 import (
@@ -10,10 +16,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal/testutil"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/operation"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 )
@@ -37,12 +43,14 @@ func setUpMonitor() (*event.CommandMonitor, chan *event.CommandStartedEvent, cha
 }
 
 func skipIfBelow32(ctx context.Context, t *testing.T, topo *topology.Topology) {
-	server, err := topo.SelectServerLegacy(ctx, description.WriteSelector())
+	server, err := topo.SelectServer(ctx, description.WriteSelector())
 	noerr(t, err)
 
 	versionCmd := bsoncore.BuildDocument(nil, bsoncore.AppendInt32Element(nil, "serverStatus", 1))
-	serverStatus, err := testutil.RunCommand(t, server.Server, dbName, versionCmd)
+	serverStatus, err := testutil.RunCommand(t, server, dbName, versionCmd)
+	noerr(t, err)
 	version, err := serverStatus.LookupErr("version")
+	noerr(t, err)
 
 	if testutil.CompareVersions(t, version.StringValue(), "3.2") < 0 {
 		t.Skip()
@@ -50,6 +58,10 @@ func skipIfBelow32(ctx context.Context, t *testing.T, topo *topology.Topology) {
 }
 
 func TestAggregate(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
 	t.Run("TestMaxTimeMSInGetMore", func(t *testing.T) {
 		ctx := context.Background()
 		monitor, started, succeeded, failed := setUpMonitor()

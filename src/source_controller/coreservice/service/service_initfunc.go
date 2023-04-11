@@ -351,6 +351,7 @@ func (s *coreService) transaction(web *restful.WebService) {
 		Language: s.engine.Language,
 	})
 
+	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/start/transaction/session", Handler: s.StartTransaction})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/update/transaction/commit", Handler: s.CommitTransaction})
 	utility.AddHandler(rest.Action{Verb: http.MethodPost, Path: "/update/transaction/abort", Handler: s.AbortTransaction})
 	utility.AddToRestfulWebService(web)

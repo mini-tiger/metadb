@@ -43,7 +43,7 @@ tests:
              - *retryable_command_started_event
              - *retryable_command_started_event
     -
-        description: "EstimatedDocumentCount succeeds after NotMaster"
+        description: "EstimatedDocumentCount succeeds after NotWritablePrimary"
         failPoint:
             <<: *failCommand_failPoint
             data: { failCommands: [count], errorCode: 10107 }
@@ -52,7 +52,7 @@ tests:
              - *retryable_command_started_event
              - *retryable_command_started_event
     -
-        description: "EstimatedDocumentCount succeeds after NotMasterNoSlaveOk"
+        description: "EstimatedDocumentCount succeeds after NotPrimaryNoSecondaryOk"
         failPoint:
             <<: *failCommand_failPoint
             data: { failCommands: [count], errorCode: 13435 }
@@ -61,7 +61,7 @@ tests:
              - *retryable_command_started_event
              - *retryable_command_started_event
     -
-        description: "EstimatedDocumentCount succeeds after NotMasterOrSecondary"
+        description: "EstimatedDocumentCount succeeds after NotPrimaryOrSecondary"
         failPoint:
             <<: *failCommand_failPoint
             data: { failCommands: [count], errorCode: 13436 }
@@ -124,7 +124,7 @@ tests:
              - *retryable_command_started_event
              - *retryable_command_started_event
     -
-        description: "EstimatedDocumentCount fails after two NotMaster errors"
+        description: "EstimatedDocumentCount fails after two NotWritablePrimary errors"
         failPoint:
             <<: *failCommand_failPoint
             mode: { times: 2 }
@@ -137,7 +137,7 @@ tests:
              - *retryable_command_started_event
              - *retryable_command_started_event
     -
-        description: "EstimatedDocumentCount fails after NotMaster when retryReads is false"
+        description: "EstimatedDocumentCount fails after NotWritablePrimary when retryReads is false"
         clientOptions:
             retryReads: false
         failPoint:

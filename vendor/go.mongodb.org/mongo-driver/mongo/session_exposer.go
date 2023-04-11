@@ -11,7 +11,7 @@ import (
 	"encoding/base64"
 	"errors"
 
-	"go.mongodb.org/mongo-driver/x/bsonx"
+
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
 
@@ -42,7 +42,10 @@ func CmdbReloadSession(sess Session, info *SessionInfo) error {
 	if err != nil {
 		return err
 	}
-	idDoc := bsonx.Doc{{"id", bsonx.Binary(session.UUIDSubtype, sessionIDBytes[:])}}
+	//idDoc := bsonx.Doc{{"id", bsonx.Binary(session.UUIDSubtype, sessionIDBytes[:])}}
+
+	idDoc:=session.GenerateSessionIDFromBytes(sessionIDBytes)
+
 	i.clientSession.Server.SessionID = idDoc
 
 	i.clientSession.SessionID=idDoc
@@ -55,7 +58,8 @@ func CmdbReloadSession(sess Session, info *SessionInfo) error {
 		// transaction number as a transaction in a single transaction session.
 		// otherwise a error like this will be occured as follows:
 		// (NoSuchTransaction) Given transaction number 2 does not match any in-progress transactions. The active transaction number is 1
-		i.clientSession.SetState(2)
+		//i.clientSession.SetState(2)
+		i.clientSession.TxnNumber=2
 	}
 	return nil
 }
@@ -67,13 +71,15 @@ func CmdbPrepareCommitOrAbort(sess Session) {
 		panic("the session is not type *sessionImpl")
 	}
 
-	i.clientSession.SetState(2)
+	//i.clientSession.SetState(2)
+	i.clientSession.TxnNumber=2
 	i.didCommitAfterStart=false
 }
 
 // CmdbContextWithSession set the session into context if context includes session info
 func CmdbContextWithSession(ctx context.Context, sess Session) SessionContext {
-	return contextWithSession(ctx, sess)
+	//return contextWithSession(ctx, sess)
+	return NewSessionContext(ctx,sess)
 }
 
 // CmdbReleaseSession is almost same with session.EndSession(), the difference is 

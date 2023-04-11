@@ -1,6 +1,6 @@
 {
-  "description": "Connect to standalone",
-  "uri": "mongodb://a",
+  "description": "Direct connection to standalone",
+  "uri": "mongodb://a/?directConnection=true",
   "phases": [
     {
       "responses": [
@@ -8,7 +8,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "minWireVersion": 0,
             "maxWireVersion": 6
           }

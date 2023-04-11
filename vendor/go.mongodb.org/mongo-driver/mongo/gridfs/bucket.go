@@ -9,22 +9,18 @@ package gridfs // import "go.mongodb.org/mongo-driver/mongo/gridfs"
 import (
 	"bytes"
 	"context"
-
-	"io"
-
 	"errors"
-
+	"fmt"
+	"io"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
-	"go.mongodb.org/mongo-driver/x/bsonx"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 )
 
@@ -35,6 +31,9 @@ const DefaultChunkSize int32 = 255 * 1024 // 255 KiB
 
 // ErrFileNotFound occurs if a user asks to download a file with a file ID that isn't found in the files collection.
 var ErrFileNotFound = errors.New("file with given parameters not found")
+
+// ErrMissingChunkSize occurs when downloading a file if the files collection document is missing the "chunkSize" field.
+var ErrMissingChunkSize = errors.New("files collection document does not contain a 'chunkSize' field")
 
 // Bucket represents a GridFS bucket.
 type Bucket struct {
@@ -59,7 +58,7 @@ type Bucket struct {
 // Upload contains options to upload a file to a bucket.
 type Upload struct {
 	chunkSize int32
-	metadata  bsonx.Doc
+	metadata  bson.D
 }
 
 // NewBucket creates a GridFS bucket.
@@ -186,17 +185,13 @@ func (b *Bucket) UploadFromStreamWithID(fileID interface{}, filename string, sou
 
 // OpenDownloadStream creates a stream from which the contents of the file can be read.
 func (b *Bucket) OpenDownloadStream(fileID interface{}) (*DownloadStream, error) {
-	id, err := convertFileID(fileID)
-	if err != nil {
-		return nil, err
-	}
-	return b.openDownloadStream(bsonx.Doc{
-		{"_id", id},
+	return b.openDownloadStream(bson.D{
+		{"_id", fileID},
 	})
 }
 
 // DownloadToStream downloads the file with the specified fileID and writes it to the provided io.Writer.
-// Returns the number of bytes written to the steam and an error, or nil if there was no error.
+// Returns the number of bytes written to the stream and an error, or nil if there was no error.
 //
 // If this download requires a custom read deadline to be set on the bucket, it cannot be done concurrently with other
 // read operations operations on this bucket that also require a custom deadline.
@@ -224,9 +219,9 @@ func (b *Bucket) OpenDownloadStreamByName(filename string, opts ...*options.Name
 		numSkip = (-1 * numSkip) - 1
 	}
 
-	findOpts := options.Find().SetSkip(int64(numSkip)).SetSort(bsonx.Doc{{"uploadDate", bsonx.Int32(sortOrder)}})
+	findOpts := options.Find().SetSkip(int64(numSkip)).SetSort(bson.D{{"uploadDate", sortOrder}})
 
-	return b.openDownloadStream(bsonx.Doc{{"filename", bsonx.String(filename)}}, findOpts)
+	return b.openDownloadStream(bson.D{{"filename", filename}}, findOpts)
 }
 
 // DownloadToStreamByName downloads the file with the given name to the given io.Writer.
@@ -254,11 +249,7 @@ func (b *Bucket) Delete(fileID interface{}) error {
 		defer cancel()
 	}
 
-	id, err := convertFileID(fileID)
-	if err != nil {
-		return err
-	}
-	res, err := b.filesColl.DeleteOne(ctx, bsonx.Doc{{"_id", id}})
+	res, err := b.filesColl.DeleteOne(ctx, bson.D{{"_id", fileID}})
 	if err == nil && res.DeletedCount == 0 {
 		err = ErrFileNotFound
 	}
@@ -282,6 +273,9 @@ func (b *Bucket) Find(filter interface{}, opts ...*options.GridFSFindOptions) (*
 
 	gfsOpts := options.MergeGridFSFindOptions(opts...)
 	find := options.Find()
+	if gfsOpts.AllowDiskUse != nil {
+		find.SetAllowDiskUse(*gfsOpts.AllowDiskUse)
+	}
 	if gfsOpts.BatchSize != nil {
 		find.SetBatchSize(*gfsOpts.BatchSize)
 	}
@@ -314,13 +308,9 @@ func (b *Bucket) Rename(fileID interface{}, newFilename string) error {
 		defer cancel()
 	}
 
-	id, err := convertFileID(fileID)
-	if err != nil {
-		return err
-	}
 	res, err := b.filesColl.UpdateOne(ctx,
-		bsonx.Doc{{"_id", id}},
-		bsonx.Doc{{"$set", bsonx.Document(bsonx.Doc{{"filename", bsonx.String(newFilename)}})}},
+		bson.D{{"_id", fileID}},
+		bson.D{{"$set", bson.D{{"filename", newFilename}}}},
 	)
 	if err != nil {
 		return err
@@ -351,6 +341,16 @@ func (b *Bucket) Drop() error {
 	return b.chunksColl.Drop(ctx)
 }
 
+// GetFilesCollection returns a handle to the collection that stores the file documents for this bucket.
+func (b *Bucket) GetFilesCollection() *mongo.Collection {
+	return b.filesColl
+}
+
+// GetChunksCollection returns a handle to the collection that stores the file chunks for this bucket.
+func (b *Bucket) GetChunksCollection() *mongo.Collection {
+	return b.chunksColl
+}
+
 func (b *Bucket) openDownloadStream(filter interface{}, opts ...*options.FindOptions) (*DownloadStream, error) {
 	ctx, cancel := deadlineContext(b.readDeadline)
 	if cancel != nil {
@@ -362,32 +362,30 @@ func (b *Bucket) openDownloadStream(filter interface{}, opts ...*options.FindOpt
 		return nil, err
 	}
 
-	fileLenElem, err := cursor.Current.LookupErr("length")
+	// Unmarshal the data into a File instance, which can be passed to newDownloadStream. The _id value has to be
+	// parsed out separately because "_id" will not match the File.ID field and we want to avoid exposing BSON tags
+	// in the File type. After parsing it, use RawValue.Unmarshal to ensure File.ID is set to the appropriate value.
+	var foundFile File
+	if err = cursor.Decode(&foundFile); err != nil {
+		return nil, fmt.Errorf("error decoding files collection document: %v", err)
+	}
+
+	if foundFile.Length == 0 {
+		return newDownloadStream(nil, foundFile.ChunkSize, &foundFile), nil
+	}
+
+	// For a file with non-zero length, chunkSize must exist so we know what size to expect when downloading chunks.
+	if _, err := cursor.Current.LookupErr("chunkSize"); err != nil {
+		return nil, ErrMissingChunkSize
+	}
+
+	chunksCursor, err := b.findChunks(ctx, foundFile.ID)
 	if err != nil {
 		return nil, err
 	}
-	fileIDElem, err := cursor.Current.LookupErr("_id")
-	if err != nil {
-		return nil, err
-	}
-
-	var fileLen int64
-	switch fileLenElem.Type {
-	case bsontype.Int32:
-		fileLen = int64(fileLenElem.Int32())
-	default:
-		fileLen = fileLenElem.Int64()
-	}
-
-	if fileLen == 0 {
-		return newDownloadStream(nil, b.chunkSize, 0), nil
-	}
-
-	chunksCursor, err := b.findChunks(ctx, fileIDElem)
-	if err != nil {
-		return nil, err
-	}
-	return newDownloadStream(chunksCursor, b.chunkSize, int64(fileLen)), nil
+	// The chunk size can be overridden for individual files, so the expected chunk size should be the "chunkSize"
+	// field from the files collection document, not the bucket's chunk size.
+	return newDownloadStream(chunksCursor, foundFile.ChunkSize, &foundFile), nil
 }
 
 func deadlineContext(deadline time.Time) (context.Context, context.CancelFunc) {
@@ -415,11 +413,7 @@ func (b *Bucket) downloadToStream(ds *DownloadStream, stream io.Writer) (int64, 
 }
 
 func (b *Bucket) deleteChunks(ctx context.Context, fileID interface{}) error {
-	id, err := convertFileID(fileID)
-	if err != nil {
-		return err
-	}
-	_, err = b.chunksColl.DeleteMany(ctx, bsonx.Doc{{"files_id", id}})
+	_, err := b.chunksColl.DeleteMany(ctx, bson.D{{"files_id", fileID}})
 	return err
 }
 
@@ -438,13 +432,9 @@ func (b *Bucket) findFile(ctx context.Context, filter interface{}, opts ...*opti
 }
 
 func (b *Bucket) findChunks(ctx context.Context, fileID interface{}) (*mongo.Cursor, error) {
-	id, err := convertFileID(fileID)
-	if err != nil {
-		return nil, err
-	}
 	chunksCursor, err := b.chunksColl.Find(ctx,
-		bsonx.Doc{{"files_id", id}},
-		options.Find().SetSort(bsonx.Doc{{"n", bsonx.Int32(1)}})) // sort by chunk index
+		bson.D{{"files_id", fileID}},
+		options.Find().SetSort(bson.D{{"n", 1}})) // sort by chunk index
 	if err != nil {
 		return nil, err
 	}
@@ -452,8 +442,50 @@ func (b *Bucket) findChunks(ctx context.Context, fileID interface{}) (*mongo.Cur
 	return chunksCursor, nil
 }
 
+// returns true if the 2 index documents are equal
+func numericalIndexDocsEqual(expected, actual bsoncore.Document) (bool, error) {
+	if bytes.Equal(expected, actual) {
+		return true, nil
+	}
+
+	actualElems, err := actual.Elements()
+	if err != nil {
+		return false, err
+	}
+	expectedElems, err := expected.Elements()
+	if err != nil {
+		return false, err
+	}
+
+	if len(actualElems) != len(expectedElems) {
+		return false, nil
+	}
+
+	for idx, expectedElem := range expectedElems {
+		actualElem := actualElems[idx]
+		if actualElem.Key() != expectedElem.Key() {
+			return false, nil
+		}
+
+		actualVal := actualElem.Value()
+		expectedVal := expectedElem.Value()
+		actualInt, actualOK := actualVal.AsInt64OK()
+		expectedInt, expectedOK := expectedVal.AsInt64OK()
+
+		//GridFS indexes always have numeric values
+		if !actualOK || !expectedOK {
+			return false, nil
+		}
+
+		if actualInt != expectedInt {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 // Create an index if it doesn't already exist
-func createIndexIfNotExists(ctx context.Context, iv mongo.IndexView, model mongo.IndexModel) error {
+func createNumericalIndexIfNotExists(ctx context.Context, iv mongo.IndexView, model mongo.IndexModel) error {
 	c, err := iv.List(ctx)
 	if err != nil {
 		return err
@@ -462,7 +494,12 @@ func createIndexIfNotExists(ctx context.Context, iv mongo.IndexView, model mongo
 		_ = c.Close(ctx)
 	}()
 
-	var found bool
+	modelKeysBytes, err := bson.Marshal(model.Keys)
+	if err != nil {
+		return err
+	}
+	modelKeysDoc := bsoncore.Document(modelKeysBytes)
+
 	for c.Next(ctx) {
 		keyElem, err := c.Current.LookupErr("key")
 		if err != nil {
@@ -470,25 +507,18 @@ func createIndexIfNotExists(ctx context.Context, iv mongo.IndexView, model mongo
 		}
 
 		keyElemDoc := keyElem.Document()
-		modelKeysDoc, err := bson.Marshal(model.Keys)
+
+		found, err := numericalIndexDocsEqual(modelKeysDoc, bsoncore.Document(keyElemDoc))
 		if err != nil {
 			return err
 		}
-
-		if bytes.Equal(modelKeysDoc, keyElemDoc) {
-			found = true
-			break
+		if found {
+			return nil
 		}
 	}
 
-	if !found {
-		_, err = iv.CreateOne(ctx, model)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	_, err = iv.CreateOne(ctx, model)
+	return err
 }
 
 // create indexes on the files and chunks collection if needed
@@ -499,11 +529,11 @@ func (b *Bucket) createIndexes(ctx context.Context) error {
 		return err
 	}
 
-	docRes := cloned.FindOne(ctx, bsonx.Doc{}, options.FindOne().SetProjection(bsonx.Doc{{"_id", bsonx.Int32(1)}}))
+	docRes := cloned.FindOne(ctx, bson.D{}, options.FindOne().SetProjection(bson.D{{"_id", 1}}))
 
 	_, err = docRes.DecodeBytes()
 	if err != mongo.ErrNoDocuments {
-		// nil, or error that occured during the FindOne operation
+		// nil, or error that occurred during the FindOne operation
 		return err
 	}
 
@@ -525,10 +555,10 @@ func (b *Bucket) createIndexes(ctx context.Context) error {
 		Options: options.Index().SetUnique(true),
 	}
 
-	if err = createIndexIfNotExists(ctx, filesIv, filesModel); err != nil {
+	if err = createNumericalIndexIfNotExists(ctx, filesIv, filesModel); err != nil {
 		return err
 	}
-	if err = createIndexIfNotExists(ctx, chunksIv, chunksModel); err != nil {
+	if err = createNumericalIndexIfNotExists(ctx, chunksIv, chunksModel); err != nil {
 		return err
 	}
 
@@ -566,31 +596,13 @@ func (b *Bucket) parseUploadOptions(opts ...*options.UploadOptions) (*Upload, er
 		if err != nil {
 			return nil, err
 		}
-		doc, err := bsonx.ReadDoc(raw)
-		if err != nil {
-			return nil, err
+		var doc bson.D
+		unMarErr := bson.UnmarshalWithRegistry(uo.Registry, raw, &doc)
+		if unMarErr != nil {
+			return nil, unMarErr
 		}
 		upload.metadata = doc
 	}
 
 	return upload, nil
-}
-
-type _convertFileID struct {
-	ID interface{} `bson:"_id"`
-}
-
-func convertFileID(fileID interface{}) (bsonx.Val, error) {
-	id := _convertFileID{
-		ID: fileID,
-	}
-
-	b, err := bson.Marshal(id)
-	if err != nil {
-		return bsonx.Val{}, err
-	}
-	val := bsoncore.Document(b).Lookup("_id")
-	var res bsonx.Val
-	err = res.UnmarshalBSONValue(val.Type, val.Data)
-	return res, err
 }

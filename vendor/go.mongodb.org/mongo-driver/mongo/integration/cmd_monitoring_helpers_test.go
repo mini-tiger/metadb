@@ -8,14 +8,16 @@ package integration
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
+	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
-	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
 // Helper functions to compare BSON values and command monitoring expectations.
@@ -73,7 +75,7 @@ func compareValues(mt *mtest.T, key string, expected, actual bson.RawValue) erro
 			}
 			return nil
 		}
-		break // compare bytes for expected.Value and actual.Value outside of the switch
+		// Don't return. Compare bytes for expected.Value and actual.Value outside of the switch.
 	case bson.TypeEmbeddedDocument:
 		e := expected.Document()
 		if typeVal, err := e.LookupErr("$$type"); err == nil {
@@ -94,7 +96,13 @@ func compareValues(mt *mtest.T, key string, expected, actual bson.RawValue) erro
 		return fmt.Errorf("type mismatch for key %s; expected %s, got %s", key, expected.Type, actual.Type)
 	}
 	if !bytes.Equal(expected.Value, actual.Value) {
-		return fmt.Errorf("value mismatch for key %s; expected %s, got %s", key, expected.Value, actual.Value)
+		return fmt.Errorf(
+			"value mismatch for key %s; expected %s (hex=%s), got %s (hex=%s)",
+			key,
+			expected.Value,
+			hex.EncodeToString(expected.Value),
+			actual.Value,
+			hex.EncodeToString(actual.Value))
 	}
 	return nil
 }
@@ -172,7 +180,9 @@ func compareDocsHelper(mt *mtest.T, expected, actual bson.Raw, prefix string) er
 		}
 
 		aVal, err := actual.LookupErr(eKey)
-		assert.Nil(mt, err, "key %s not found in result", e.Key())
+		if err != nil {
+			return fmt.Errorf("key %s not found in result", fullKeyName)
+		}
 
 		if err := compareValues(mt, fullKeyName, e.Value(), aVal); err != nil {
 			return err
@@ -186,10 +196,53 @@ func compareDocs(mt *mtest.T, expected, actual bson.Raw) error {
 	return compareDocsHelper(mt, expected, actual, "")
 }
 
-func checkExpectations(mt *mtest.T, expectations []*expectation, id0, id1 bsonx.Doc) {
+func checkExpectations(mt *mtest.T, expectations *[]*expectation, id0, id1 bson.Raw) {
 	mt.Helper()
 
-	for idx, expectation := range expectations {
+	// If the expectations field in the test JSON is null, we want to skip all command monitoring assertions.
+	if expectations == nil {
+		return
+	}
+
+	// Filter out events that shouldn't show up in monitoring expectations.
+	ignoredEvents := map[string]struct{}{
+		"configureFailPoint": {},
+	}
+	mt.FilterStartedEvents(func(evt *event.CommandStartedEvent) bool {
+		// ok is true if the command should be ignored, so return !ok
+		_, ok := ignoredEvents[evt.CommandName]
+		return !ok
+	})
+	mt.FilterSucceededEvents(func(evt *event.CommandSucceededEvent) bool {
+		// ok is true if the command should be ignored, so return !ok
+		_, ok := ignoredEvents[evt.CommandName]
+		return !ok
+	})
+	mt.FilterFailedEvents(func(evt *event.CommandFailedEvent) bool {
+		// ok is true if the command should be ignored, so return !ok
+		_, ok := ignoredEvents[evt.CommandName]
+		return !ok
+	})
+
+	// If the expectations field in the test JSON is non-null but is empty, we want to assert that no events were
+	// emitted.
+	if len(*expectations) == 0 {
+		// One of the bulkWrite spec tests expects update and updateMany to be grouped together into a single batch,
+		// but this isn't the case because of GODRIVER-1157. To work around this, we expect one event to be emitted for
+		// that test rather than 0. This assertion should be changed when GODRIVER-1157 is done.
+		numExpectedEvents := 0
+		bulkWriteTestName := "BulkWrite_on_server_that_doesn't_support_arrayFilters_with_arrayFilters_on_second_op"
+		if strings.HasSuffix(mt.Name(), bulkWriteTestName) {
+			numExpectedEvents = 1
+		}
+
+		numActualEvents := len(mt.GetAllStartedEvents())
+		assert.Equal(mt, numExpectedEvents, numActualEvents, "expected %d events to be sent, but got %d events",
+			numExpectedEvents, numActualEvents)
+		return
+	}
+
+	for idx, expectation := range *expectations {
 		var err error
 
 		if expectation.CommandStartedEvent != nil {
@@ -206,10 +259,15 @@ func checkExpectations(mt *mtest.T, expectations []*expectation, id0, id1 bsonx.
 	}
 }
 
-func compareStartedEvent(mt *mtest.T, expectation *expectation, id0, id1 bsonx.Doc) error {
+func compareStartedEvent(mt *mtest.T, expectation *expectation, id0, id1 bson.Raw) error {
 	mt.Helper()
 
 	expected := expectation.CommandStartedEvent
+
+	if len(expected.Extra) > 0 {
+		return fmt.Errorf("unrecognized fields for CommandStartedEvent: %v", expected.Extra)
+	}
+
 	evt := mt.GetStartedEvent()
 	if evt == nil {
 		return errors.New("expected CommandStartedEvent, got nil")
@@ -231,26 +289,21 @@ func compareStartedEvent(mt *mtest.T, expectation *expectation, id0, id1 bsonx.D
 		key := elem.Key()
 		val := elem.Value()
 
-		actualVal := evt.Command.Lookup(key)
+		actualVal, err := evt.Command.LookupErr(key)
 
 		// Keys that may be nil
 		if val.Type == bson.TypeNull {
-			if actualVal.Type != 0 || len(actualVal.Value) > 0 {
-				return fmt.Errorf("expected value for key %s to be nil but got %s", key, actualVal)
-			}
+			assert.NotNil(mt, err, "expected key %q to be omitted but got %q", key, actualVal)
 			continue
 		}
-		if key == "ordered" || key == "cursor" || key == "batchSize" {
-			// TODO: some tests specify that "ordered" must be a key in the event but ordered isn't a valid option for
-			// some of these cases (e.g. insertOne)
-			// TODO: some FLE tests specify "cursor" subdocument for listCollections
-			// TODO: find.json cmd monitoring tests expect different batch sizes for find/getMore commands based on an
-			// optional limit
-			continue
-		}
+		assert.Nil(mt, err, "expected command to contain key %q", key)
 
-		if err = actualVal.Validate(); err != nil {
-			return fmt.Errorf("error validatinmg value for key %s: %s", key, err)
+		if key == "batchSize" {
+			// Some command monitoring tests expect that the driver will send a lower batch size if the required batch
+			// size is lower than the operation limit. We only do this for legacy servers <= 3.0 because those server
+			// versions do not support the limit option, but not for 3.2+. We've already validated that the command
+			// contains a batchSize field above and we can skip the actual value comparison below.
+			continue
 		}
 
 		switch key {
@@ -261,16 +314,13 @@ func compareStartedEvent(mt *mtest.T, expectation *expectation, id0, id1 bsonx.D
 
 			switch sessName {
 			case "session0":
-				expectedID, err = id0.MarshalBSON()
+				expectedID = id0
 			case "session1":
-				expectedID, err = id1.MarshalBSON()
+				expectedID = id1
 			default:
 				return fmt.Errorf("unrecognized session identifier in command document: %s", sessName)
 			}
 
-			if err != nil {
-				return fmt.Errorf("error getting expected session ID bytes for session name %s: %s", sessName, err)
-			}
 			if !bytes.Equal(expectedID, actualID) {
 				return fmt.Errorf("session ID mismatch for session %s; expected %s, got %s", sessName, expectedID,
 					actualID)
@@ -325,6 +375,9 @@ func compareSucceededEvent(mt *mtest.T, expectation *expectation) error {
 	mt.Helper()
 
 	expected := expectation.CommandSucceededEvent
+	if len(expected.Extra) > 0 {
+		return fmt.Errorf("unrecognized fields for CommandSucceededEvent: %v", expected.Extra)
+	}
 	evt := mt.GetSucceededEvent()
 	if evt == nil {
 		return errors.New("expected CommandSucceededEvent, got nil")
@@ -362,6 +415,9 @@ func compareFailedEvent(mt *mtest.T, expectation *expectation) error {
 	mt.Helper()
 
 	expected := expectation.CommandFailedEvent
+	if len(expected.Extra) > 0 {
+		return fmt.Errorf("unrecognized fields for CommandFailedEvent: %v", expected.Extra)
+	}
 	evt := mt.GetFailedEvent()
 	if evt == nil {
 		return errors.New("expected CommandFailedEvent, got nil")
