@@ -93,9 +93,9 @@ func RequestLogFilter() func(req *restful.Request, resp *restful.Response, fchai
 		if rip == "" {
 			rip = req.Request.RemoteAddr
 		}
-		blog.Infof("Access :[%s] Host:[%s] method: [%s], rip: [%s], user: [%s],http_blueking_supplier_id: %s  body: %s, rid: %s",
+		blog.Infof("Access :[%s] Host:[%s] method: [%s], rip: [%s], user: [%s],http_blueking_supplier_id: %s  body: %s, header: %s",
 			req.Request.RequestURI, req.Request.Host, req.Request.Method, rip, header.Get("Bk_user"),
-			header.Get("HTTP_BLUEKING_SUPPLIER_ID"), body, util.GetHTTPCCRequestID(header))
+			header.Get("HTTP_BLUEKING_SUPPLIER_ID"), body, header)
 		fchain.ProcessFilter(req, resp)
 		return
 	}

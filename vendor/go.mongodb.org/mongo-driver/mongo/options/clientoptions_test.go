@@ -1,11 +1,20 @@
+// Copyright (C) MongoDB, Inc. 2022-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package options
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"reflect"
@@ -13,13 +22,16 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal"
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 )
 
 var tClientOptions = reflect.TypeOf(&ClientOptions{})
@@ -63,6 +75,7 @@ func TestClientOptions(t *testing.T) {
 			{"MaxConnIdleTime", (*ClientOptions).SetMaxConnIdleTime, 5 * time.Second, "MaxConnIdleTime", true},
 			{"MaxPoolSize", (*ClientOptions).SetMaxPoolSize, uint64(250), "MaxPoolSize", true},
 			{"MinPoolSize", (*ClientOptions).SetMinPoolSize, uint64(10), "MinPoolSize", true},
+			{"MaxConnecting", (*ClientOptions).SetMaxConnecting, uint64(10), "MaxConnecting", true},
 			{"PoolMonitor", (*ClientOptions).SetPoolMonitor, &event.PoolMonitor{}, "PoolMonitor", false},
 			{"Monitor", (*ClientOptions).SetMonitor, &event.CommandMonitor{}, "Monitor", false},
 			{"ReadConcern", (*ClientOptions).SetReadConcern, readconcern.Majority(), "ReadConcern", false},
@@ -76,6 +89,8 @@ func TestClientOptions(t *testing.T) {
 			{"TLSConfig", (*ClientOptions).SetTLSConfig, &tls.Config{}, "TLSConfig", false},
 			{"WriteConcern", (*ClientOptions).SetWriteConcern, writeconcern.New(writeconcern.WMajority()), "WriteConcern", false},
 			{"ZlibLevel", (*ClientOptions).SetZlibLevel, 6, "ZlibLevel", true},
+			{"DisableOCSPEndpointCheck", (*ClientOptions).SetDisableOCSPEndpointCheck, true, "DisableOCSPEndpointCheck", true},
+			{"LoadBalanced", (*ClientOptions).SetLoadBalanced, true, "LoadBalanced", true},
 		}
 
 		opt1, opt2, optResult := Client(), Client(), Client()
@@ -167,6 +182,16 @@ func TestClientOptions(t *testing.T) {
 				t.Errorf("Merged client options do not match. got %v; want %v", got.err.Error(), opt1.err.Error())
 			}
 		})
+
+		t.Run("MergeClientOptions/uri", func(t *testing.T) {
+			opt1, opt2 := Client(), Client()
+			opt1.uri = "Test URI"
+
+			got := MergeClientOptions(nil, opt1, opt2)
+			if got.uri != "Test URI" {
+				t.Errorf("Merged client options do not match. got %v; want %v", got.uri, opt1.uri)
+			}
+		})
 	})
 	t.Run("ApplyURI", func(t *testing.T) {
 		baseClient := func() *ClientOptions {
@@ -196,7 +221,7 @@ func TestClientOptions(t *testing.T) {
 				"ReadPreference Primary With Options",
 				"mongodb://localhost/?readPreference=Primary&maxStaleness=200",
 				&ClientOptions{
-					err:   errors.New("can not specify tags or max staleness on primary"),
+					err:   errors.New("can not specify tags, max staleness, or hedge with mode primary"),
 					Hosts: []string{"localhost"},
 				},
 			},
@@ -235,13 +260,6 @@ func TestClientOptions(t *testing.T) {
 					AuthMechanismProperties: map[string]string{"SERVICE_NAME": "mongodb-fake"},
 					Username:                "foo",
 				}),
-			},
-			{
-				"AuthSourceNoUsername",
-				"mongodb://localhost/?authSource=random-database-example",
-				&ClientOptions{err: internal.WrapErrorf(
-					errors.New("authsource without username is invalid"), "error parsing uri",
-				)},
 			},
 			{
 				"AuthSource",
@@ -328,6 +346,16 @@ func TestClientOptions(t *testing.T) {
 				baseClient().SetMaxPoolSize(256),
 			},
 			{
+				"MinPoolSize",
+				"mongodb://localhost/?minPoolSize=256",
+				baseClient().SetMinPoolSize(256),
+			},
+			{
+				"MaxConnecting",
+				"mongodb://localhost/?maxConnecting=10",
+				baseClient().SetMaxConnecting(10),
+			},
+			{
 				"ReadConcern",
 				"mongodb://localhost/?readConcernLevel=linearizable",
 				baseClient().SetReadConcern(readconcern.Linearizable()),
@@ -370,7 +398,9 @@ func TestClientOptions(t *testing.T) {
 			{
 				"TLS CACertificate",
 				"mongodb://localhost/?ssl=true&sslCertificateAuthorityFile=testdata/ca.pem",
-				baseClient().SetTLSConfig(&tls.Config{RootCAs: x509.NewCertPool()}),
+				baseClient().SetTLSConfig(&tls.Config{
+					RootCAs: createCertPool(t, "testdata/ca.pem"),
+				}),
 			},
 			{
 				"TLS Insecure",
@@ -430,7 +460,7 @@ func TestClientOptions(t *testing.T) {
 				"mongodb://localhost/?tlsCertificateFile=testdata/nopass/cert.pem",
 				&ClientOptions{err: internal.WrapErrorf(
 					errors.New("the tlsPrivateKeyFile URI option must be provided if the tlsCertificateFile option is specified"),
-					"error parsing uri",
+					"error validating uri",
 				)},
 			},
 			{
@@ -438,7 +468,7 @@ func TestClientOptions(t *testing.T) {
 				"mongodb://localhost/?tlsPrivateKeyFile=testdata/nopass/key.pem",
 				&ClientOptions{err: internal.WrapErrorf(
 					errors.New("the tlsCertificateFile URI option must be provided if the tlsPrivateKeyFile option is specified"),
-					"error parsing uri",
+					"error validating uri",
 				)},
 			},
 			{
@@ -447,28 +477,286 @@ func TestClientOptions(t *testing.T) {
 				&ClientOptions{err: internal.WrapErrorf(
 					errors.New("the sslClientCertificateKeyFile/tlsCertificateKeyFile URI option cannot be provided "+
 						"along with tlsCertificateFile or tlsPrivateKeyFile"),
-					"error parsing uri",
+					"error validating uri",
 				)},
+			},
+			{
+				"disable OCSP endpoint check",
+				"mongodb://localhost/?tlsDisableOCSPEndpointCheck=true",
+				baseClient().SetDisableOCSPEndpointCheck(true),
+			},
+			{
+				"directConnection",
+				"mongodb://localhost/?directConnection=true",
+				baseClient().SetDirect(true),
+			},
+			{
+				"TLS CA file with multiple certificiates",
+				"mongodb://localhost/?tlsCAFile=testdata/ca-with-intermediates.pem",
+				baseClient().SetTLSConfig(&tls.Config{
+					RootCAs: createCertPool(t, "testdata/ca-with-intermediates-first.pem",
+						"testdata/ca-with-intermediates-second.pem", "testdata/ca-with-intermediates-third.pem"),
+				}),
+			},
+			{
+				"TLS empty CA file",
+				"mongodb://localhost/?tlsCAFile=testdata/empty-ca.pem",
+				&ClientOptions{
+					Hosts: []string{"localhost"},
+					err:   errors.New("the specified CA file does not contain any valid certificates"),
+				},
+			},
+			{
+				"TLS CA file with no certificates",
+				"mongodb://localhost/?tlsCAFile=testdata/ca-key.pem",
+				&ClientOptions{
+					Hosts: []string{"localhost"},
+					err:   errors.New("the specified CA file does not contain any valid certificates"),
+				},
+			},
+			{
+				"TLS malformed CA file",
+				"mongodb://localhost/?tlsCAFile=testdata/malformed-ca.pem",
+				&ClientOptions{
+					Hosts: []string{"localhost"},
+					err:   errors.New("the specified CA file does not contain any valid certificates"),
+				},
+			},
+			{
+				"loadBalanced=true",
+				"mongodb://localhost/?loadBalanced=true",
+				baseClient().SetLoadBalanced(true),
+			},
+			{
+				"loadBalanced=false",
+				"mongodb://localhost/?loadBalanced=false",
+				baseClient().SetLoadBalanced(false),
+			},
+			{
+				"srvServiceName",
+				"mongodb+srv://test22.test.build.10gen.cc/?srvServiceName=customname",
+				baseClient().SetSRVServiceName("customname").
+					SetHosts([]string{"localhost.test.build.10gen.cc:27017", "localhost.test.build.10gen.cc:27018"}),
+			},
+			{
+				"srvMaxHosts",
+				"mongodb+srv://test1.test.build.10gen.cc/?srvMaxHosts=2",
+				baseClient().SetSRVMaxHosts(2).
+					SetHosts([]string{"localhost.test.build.10gen.cc:27017", "localhost.test.build.10gen.cc:27018"}),
+			},
+			{
+				"GODRIVER-2263 regression test",
+				"mongodb://localhost/?tlsCertificateKeyFile=testdata/one-pk-multiple-certs.pem",
+				baseClient().SetTLSConfig(&tls.Config{Certificates: make([]tls.Certificate, 1)}),
 			},
 		}
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				result := Client().ApplyURI(tc.uri)
-				tc.result.uri = tc.uri // manually add URI to avoid writing it in each test
+
+				// Manually add the URI and ConnString to the test expectations to avoid adding them in each test
+				// definition. The ConnString should only be recorded if there was no error while parsing.
+				tc.result.uri = tc.uri
+				cs, err := connstring.ParseAndValidate(tc.uri)
+				if err == nil {
+					tc.result.cs = &cs
+				}
+
+				// We have to sort string slices in comparison, as Hosts resolved from SRV URIs do not have a set order.
+				stringLess := func(a, b string) bool { return a < b }
 				if diff := cmp.Diff(
 					tc.result, result,
-					cmp.AllowUnexported(readconcern.ReadConcern{}, writeconcern.WriteConcern{}, readpref.ReadPref{}),
+					cmp.AllowUnexported(ClientOptions{}, readconcern.ReadConcern{}, writeconcern.WriteConcern{}, readpref.ReadPref{}),
 					cmp.Comparer(func(r1, r2 *bsoncodec.Registry) bool { return r1 == r2 }),
 					cmp.Comparer(compareTLSConfig),
 					cmp.Comparer(compareErrors),
-					cmp.AllowUnexported(ClientOptions{}),
+					cmpopts.SortSlices(stringLess),
+					cmpopts.IgnoreFields(connstring.ConnString{}, "SSLClientCertificateKeyPassword"),
 				); diff != "" {
 					t.Errorf("URI did not apply correctly: (-want +got)\n%s", diff)
 				}
 			})
 		}
 	})
+	t.Run("direct connection validation", func(t *testing.T) {
+		t.Run("multiple hosts", func(t *testing.T) {
+			expectedErr := errors.New("a direct connection cannot be made if multiple hosts are specified")
+
+			testCases := []struct {
+				name string
+				opts *ClientOptions
+			}{
+				{"hosts in URI", Client().ApplyURI("mongodb://localhost,localhost2")},
+				{"hosts in options", Client().SetHosts([]string{"localhost", "localhost2"})},
+			}
+			for _, tc := range testCases {
+				t.Run(tc.name, func(t *testing.T) {
+					err := tc.opts.SetDirect(true).Validate()
+					assert.NotNil(t, err, "expected errror, got nil")
+					assert.Equal(t, expectedErr.Error(), err.Error(), "expected error %v, got %v", expectedErr, err)
+				})
+			}
+		})
+		t.Run("srv", func(t *testing.T) {
+			expectedErr := errors.New("a direct connection cannot be made if an SRV URI is used")
+			// Use a non-SRV URI and manually set the scheme because using an SRV URI would force an SRV lookup.
+			opts := Client().ApplyURI("mongodb://localhost:27017")
+			opts.cs.Scheme = connstring.SchemeMongoDBSRV
+
+			err := opts.SetDirect(true).Validate()
+			assert.NotNil(t, err, "expected errror, got nil")
+			assert.Equal(t, expectedErr.Error(), err.Error(), "expected error %v, got %v", expectedErr, err)
+		})
+	})
+	t.Run("loadBalanced validation", func(t *testing.T) {
+		testCases := []struct {
+			name string
+			opts *ClientOptions
+			err  error
+		}{
+			{"multiple hosts in URI", Client().ApplyURI("mongodb://foo,bar"), internal.ErrLoadBalancedWithMultipleHosts},
+			{"multiple hosts in options", Client().SetHosts([]string{"foo", "bar"}), internal.ErrLoadBalancedWithMultipleHosts},
+			{"replica set name", Client().SetReplicaSet("foo"), internal.ErrLoadBalancedWithReplicaSet},
+			{"directConnection=true", Client().SetDirect(true), internal.ErrLoadBalancedWithDirectConnection},
+			{"directConnection=false", Client().SetDirect(false), internal.ErrLoadBalancedWithDirectConnection},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				// The loadBalanced option should not be validated if it is unset or false.
+				err := tc.opts.Validate()
+				assert.Nil(t, err, "Validate error when loadBalanced is unset: %v", err)
+
+				tc.opts.SetLoadBalanced(false)
+				err = tc.opts.Validate()
+				assert.Nil(t, err, "Validate error when loadBalanced=false: %v", err)
+
+				tc.opts.SetLoadBalanced(true)
+				err = tc.opts.Validate()
+				assert.Equal(t, tc.err, err, "expected error %v when loadBalanced=true, got %v", tc.err, err)
+			})
+		}
+	})
+	t.Run("minPoolSize validation", func(t *testing.T) {
+		testCases := []struct {
+			name string
+			opts *ClientOptions
+			err  error
+		}{
+			{
+				"minPoolSize < maxPoolSize",
+				Client().SetMinPoolSize(128).SetMaxPoolSize(256),
+				nil,
+			},
+			{
+				"minPoolSize == maxPoolSize",
+				Client().SetMinPoolSize(128).SetMaxPoolSize(128),
+				nil,
+			},
+			{
+				"minPoolSize > maxPoolSize",
+				Client().SetMinPoolSize(64).SetMaxPoolSize(32),
+				errors.New("minPoolSize must be less than or equal to maxPoolSize, got minPoolSize=64 maxPoolSize=32"),
+			},
+			{
+				"maxPoolSize == 0",
+				Client().SetMinPoolSize(128).SetMaxPoolSize(0),
+				nil,
+			},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				err := tc.opts.Validate()
+				assert.Equal(t, tc.err, err, "expected error %v, got %v", tc.err, err)
+			})
+		}
+	})
+	t.Run("srvMaxHosts validation", func(t *testing.T) {
+		testCases := []struct {
+			name string
+			opts *ClientOptions
+			err  error
+		}{
+			{"replica set name", Client().SetReplicaSet("foo"), internal.ErrSRVMaxHostsWithReplicaSet},
+			{"loadBalanced=true", Client().SetLoadBalanced(true), internal.ErrSRVMaxHostsWithLoadBalanced},
+			{"loadBalanced=false", Client().SetLoadBalanced(false), nil},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				err := tc.opts.Validate()
+				assert.Nil(t, err, "Validate error when srvMxaHosts is unset: %v", err)
+
+				tc.opts.SetSRVMaxHosts(0)
+				err = tc.opts.Validate()
+				assert.Nil(t, err, "Validate error when srvMaxHosts is 0: %v", err)
+
+				tc.opts.SetSRVMaxHosts(2)
+				err = tc.opts.Validate()
+				assert.Equal(t, tc.err, err, "expected error %v when srvMaxHosts > 0, got %v", tc.err, err)
+			})
+		}
+	})
+	t.Run("srvMaxHosts validation", func(t *testing.T) {
+		t.Parallel()
+
+		testCases := []struct {
+			name string
+			opts *ClientOptions
+			err  error
+		}{
+			{
+				name: "valid ServerAPI",
+				opts: Client().SetServerAPIOptions(ServerAPI(ServerAPIVersion1)),
+				err:  nil,
+			},
+			{
+				name: "invalid ServerAPI",
+				opts: Client().SetServerAPIOptions(ServerAPI("nope")),
+				err:  errors.New(`api version "nope" not supported; this driver version only supports API version "1"`),
+			},
+			{
+				name: "invalid ServerAPI with other invalid options",
+				opts: Client().SetServerAPIOptions(ServerAPI("nope")).SetSRVMaxHosts(1).SetReplicaSet("foo"),
+				err:  errors.New(`api version "nope" not supported; this driver version only supports API version "1"`),
+			},
+		}
+		for _, tc := range testCases {
+			tc := tc // Capture range variable.
+
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+
+				err := tc.opts.Validate()
+				assert.Equal(t, tc.err, err, "want error %v, got error %v", tc.err, err)
+			})
+		}
+	})
+}
+
+func createCertPool(t *testing.T, paths ...string) *x509.CertPool {
+	t.Helper()
+
+	pool := x509.NewCertPool()
+	for _, path := range paths {
+		pool.AddCert(loadCert(t, path))
+	}
+	return pool
+}
+
+func loadCert(t *testing.T, file string) *x509.Certificate {
+	t.Helper()
+
+	data := readFile(t, file)
+	block, _ := pem.Decode(data)
+	cert, err := x509.ParseCertificate(block.Bytes)
+	assert.Nil(t, err, "ParseCertificate error for %s: %v", file, err)
+	return cert
+}
+
+func readFile(t *testing.T, path string) []byte {
+	data, err := ioutil.ReadFile(path)
+	assert.Nil(t, err, "ReadFile error for %s: %v", path, err)
+	return data
 }
 
 type testDialer struct {
@@ -490,6 +778,20 @@ func compareTLSConfig(cfg1, cfg2 *tls.Config) bool {
 
 	if (cfg1.RootCAs == nil && cfg1.RootCAs != nil) || (cfg1.RootCAs != nil && cfg1.RootCAs == nil) {
 		return false
+	}
+
+	if cfg1.RootCAs != nil {
+		cfg1Subjects := cfg1.RootCAs.Subjects()
+		cfg2Subjects := cfg2.RootCAs.Subjects()
+		if len(cfg1Subjects) != len(cfg2Subjects) {
+			return false
+		}
+
+		for idx, firstSubject := range cfg1Subjects {
+			if !bytes.Equal(firstSubject, cfg2Subjects[idx]) {
+				return false
+			}
+		}
 	}
 
 	if len(cfg1.Certificates) != len(cfg2.Certificates) {

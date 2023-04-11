@@ -13,6 +13,7 @@ import (
 	"math"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,7 +54,6 @@ func TestDefaultValueEncoders(t *testing.T) {
 	type myuint uint
 	type myfloat32 float32
 	type myfloat64 float64
-	type mystring string
 
 	now := time.Now().Truncate(time.Millisecond)
 	pjsnum := new(json.Number)
@@ -124,8 +124,6 @@ func TestDefaultValueEncoders(t *testing.T) {
 				{"int/fast path - negative int32", int(math.MinInt32 + 1), nil, nil, bsonrwtest.WriteInt32, nil},
 				{"int/fast path - MaxInt32", int(math.MaxInt32), nil, nil, bsonrwtest.WriteInt32, nil},
 				{"int/fast path - MinInt32", int(math.MinInt32), nil, nil, bsonrwtest.WriteInt32, nil},
-				{"int/fast path - larger than MaxInt32", int(math.MaxInt32 + 1), nil, nil, bsonrwtest.WriteInt64, nil},
-				{"int/fast path - smaller than MinInt32", int(math.MinInt32 - 1), nil, nil, bsonrwtest.WriteInt64, nil},
 				{"int8/reflection path", myint8(127), nil, nil, bsonrwtest.WriteInt32, nil},
 				{"int16/reflection path", myint16(32767), nil, nil, bsonrwtest.WriteInt32, nil},
 				{"int32/reflection path", myint32(2147483647), nil, nil, bsonrwtest.WriteInt32, nil},
@@ -137,8 +135,6 @@ func TestDefaultValueEncoders(t *testing.T) {
 				{"int/reflection path - negative int32", myint(math.MinInt32 + 1), nil, nil, bsonrwtest.WriteInt32, nil},
 				{"int/reflection path - MaxInt32", myint(math.MaxInt32), nil, nil, bsonrwtest.WriteInt32, nil},
 				{"int/reflection path - MinInt32", myint(math.MinInt32), nil, nil, bsonrwtest.WriteInt32, nil},
-				{"int/reflection path - larger than MaxInt32", myint(math.MaxInt32 + 1), nil, nil, bsonrwtest.WriteInt64, nil},
-				{"int/reflection path - smaller than MinInt32", myint(math.MinInt32 - 1), nil, nil, bsonrwtest.WriteInt64, nil},
 			},
 		},
 		{
@@ -168,21 +164,18 @@ func TestDefaultValueEncoders(t *testing.T) {
 				{"uint32/fast path - minsize too large", uint32(2147483648), &EncodeContext{MinSize: true}, nil, bsonrwtest.WriteInt64, nil},
 				{"uint64/fast path - minsize too large", uint64(2147483648), &EncodeContext{MinSize: true}, nil, bsonrwtest.WriteInt64, nil},
 				{"uint/fast path - minsize too large", uint(2147483648), &EncodeContext{MinSize: true}, nil, bsonrwtest.WriteInt64, nil},
-				{"uint64/fast path - overflow", uint64(1 << 63), nil, nil, bsonrwtest.Nothing, fmt.Errorf("%d overflows int64", uint(1<<63))},
-				{"uint/fast path - overflow", uint(1 << 63), nil, nil, bsonrwtest.Nothing, fmt.Errorf("%d overflows int64", uint(1<<63))},
+				{"uint64/fast path - overflow", uint64(1 << 63), nil, nil, bsonrwtest.Nothing, fmt.Errorf("%d overflows int64", uint64(1<<63))},
 				{"uint8/reflection path", myuint8(127), nil, nil, bsonrwtest.WriteInt32, nil},
 				{"uint16/reflection path", myuint16(32767), nil, nil, bsonrwtest.WriteInt32, nil},
 				{"uint32/reflection path", myuint32(2147483647), nil, nil, bsonrwtest.WriteInt64, nil},
 				{"uint64/reflection path", myuint64(1234567890987), nil, nil, bsonrwtest.WriteInt64, nil},
-				{"uint/reflection path", myuint(1234567890987), nil, nil, bsonrwtest.WriteInt64, nil},
 				{"uint32/reflection path - minsize", myuint32(2147483647), &EncodeContext{MinSize: true}, nil, bsonrwtest.WriteInt32, nil},
 				{"uint64/reflection path - minsize", myuint64(2147483647), &EncodeContext{MinSize: true}, nil, bsonrwtest.WriteInt32, nil},
 				{"uint/reflection path - minsize", myuint(2147483647), &EncodeContext{MinSize: true}, nil, bsonrwtest.WriteInt32, nil},
 				{"uint32/reflection path - minsize too large", myuint(1 << 31), &EncodeContext{MinSize: true}, nil, bsonrwtest.WriteInt64, nil},
 				{"uint64/reflection path - minsize too large", myuint64(1 << 31), &EncodeContext{MinSize: true}, nil, bsonrwtest.WriteInt64, nil},
 				{"uint/reflection path - minsize too large", myuint(2147483648), &EncodeContext{MinSize: true}, nil, bsonrwtest.WriteInt64, nil},
-				{"uint64/reflection path - overflow", myuint64(1 << 63), nil, nil, bsonrwtest.Nothing, fmt.Errorf("%d overflows int64", uint(1<<63))},
-				{"uint/reflection path - overflow", myuint(1 << 63), nil, nil, bsonrwtest.Nothing, fmt.Errorf("%d overflows int64", uint(1<<63))},
+				{"uint64/reflection path - overflow", myuint64(1 << 63), nil, nil, bsonrwtest.Nothing, fmt.Errorf("%d overflows int64", uint64(1<<63))},
 			},
 		},
 		{
@@ -1084,7 +1077,7 @@ func TestDefaultValueEncoders(t *testing.T) {
 		},
 		{
 			"StructEncodeValue",
-			defaultStructCodec,
+			defaultTestStructCodec,
 			[]subtest{
 				{
 					"interface value",
@@ -1136,6 +1129,53 @@ func TestDefaultValueEncoders(t *testing.T) {
 					},
 					&EncodeContext{Registry: buildDefaultRegistry()},
 					nil, bsonrwtest.WriteDocumentEnd, nil,
+				},
+			},
+		},
+		{
+			"CoreArrayEncodeValue",
+			defaultArrayCodec,
+			[]subtest{
+				{
+					"wrong type",
+					wrong,
+					nil,
+					nil,
+					bsonrwtest.Nothing,
+					ValueEncoderError{
+						Name:     "CoreArrayEncodeValue",
+						Types:    []reflect.Type{tCoreArray},
+						Received: reflect.ValueOf(wrong),
+					},
+				},
+
+				{
+					"WriteArray Error",
+					bsoncore.Array{},
+					nil,
+					&bsonrwtest.ValueReaderWriter{Err: errors.New("wa error"), ErrAfter: bsonrwtest.WriteArray},
+					bsonrwtest.WriteArray,
+					errors.New("wa error"),
+				},
+				{
+					"WriteArrayElement Error",
+					bsoncore.Array(buildDocumentArray(func(doc []byte) []byte {
+						return bsoncore.AppendNullElement(nil, "foo")
+					})),
+					nil,
+					&bsonrwtest.ValueReaderWriter{Err: errors.New("wae error"), ErrAfter: bsonrwtest.WriteArrayElement},
+					bsonrwtest.WriteArrayElement,
+					errors.New("wae error"),
+				},
+				{
+					"encodeValue error",
+					bsoncore.Array(buildDocumentArray(func(doc []byte) []byte {
+						return bsoncore.AppendNullElement(nil, "foo")
+					})),
+					nil,
+					&bsonrwtest.ValueReaderWriter{Err: errors.New("ev error"), ErrAfter: bsonrwtest.WriteNull},
+					bsonrwtest.WriteNull,
+					errors.New("ev error"),
 				},
 			},
 		},
@@ -1380,6 +1420,78 @@ func TestDefaultValueEncoders(t *testing.T) {
 				nil,
 			},
 			{
+				"inline overwrite",
+				struct {
+					Foo struct {
+						A int32
+						B string
+					} `bson:",inline"`
+					A int64
+				}{
+					Foo: struct {
+						A int32
+						B string
+					}{
+						A: 0,
+						B: "foo",
+					},
+					A: 54321,
+				},
+				buildDocument(func(doc []byte) []byte {
+					doc = bsoncore.AppendStringElement(doc, "b", "foo")
+					doc = bsoncore.AppendInt64Element(doc, "a", 54321)
+					return doc
+				}(nil)),
+				nil,
+			},
+			{
+				"inline overwrite respects ordering",
+				struct {
+					A   int64
+					Foo struct {
+						A int32
+						B string
+					} `bson:",inline"`
+				}{
+					A: 54321,
+					Foo: struct {
+						A int32
+						B string
+					}{
+						A: 0,
+						B: "foo",
+					},
+				},
+				buildDocument(func(doc []byte) []byte {
+					doc = bsoncore.AppendInt64Element(doc, "a", 54321)
+					doc = bsoncore.AppendStringElement(doc, "b", "foo")
+					return doc
+				}(nil)),
+				nil,
+			},
+			{
+				"inline overwrite with nested structs",
+				struct {
+					Foo struct {
+						A int32
+					} `bson:",inline"`
+					Bar struct {
+						A int32
+					} `bson:",inline"`
+					A int64
+				}{
+					Foo: struct {
+						A int32
+					}{},
+					Bar: struct {
+						A int32
+					}{},
+					A: 54321,
+				},
+				buildDocument(bsoncore.AppendInt64Element(nil, "a", 54321)),
+				nil,
+			},
+			{
 				"inline map",
 				struct {
 					Foo map[string]string `bson:",inline"`
@@ -1593,15 +1705,15 @@ func TestDefaultValueEncoders(t *testing.T) {
 					doc = appendArrayElement(doc, "e", bsoncore.AppendInt64Element(nil, "0", 101112))
 					doc = appendArrayElement(doc, "f", bsoncore.AppendDoubleElement(nil, "0", 3.14159))
 					doc = appendArrayElement(doc, "g", bsoncore.AppendStringElement(nil, "0", "Hello, world"))
-					doc = appendArrayElement(doc, "h", buildDocumentElement("0", bsoncore.AppendStringElement(nil, "foo", "bar")))
+					doc = appendArrayElement(doc, "h", bsoncore.BuildDocumentElement(nil, "0", bsoncore.AppendStringElement(nil, "foo", "bar")))
 					doc = appendArrayElement(doc, "i", bsoncore.AppendBinaryElement(nil, "0", 0x00, []byte{0x01, 0x02, 0x03}))
 					doc = appendArrayElement(doc, "k",
-						buildArrayElement("0",
+						appendArrayElement(nil, "0",
 							bsoncore.AppendStringElement(bsoncore.AppendStringElement(nil, "0", "baz"), "1", "qux")),
 					)
-					doc = appendArrayElement(doc, "l", buildDocumentElement("0", bsoncore.AppendStringElement(nil, "m", "foobar")))
+					doc = appendArrayElement(doc, "l", bsoncore.BuildDocumentElement(nil, "0", bsoncore.AppendStringElement(nil, "m", "foobar")))
 					doc = appendArrayElement(doc, "n",
-						buildArrayElement("0",
+						appendArrayElement(nil, "0",
 							bsoncore.AppendStringElement(bsoncore.AppendStringElement(nil, "0", "foo"), "1", "bar")),
 					)
 					doc = appendArrayElement(doc, "r",
@@ -1615,7 +1727,7 @@ func TestDefaultValueEncoders(t *testing.T) {
 					doc = bsoncore.AppendNullElement(doc, "t")
 					doc = bsoncore.AppendNullElement(doc, "w")
 					doc = appendArrayElement(doc, "x", nil)
-					doc = appendArrayElement(doc, "y", buildDocumentElement("0", nil))
+					doc = appendArrayElement(doc, "y", bsoncore.BuildDocumentElement(nil, "0", nil))
 					doc = appendArrayElement(doc, "z",
 						bsoncore.AppendDateTimeElement(
 							bsoncore.AppendDateTimeElement(
@@ -1676,6 +1788,52 @@ func TestDefaultValueEncoders(t *testing.T) {
 		}
 	})
 
+	t.Run("error path", func(t *testing.T) {
+		testCases := []struct {
+			name  string
+			value interface{}
+			err   error
+		}{
+			{
+				"duplicate name struct",
+				struct {
+					A int64
+					B int64 `bson:"a"`
+				}{
+					A: 0,
+					B: 54321,
+				},
+				fmt.Errorf("duplicated key a"),
+			},
+			{
+				"inline map",
+				struct {
+					Foo map[string]string `bson:",inline"`
+					Baz string
+				}{
+					Foo: map[string]string{"baz": "bar"},
+					Baz: "hi",
+				},
+				fmt.Errorf("Key baz of inlined map conflicts with a struct field name"),
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				b := make(bsonrw.SliceWriter, 0, 512)
+				vw, err := bsonrw.NewBSONValueWriter(&b)
+				noerr(t, err)
+				reg := buildDefaultRegistry()
+				enc, err := reg.LookupEncoder(reflect.TypeOf(tc.value))
+				noerr(t, err)
+				err = enc.EncodeValue(EncodeContext{Registry: reg}, vw, reflect.ValueOf(tc.value))
+				if err == nil || !strings.Contains(err.Error(), tc.err.Error()) {
+					t.Errorf("Did not receive expected error. got %v; want %v", err, tc.err)
+				}
+			})
+		}
+	})
+
 	t.Run("EmptyInterfaceEncodeValue/nil", func(t *testing.T) {
 		val := reflect.New(tEmpty).Elem()
 		llvrw := new(bsonrwtest.ValueReaderWriter)
@@ -1693,7 +1851,7 @@ func TestDefaultValueEncoders(t *testing.T) {
 		got := dve.EmptyInterfaceEncodeValue(EncodeContext{Registry: NewRegistryBuilder().Build()}, llvrw, val)
 		want := ErrNoEncoder{Type: tInt64}
 		if !compareErrors(got, want) {
-			t.Errorf("Did not recieve expected error. got %v; want %v", got, want)
+			t.Errorf("Did not receive expected error. got %v; want %v", got, want)
 		}
 	})
 }

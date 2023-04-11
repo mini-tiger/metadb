@@ -61,6 +61,7 @@ type AssociationParams struct {
 	Condition map[string][]ConditionItem `json:"condition,omitempty"`
 	// 非必填，只能用来查时间，且与Condition是与关系
 	TimeCondition *metadata.TimeCondition `json:"time_condition,omitempty"`
+	Mult          string                  `json:"mult"`
 }
 
 // commonInstTopo common inst topo

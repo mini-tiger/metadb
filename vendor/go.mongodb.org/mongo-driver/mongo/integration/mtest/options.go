@@ -7,6 +7,9 @@
 package mtest
 
 import (
+	"errors"
+	"fmt"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -16,9 +19,13 @@ type TopologyKind string
 
 // These constants specify valid values for TopologyKind
 const (
-	ReplicaSet TopologyKind = "replicaset"
-	Sharded                 = "sharded"
-	Single                  = "single"
+	ReplicaSet   TopologyKind = "replicaset"
+	Sharded      TopologyKind = "sharded"
+	Single       TopologyKind = "single"
+	LoadBalanced TopologyKind = "load-balanced"
+	// ShardedReplicaSet is a special case of sharded that requires each shard to be a replica set rather than a
+	// standalone server.
+	ShardedReplicaSet TopologyKind = "sharded-replicaset"
 )
 
 // ClientType specifies the type of Client that should be created for a test.
@@ -33,13 +40,68 @@ const (
 	Pinned
 	// Mock specifies a client that communicates with a mock deployment.
 	Mock
+	// Proxy specifies a client that proxies messages to the server and also stores parsed copies. The proxied
+	// messages can be retrieved via T.GetProxiedMessages or T.GetRawProxiedMessages.
+	Proxy
+)
+
+var (
+	falseBool = false
 )
 
 // RunOnBlock describes a constraint for a test.
 type RunOnBlock struct {
-	MinServerVersion string         `bson:"minServerVersion"`
-	MaxServerVersion string         `bson:"maxServerVersion"`
-	Topology         []TopologyKind `bson:"topology"`
+	MinServerVersion string                   `bson:"minServerVersion"`
+	MaxServerVersion string                   `bson:"maxServerVersion"`
+	Topology         []TopologyKind           `bson:"topology"`
+	Serverless       string                   `bson:"serverless"`
+	ServerParameters map[string]bson.RawValue `bson:"serverParameters"`
+	Auth             *bool                    `bson:"auth"`
+	AuthEnabled      *bool                    `bson:"authEnabled"`
+	CSFLE            *bool                    `bson:"csfle"`
+}
+
+// UnmarshalBSON implements custom BSON unmarshalling behavior for RunOnBlock because some test formats use the
+// "topology" key while the unified test format uses "topologies".
+func (r *RunOnBlock) UnmarshalBSON(data []byte) error {
+	var temp struct {
+		MinServerVersion string                   `bson:"minServerVersion"`
+		MaxServerVersion string                   `bson:"maxServerVersion"`
+		Topology         []TopologyKind           `bson:"topology"`
+		Topologies       []TopologyKind           `bson:"topologies"`
+		Serverless       string                   `bson:"serverless"`
+		ServerParameters map[string]bson.RawValue `bson:"serverParameters"`
+		Auth             *bool                    `bson:"auth"`
+		AuthEnabled      *bool                    `bson:"authEnabled"`
+		CSFLE            *bool                    `bson:"csfle"`
+		Extra            map[string]interface{}   `bson:",inline"`
+	}
+	if err := bson.Unmarshal(data, &temp); err != nil {
+		return fmt.Errorf("error unmarshalling to temporary RunOnBlock object: %v", err)
+	}
+	if len(temp.Extra) > 0 {
+		return fmt.Errorf("unrecognized fields for RunOnBlock: %v", temp.Extra)
+	}
+
+	r.MinServerVersion = temp.MinServerVersion
+	r.MaxServerVersion = temp.MaxServerVersion
+	r.Serverless = temp.Serverless
+	r.ServerParameters = temp.ServerParameters
+	r.Auth = temp.Auth
+	r.AuthEnabled = temp.AuthEnabled
+	r.CSFLE = temp.CSFLE
+
+	if temp.Topology != nil {
+		r.Topology = temp.Topology
+	}
+	if temp.Topologies != nil {
+		if r.Topology != nil {
+			return errors.New("both 'topology' and 'topologies' keys cannot be specified for a RunOnBlock")
+		}
+
+		r.Topology = temp.Topologies
+	}
+	return nil
 }
 
 // optionFunc is a function type that configures a T instance.
@@ -55,10 +117,8 @@ func NewOptions() *Options {
 	return &Options{}
 }
 
-// CollectionCreateOptions sets the options to pass to the create command when creating a collection for a test.
-// For example, if opts = {"capped": "true"}, the create command sent to the server will be
-// {create: <collectionName>, foo: bar}.
-func (op *Options) CollectionCreateOptions(opts bson.D) *Options {
+// CollectionCreateOptions sets the options to pass to Database.CreateCollection() when creating a collection for a test.
+func (op *Options) CollectionCreateOptions(opts *options.CreateCollectionOptions) *Options {
 	op.optFuncs = append(op.optFuncs, func(t *T) {
 		t.collCreateOpts = opts
 	})
@@ -81,11 +141,19 @@ func (op *Options) ClientOptions(opts *options.ClientOptions) *Options {
 	return op
 }
 
-// CreateClient specifies whether or not a client and collection should be created for a test. This should be set to
-// false when running a test that only runs other tests.
+// CreateClient specifies whether or not a client should be created for a test. This should be set to false when running
+// a test that only runs other tests.
 func (op *Options) CreateClient(create bool) *Options {
 	op.optFuncs = append(op.optFuncs, func(t *T) {
 		t.createClient = &create
+	})
+	return op
+}
+
+// CreateCollection specifies whether or not a collection should be created for a test. The default value is true.
+func (op *Options) CreateCollection(create bool) *Options {
+	op.optFuncs = append(op.optFuncs, func(t *T) {
+		t.createCollection = &create
 	})
 	return op
 }
@@ -117,10 +185,15 @@ func (op *Options) DatabaseName(dbName string) *Options {
 }
 
 // ClientType specifies the type of client that should be created for a test. This option will be propagated to all
-// sub-tests.
+// sub-tests. If the provided ClientType is Proxy, the SSL(false) option will be also be added because the internal
+// proxy dialer and connection types do not support SSL.
 func (op *Options) ClientType(ct ClientType) *Options {
 	op.optFuncs = append(op.optFuncs, func(t *T) {
 		t.clientType = ct
+
+		if ct == Proxy {
+			t.ssl = &falseBool
+		}
 	})
 	return op
 }
@@ -176,10 +249,35 @@ func (op *Options) Auth(auth bool) *Options {
 	return op
 }
 
+// SSL specifies whether or not SSL should be enabled for this test to run. By default, a test will run regardless
+// of whether or not SSL is enabled.
+func (op *Options) SSL(ssl bool) *Options {
+	op.optFuncs = append(op.optFuncs, func(t *T) {
+		t.ssl = &ssl
+	})
+	return op
+}
+
 // Enterprise specifies whether or not this test should only be run on enterprise server variants. Defaults to false.
 func (op *Options) Enterprise(ent bool) *Options {
 	op.optFuncs = append(op.optFuncs, func(t *T) {
 		t.enterprise = &ent
+	})
+	return op
+}
+
+// AtlasDataLake specifies whether this test should only be run against Atlas Data Lake servers. Defaults to false.
+func (op *Options) AtlasDataLake(adl bool) *Options {
+	op.optFuncs = append(op.optFuncs, func(t *T) {
+		t.dataLake = &adl
+	})
+	return op
+}
+
+// RequireAPIVersion specifies whether this test should only be run when REQUIRE_API_VERSION is true. Defaults to false.
+func (op *Options) RequireAPIVersion(rav bool) *Options {
+	op.optFuncs = append(op.optFuncs, func(t *T) {
+		t.requireAPIVersion = &rav
 	})
 	return op
 }

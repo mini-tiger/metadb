@@ -1,3 +1,9 @@
+// Copyright (C) MongoDB, Inc. 2022-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package bsonx
 
 import (
@@ -293,7 +299,6 @@ func TestDefaultValueEncoders(t *testing.T) {
 				{"p", Int32(12345)},
 				{"q", Timestamp(10, 20)}, {"r", Int64(1234567890)}, {"s", Decimal128(d128)}, {"t", MinKey()}, {"u", MaxKey()},
 			}
-			got := Doc{}
 			slc := make(bsonrw.SliceWriter, 0, 128)
 			vw, err := bsonrw.NewBSONValueWriter(&slc)
 			noerr(t, err)
@@ -301,7 +306,7 @@ func TestDefaultValueEncoders(t *testing.T) {
 			ec := bsoncodec.EncodeContext{Registry: DefaultRegistry}
 			err = (PrimitiveCodecs{}).DocumentEncodeValue(ec, vw, reflect.ValueOf(want))
 			noerr(t, err)
-			got, err = ReadDoc(slc)
+			got, err := ReadDoc(slc)
 			noerr(t, err)
 			if !got.Equal(want) {
 				t.Error("Documents do not match")
@@ -894,8 +899,7 @@ func TestDefaultValueDecoders(t *testing.T) {
 	})
 }
 
-func compareValues(v1, v2 Val) bool    { return v1.Equal(v2) }
-func compareElements(e1, e2 Elem) bool { return e1.Equal(e2) }
+func compareValues(v1, v2 Val) bool { return v1.Equal(v2) }
 
 func docToBytes(d Doc) []byte {
 	b, err := d.MarshalBSON()

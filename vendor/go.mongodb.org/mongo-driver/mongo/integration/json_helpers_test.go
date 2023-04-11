@@ -7,6 +7,8 @@
 package integration
 
 import (
+	"crypto/tls"
+	"fmt"
 	"io/ioutil"
 	"math"
 	"os"
@@ -24,9 +26,19 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 )
 
-const (
-	awsAccessKeyID     = "AWS_ACCESS_KEY_ID"
-	awsSecretAccessKey = "AWS_SECRET_ACCESS_KEY"
+var (
+	awsAccessKeyID                  = os.Getenv("AWS_ACCESS_KEY_ID")
+	awsSecretAccessKey              = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	awsTempAccessKeyID              = os.Getenv("CSFLE_AWS_TEMP_ACCESS_KEY_ID")
+	awsTempSecretAccessKey          = os.Getenv("CSFLE_AWS_TEMP_SECRET_ACCESS_KEY")
+	awsTempSessionToken             = os.Getenv("CSFLE_AWS_TEMP_SESSION_TOKEN")
+	azureTenantID                   = os.Getenv("AZURE_TENANT_ID")
+	azureClientID                   = os.Getenv("AZURE_CLIENT_ID")
+	azureClientSecret               = os.Getenv("AZURE_CLIENT_SECRET")
+	gcpEmail                        = os.Getenv("GCP_EMAIL")
+	gcpPrivateKey                   = os.Getenv("GCP_PRIVATE_KEY")
+	tlsCAFileKMIP                   = os.Getenv("CSFLE_TLS_CA_FILE")
+	tlsClientCertificateKeyFileKMIP = os.Getenv("CSFLE_TLS_CERTIFICATE_KEY_FILE")
 )
 
 // Helper functions to do read JSON spec test files and convert JSON objects into the appropriate driver types.
@@ -84,12 +96,29 @@ func createClientOptions(t testing.TB, opts bson.Raw) *options.ClientOptions {
 		case "readPreference":
 			clientOpts.SetReadPreference(readPrefFromString(opt.StringValue()))
 		case "heartbeatFrequencyMS":
-			hfms := time.Duration(opt.Int32()) * time.Millisecond
-			clientOpts.SetHeartbeatInterval(hfms)
+			hf := convertValueToMilliseconds(t, opt)
+			clientOpts.SetHeartbeatInterval(hf)
 		case "retryReads":
 			clientOpts.SetRetryReads(opt.Boolean())
 		case "autoEncryptOpts":
 			clientOpts.SetAutoEncryptionOptions(createAutoEncryptionOptions(t, opt.Document()))
+		case "appname":
+			clientOpts.SetAppName(opt.StringValue())
+		case "connectTimeoutMS":
+			ct := convertValueToMilliseconds(t, opt)
+			clientOpts.SetConnectTimeout(ct)
+		case "serverSelectionTimeoutMS":
+			sst := convertValueToMilliseconds(t, opt)
+			clientOpts.SetServerSelectionTimeout(sst)
+		case "socketTimeoutMS":
+			st := convertValueToMilliseconds(t, opt)
+			clientOpts.SetSocketTimeout(st)
+		case "minPoolSize":
+			clientOpts.SetMinPoolSize(uint64(opt.AsInt64()))
+		case "maxPoolSize":
+			clientOpts.SetMaxPoolSize(uint64(opt.AsInt64()))
+		case "directConnection":
+			clientOpts.SetDirect(opt.Boolean())
 		default:
 			t.Fatalf("unrecognized client option: %v", name)
 		}
@@ -111,7 +140,8 @@ func createAutoEncryptionOptions(t testing.TB, opts bson.Raw) *options.AutoEncry
 
 		switch name {
 		case "kmsProviders":
-			aeo.SetKmsProviders(createKmsProvidersMap(t, opt.Document()))
+			tlsConfigs := createTLSOptsMap(t, opt.Document())
+			aeo.SetKmsProviders(createKmsProvidersMap(t, opt.Document())).SetTLSConfig(tlsConfigs)
 		case "schemaMap":
 			var schemaMap map[string]interface{}
 			err := bson.Unmarshal(opt.Document(), &schemaMap)
@@ -125,22 +155,54 @@ func createAutoEncryptionOptions(t testing.TB, opts bson.Raw) *options.AutoEncry
 			aeo.SetKeyVaultNamespace(opt.StringValue())
 		case "bypassAutoEncryption":
 			aeo.SetBypassAutoEncryption(opt.Boolean())
+		case "encryptedFieldsMap":
+			var encryptedFieldsMap map[string]interface{}
+			err := bson.Unmarshal(opt.Document(), &encryptedFieldsMap)
+			if err != nil {
+				t.Fatalf("error creating encryptedFieldsMap: %v", err)
+			}
+			aeo.SetEncryptedFieldsMap(encryptedFieldsMap)
+		case "bypassQueryAnalysis":
+			aeo.SetBypassQueryAnalysis(opt.Boolean())
 		default:
 			t.Fatalf("unrecognized auto encryption option: %v", name)
 		}
 	}
 	if !kvnsFound {
-		aeo.SetKeyVaultNamespace("admin.datakeys")
+		aeo.SetKeyVaultNamespace("keyvault.datakeys")
 	}
 
 	return aeo
 }
 
-func createKmsProvidersMap(t testing.TB, opts bson.Raw) map[string]map[string]interface{} {
+func createTLSOptsMap(t testing.TB, opts bson.Raw) map[string]*tls.Config {
 	t.Helper()
 
-	// aws: value is always empty object. create new map value from access key ID and secret access key
-	// local: value is {"key": primitive.Binary}. transform to {"key": []byte}
+	tlsMap := make(map[string]*tls.Config)
+	elems, _ := opts.Elements()
+
+	for _, elem := range elems {
+		provider := elem.Key()
+
+		if provider == "kmip" {
+			tlsOptsMap := map[string]interface{}{
+				"tlsCertificateKeyFile": tlsClientCertificateKeyFileKMIP,
+				"tlsCAFile":             tlsCAFileKMIP,
+			}
+
+			cfg, err := options.BuildTLSConfig(tlsOptsMap)
+			if err != nil {
+				t.Fatalf("error building TLS config map: %v", err)
+			}
+
+			tlsMap["kmip"] = cfg
+		}
+	}
+	return tlsMap
+}
+
+func createKmsProvidersMap(t testing.TB, opts bson.Raw) map[string]map[string]interface{} {
+	t.Helper()
 
 	kmsMap := make(map[string]map[string]interface{})
 	elems, _ := opts.Elements()
@@ -151,26 +213,61 @@ func createKmsProvidersMap(t testing.TB, opts bson.Raw) map[string]map[string]in
 
 		switch provider {
 		case "aws":
-			keyID := os.Getenv(awsAccessKeyID)
-			if keyID == "" {
-				t.Fatalf("%s env var not set", awsAccessKeyID)
-			}
-			secretAccessKey := os.Getenv(awsSecretAccessKey)
-			if secretAccessKey == "" {
-				t.Fatalf("%s env var not set", awsSecretAccessKey)
-			}
-
 			awsMap := map[string]interface{}{
-				"accessKeyId":     keyID,
-				"secretAccessKey": secretAccessKey,
+				"accessKeyId":     awsAccessKeyID,
+				"secretAccessKey": awsSecretAccessKey,
 			}
 			kmsMap["aws"] = awsMap
+		case "azure":
+			kmsMap["azure"] = map[string]interface{}{
+				"tenantId":     azureTenantID,
+				"clientId":     azureClientID,
+				"clientSecret": azureClientSecret,
+			}
+		case "gcp":
+			kmsMap["gcp"] = map[string]interface{}{
+				"email":      gcpEmail,
+				"privateKey": gcpPrivateKey,
+			}
 		case "local":
 			_, key := providerOpt.Document().Lookup("key").Binary()
 			localMap := map[string]interface{}{
 				"key": key,
 			}
 			kmsMap["local"] = localMap
+		case "awsTemporary":
+			if awsTempAccessKeyID == "" {
+				t.Fatal("AWS temp access key ID not set")
+			}
+			if awsTempSecretAccessKey == "" {
+				t.Fatal("AWS temp secret access key not set")
+			}
+			if awsTempSessionToken == "" {
+				t.Fatal("AWS temp session token not set")
+			}
+			awsMap := map[string]interface{}{
+				"accessKeyId":     awsTempAccessKeyID,
+				"secretAccessKey": awsTempSecretAccessKey,
+				"sessionToken":    awsTempSessionToken,
+			}
+			kmsMap["aws"] = awsMap
+		case "awsTemporaryNoSessionToken":
+			if awsTempAccessKeyID == "" {
+				t.Fatal("AWS temp access key ID not set")
+			}
+			if awsTempSecretAccessKey == "" {
+				t.Fatal("AWS temp secret access key not set")
+			}
+			awsMap := map[string]interface{}{
+				"accessKeyId":     awsTempAccessKeyID,
+				"secretAccessKey": awsTempSecretAccessKey,
+			}
+			kmsMap["aws"] = awsMap
+		case "kmip":
+			kmipMap := map[string]interface{}{
+				"endpoint": "localhost:5698",
+			}
+			kmsMap["kmip"] = kmipMap
 		default:
 			t.Fatalf("unrecognized KMS provider: %v", provider)
 		}
@@ -227,6 +324,8 @@ func createDatabaseOptions(t testing.TB, opts bson.Raw) *options.DatabaseOptions
 		switch name {
 		case "readConcern":
 			do.SetReadConcern(createReadConcern(opt))
+		case "writeConcern":
+			do.SetWriteConcern(createWriteConcern(t, opt))
 		default:
 			t.Fatalf("unrecognized database option: %v", name)
 		}
@@ -307,7 +406,7 @@ func createWriteConcern(t testing.TB, opt bson.RawValue) *writeconcern.WriteConc
 
 		switch key {
 		case "wtimeout":
-			wtimeout := time.Duration(val.Int32()) * time.Millisecond
+			wtimeout := convertValueToMilliseconds(t, val)
 			opts = append(opts, writeconcern.WTimeout(wtimeout))
 		case "j":
 			opts = append(opts, writeconcern.J(val.Boolean()))
@@ -401,46 +500,92 @@ func errorFromResult(t testing.TB, result interface{}) *operationError {
 	return &expected
 }
 
-// verify that an error returned by an operation matches the expected error.
-func verifyError(t testing.TB, expected *operationError, actual error) {
-	t.Helper()
+// errorDetails is a helper type that holds information that can be returned by driver functions in different error
+// types.
+type errorDetails struct {
+	name   string
+	labels []string
+}
 
-	expectErr := expected != nil
-	gotErr := actual != nil
+// extractErrorDetails creates an errorDetails instance based on the provided error. It returns the details and an "ok"
+// value which is true if the provided error is of a known type that can be processed.
+func extractErrorDetails(err error) (errorDetails, bool) {
+	var details errorDetails
 
-	// spec test format doesn't treat ErrNoDocuments as an error. checking that no documents were returned is handled
-	// in the result checking section.
-	if !expectErr && actual == mongo.ErrNoDocuments {
-		return
+	switch converted := err.(type) {
+	case mongo.CommandError:
+		details.name = converted.Name
+		details.labels = converted.Labels
+	case mongo.WriteException:
+		if converted.WriteConcernError != nil {
+			details.name = converted.WriteConcernError.Name
+		}
+		details.labels = converted.Labels
+	case mongo.BulkWriteException:
+		if converted.WriteConcernError != nil {
+			details.name = converted.WriteConcernError.Name
+		}
+		details.labels = converted.Labels
+	default:
+		return errorDetails{}, false
 	}
 
-	assert.Equal(t, expectErr, gotErr, "expected error: %v, got err: %v", expectErr, gotErr)
-	if !expectErr {
-		return
+	return details, true
+}
+
+// verify that an error returned by an operation matches the expected error.
+func verifyError(expected *operationError, actual error) error {
+	// The spec test format doesn't treat ErrNoDocuments or ErrUnacknowledgedWrite as errors, so set actual to nil
+	// to indicate that no error occurred.
+	if actual == mongo.ErrNoDocuments || actual == mongo.ErrUnacknowledgedWrite {
+		actual = nil
+	}
+
+	if expected == nil && actual != nil {
+		return fmt.Errorf("did not expect error but got %v", actual)
+	}
+	if expected != nil && actual == nil {
+		return fmt.Errorf("expected error but got nil")
+	}
+	if expected == nil {
+		return nil
 	}
 
 	// check ErrorContains for all error types
 	if expected.ErrorContains != nil {
 		emsg := strings.ToLower(*expected.ErrorContains)
 		amsg := strings.ToLower(actual.Error())
-		assert.True(t, strings.Contains(amsg, emsg), "expected error message '%v' to contain '%v'", amsg, emsg)
+		if !strings.Contains(amsg, emsg) {
+			return fmt.Errorf("expected error message %q to contain %q", amsg, emsg)
+		}
 	}
 
-	cerr, ok := actual.(mongo.CommandError)
+	// Get an errorDetails instance for the error. If this fails but the test has expectations about the error name or
+	// labels, fail because we can't verify them.
+	details, ok := extractErrorDetails(actual)
 	if !ok {
-		return
+		if expected.ErrorCodeName != nil || len(expected.ErrorLabelsContain) > 0 || len(expected.ErrorLabelsOmit) > 0 {
+			return fmt.Errorf("failed to extract details from error %v of type %T", actual, actual)
+		}
+		return nil
 	}
 
 	if expected.ErrorCodeName != nil {
-		assert.Equal(t, *expected.ErrorCodeName, cerr.Name,
-			"error name mismatch; expected %v, got %v", *expected.ErrorCodeName, cerr.Name)
+		if *expected.ErrorCodeName != details.name {
+			return fmt.Errorf("expected error name %v, got %v", *expected.ErrorCodeName, details.name)
+		}
 	}
 	for _, label := range expected.ErrorLabelsContain {
-		assert.True(t, cerr.HasErrorLabel(label), "expected error %v to contain label %v", actual, label)
+		if !stringSliceContains(details.labels, label) {
+			return fmt.Errorf("expected error %v to contain label %q", actual, label)
+		}
 	}
 	for _, label := range expected.ErrorLabelsOmit {
-		assert.False(t, cerr.HasErrorLabel(label), "expected error %v to not contain label %v", actual, label)
+		if stringSliceContains(details.labels, label) {
+			return fmt.Errorf("expected error %v to not contain label %q", actual, label)
+		}
 	}
+	return nil
 }
 
 // get the underlying value of i as an int64. returns nil if i is not an int, int32, or int64 type.
@@ -505,21 +650,21 @@ func createCollation(t testing.TB, m bson.Raw) *options.Collation {
 	return &collation
 }
 
-func createChangeStreamOptions(t testing.TB, opts bson.Raw) *options.ChangeStreamOptions {
+func convertValueToMilliseconds(t testing.TB, val bson.RawValue) time.Duration {
 	t.Helper()
 
-	csOpts := options.ChangeStream()
-	elems, _ := opts.Elements()
-	for _, elem := range elems {
-		key := elem.Key()
-		opt := elem.Value()
+	int32Val, ok := val.Int32OK()
+	if !ok {
+		t.Fatalf("failed to convert value of type %s to int32", val.Type)
+	}
+	return time.Duration(int32Val) * time.Millisecond
+}
 
-		switch key {
-		case "batchSize":
-			csOpts.SetBatchSize(opt.Int32())
-		default:
-			t.Fatalf("unrecognized change stream option: %v", key)
+func stringSliceContains(stringSlice []string, target string) bool {
+	for _, str := range stringSlice {
+		if str == target {
+			return true
 		}
 	}
-	return csOpts
+	return false
 }

@@ -1,9 +1,19 @@
+// Copyright (C) MongoDB, Inc. 2022-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package primitive
 
 import (
-	"github.com/stretchr/testify/require"
+	"encoding/json"
+	"fmt"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 )
 
 type bigIntTestCase struct {
@@ -88,18 +98,20 @@ var bigIntTestCases = []bigIntTestCase{
 
 func TestDecimal128_BigInt(t *testing.T) {
 	for _, c := range bigIntTestCases {
-		switch c.remark {
-		case "NaN", "Infinity", "-Infinity":
-			d128 := NewDecimal128(c.h, c.l)
-			_, _, err := d128.BigInt()
-			require.Error(t, err, "case %s", c.s)
-		case "":
-			d128 := NewDecimal128(c.h, c.l)
-			bi, e, err := d128.BigInt()
-			require.NoError(t, err, "case %s", c.s)
-			require.Equal(t, 0, c.bi.Cmp(bi), "case %s e:%s a:%s", c.s, c.bi.String(), bi.String())
-			require.Equal(t, c.exp, e, "case %s", c.s, d128.String())
-		}
+		t.Run(c.s, func(t *testing.T) {
+			switch c.remark {
+			case "NaN", "Infinity", "-Infinity":
+				d128 := NewDecimal128(c.h, c.l)
+				_, _, err := d128.BigInt()
+				require.Error(t, err, "case %s", c.s)
+			case "":
+				d128 := NewDecimal128(c.h, c.l)
+				bi, e, err := d128.BigInt()
+				require.NoError(t, err, "case %s", c.s)
+				require.Equal(t, 0, c.bi.Cmp(bi), "case %s e:%s a:%s", c.s, c.bi.String(), bi.String())
+				require.Equal(t, c.exp, e, "case %s", c.s, d128.String())
+			}
+		})
 	}
 }
 
@@ -121,26 +133,90 @@ func TestParseDecimal128FromBigInt(t *testing.T) {
 }
 
 func TestParseDecimal128(t *testing.T) {
-	cases := append(bigIntTestCases,
-		[]bigIntTestCase{
-			{s: "-0001231.453454000000565600000000E-21", h: 0xafe6000003faa269, l: 0x81cfeceaabdb1800},
-			{s: "12345E+21", h: 0x306a000000000000, l: 12345},
-			{s: "0.10000000000000000000000000000000000000000001", remark: "parse fail"},
-			{s: ".125e1", h: 0x303c000000000000, l: 125},
-			{s: ".125", h: 0x303a000000000000, l: 125},
-			{s: "", remark: "parse fail"},
-		}...)
-	for _, c := range cases {
-		switch c.remark {
-		case "overflow", "parse fail":
-			_, err := ParseDecimal128(c.s)
-			require.Error(t, err)
-		case "", "rounding", "subnormal", "clamped", "NaN", "Infinity", "-Infinity":
-			d128, err := ParseDecimal128(c.s)
-			require.NoError(t, err)
+	cases := make([]bigIntTestCase, 0, len(bigIntTestCases))
+	cases = append(cases, bigIntTestCases...)
+	cases = append(cases,
+		bigIntTestCase{s: "-0001231.453454000000565600000000E-21", h: 0xafe6000003faa269, l: 0x81cfeceaabdb1800},
+		bigIntTestCase{s: "12345E+21", h: 0x306a000000000000, l: 12345},
+		bigIntTestCase{s: "0.10000000000000000000000000000000000000000001", remark: "parse fail"},
+		bigIntTestCase{s: ".125e1", h: 0x303c000000000000, l: 125},
+		bigIntTestCase{s: ".125", h: 0x303a000000000000, l: 125},
+		bigIntTestCase{s: "", remark: "parse fail"})
 
-			require.Equal(t, c.h, d128.h, "case %s", c.s, d128.l)
-			require.Equal(t, c.l, d128.l, "case %s", c.s, d128.h)
-		}
+	for _, c := range cases {
+		t.Run(c.s, func(t *testing.T) {
+			switch c.remark {
+			case "overflow", "parse fail":
+				_, err := ParseDecimal128(c.s)
+				require.Error(t, err)
+			case "", "rounding", "subnormal", "clamped", "NaN", "Infinity", "-Infinity":
+				d128, err := ParseDecimal128(c.s)
+				require.NoError(t, err)
+
+				require.Equal(t, c.h, d128.h, "case %s", c.s, d128.l)
+				require.Equal(t, c.l, d128.l, "case %s", c.s, d128.h)
+			}
+		})
 	}
+}
+
+func TestDecimal128_JSON(t *testing.T) {
+	t.Run("roundTrip", func(t *testing.T) {
+		decimal := NewDecimal128(0x3040000000000000, 12345)
+		bytes, err := json.Marshal(decimal)
+		assert.Nil(t, err, "json.Marshal error: %v", err)
+		got := NewDecimal128(0, 0)
+		err = json.Unmarshal(bytes, &got)
+		assert.Nil(t, err, "json.Unmarshal error: %v", err)
+		assert.Equal(t, decimal.h, got.h, "expected h: %v got: %v", decimal.h, got.h)
+		assert.Equal(t, decimal.l, got.l, "expected l: %v got: %v", decimal.l, got.l)
+	})
+	t.Run("unmarshal extendedJSON", func(t *testing.T) {
+		want := NewDecimal128(0x3040000000000000, 12345)
+		extJSON := fmt.Sprintf(`{"$numberDecimal": %q}`, want.String())
+
+		got := NewDecimal128(0, 0)
+		err := json.Unmarshal([]byte(extJSON), &got)
+		assert.Nil(t, err, "json.Unmarshal error: %v", err)
+		assert.Equal(t, want.h, got.h, "expected h: %v got: %v", want.h, got.h)
+		assert.Equal(t, want.l, got.l, "expected l: %v got: %v", want.l, got.l)
+	})
+	t.Run("unmarshal null", func(t *testing.T) {
+		want := NewDecimal128(0, 0)
+		extJSON := `null`
+
+		got := NewDecimal128(0, 0)
+		err := json.Unmarshal([]byte(extJSON), &got)
+		assert.Nil(t, err, "json.Unmarshal error: %v", err)
+		assert.Equal(t, want.h, got.h, "expected h: %v got: %v", want.h, got.h)
+		assert.Equal(t, want.l, got.l, "expected l: %v got: %v", want.l, got.l)
+	})
+	t.Run("unmarshal", func(t *testing.T) {
+		cases := make([]bigIntTestCase, 0, len(bigIntTestCases))
+		cases = append(cases, bigIntTestCases...)
+		cases = append(cases,
+			bigIntTestCase{s: "-0001231.453454000000565600000000E-21", h: 0xafe6000003faa269, l: 0x81cfeceaabdb1800},
+			bigIntTestCase{s: "12345E+21", h: 0x306a000000000000, l: 12345},
+			bigIntTestCase{s: "0.10000000000000000000000000000000000000000001", remark: "parse fail"},
+			bigIntTestCase{s: ".125e1", h: 0x303c000000000000, l: 125},
+			bigIntTestCase{s: ".125", h: 0x303a000000000000, l: 125})
+
+		for _, c := range cases {
+			t.Run(c.s, func(t *testing.T) {
+				input := fmt.Sprintf(`{"foo": %q}`, c.s)
+				var got map[string]Decimal128
+				err := json.Unmarshal([]byte(input), &got)
+
+				switch c.remark {
+				case "overflow", "parse fail":
+					assert.NotNil(t, err, "expected Unmarshal error, got nil")
+				default:
+					assert.Nil(t, err, "Unmarshal error: %v", err)
+					gotDecimal := got["foo"]
+					assert.Equal(t, c.h, gotDecimal.h, "expected h: %v got: %v", c.h, gotDecimal.l)
+					assert.Equal(t, c.l, gotDecimal.l, "expected l: %v got: %v", c.l, gotDecimal.h)
+				}
+			})
+		}
+	})
 }

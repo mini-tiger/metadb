@@ -12,9 +12,9 @@ import (
 
 	"strings"
 
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
 	. "go.mongodb.org/mongo-driver/x/mongo/driver/auth"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/drivertest"
 )
 
@@ -28,7 +28,7 @@ func TestMongoDBCRAuthenticator_Fails(t *testing.T) {
 	}
 
 	resps := make(chan []byte, 2)
-	writeReplies(t, resps, bsoncore.BuildDocumentFromElements(nil,
+	writeReplies(resps, bsoncore.BuildDocumentFromElements(nil,
 		bsoncore.AppendInt32Element(nil, "ok", 1),
 		bsoncore.AppendStringElement(nil, "nonce", "2375531c32080ae8"),
 	), bsoncore.BuildDocumentFromElements(nil,
@@ -46,7 +46,7 @@ func TestMongoDBCRAuthenticator_Fails(t *testing.T) {
 		Desc:     desc,
 	}
 
-	err := authenticator.Auth(context.Background(), desc, c)
+	err := authenticator.Auth(context.Background(), &Config{Description: desc, Connection: c})
 	if err == nil {
 		t.Fatalf("expected an error but got none")
 	}
@@ -67,7 +67,7 @@ func TestMongoDBCRAuthenticator_Succeeds(t *testing.T) {
 	}
 
 	resps := make(chan []byte, 2)
-	writeReplies(t, resps, bsoncore.BuildDocumentFromElements(nil,
+	writeReplies(resps, bsoncore.BuildDocumentFromElements(nil,
 		bsoncore.AppendInt32Element(nil, "ok", 1),
 		bsoncore.AppendStringElement(nil, "nonce", "2375531c32080ae8"),
 	), bsoncore.BuildDocumentFromElements(nil,
@@ -85,7 +85,7 @@ func TestMongoDBCRAuthenticator_Succeeds(t *testing.T) {
 		Desc:     desc,
 	}
 
-	err := authenticator.Auth(context.Background(), desc, c)
+	err := authenticator.Auth(context.Background(), &Config{Description: desc, Connection: c})
 	if err != nil {
 		t.Fatalf("expected no error but got \"%s\"", err)
 	}
@@ -106,7 +106,7 @@ func TestMongoDBCRAuthenticator_Succeeds(t *testing.T) {
 	compareResponses(t, <-c.Written, expectedAuthenticateDoc, "source")
 }
 
-func writeReplies(t *testing.T, c chan []byte, docs ...bsoncore.Document) {
+func writeReplies(c chan []byte, docs ...bsoncore.Document) {
 	for _, doc := range docs {
 		reply := drivertest.MakeReply(doc)
 		c <- reply

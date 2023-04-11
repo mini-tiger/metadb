@@ -39,7 +39,7 @@ var Registry = NewRegistryBuilder().Build()
 var RegistryRespectNilValues = NewRespectNilValuesRegistryBuilder().Build()
 
 // NewRegistryBuilder creates a new bsoncodec.RegistryBuilder configured with the default encoders and
-// deocders from the bsoncodec.DefaultValueEncoders and bsoncodec.DefaultValueDecoders types and the
+// decoders from the bsoncodec.DefaultValueEncoders and bsoncodec.DefaultValueDecoders types and the
 // PrimitiveCodecs type in this package.
 func NewRegistryBuilder() *bsoncodec.RegistryBuilder {
 	rb := bsoncodec.NewRegistryBuilder()
@@ -51,6 +51,7 @@ func NewRegistryBuilder() *bsoncodec.RegistryBuilder {
 		bsonoptions.StructCodec().
 			SetDecodeZeroStruct(true).
 			SetEncodeOmitDefaultStruct(true).
+			SetOverwriteDuplicatedInlinedFields(false).
 			SetAllowUnexportedFields(true))
 	emptyInterCodec := bsoncodec.NewEmptyInterfaceCodec(
 		bsonoptions.EmptyInterfaceCodec().
@@ -58,7 +59,8 @@ func NewRegistryBuilder() *bsoncodec.RegistryBuilder {
 	mapCodec := bsoncodec.NewMapCodec(
 		bsonoptions.MapCodec().
 			SetDecodeZerosMap(true).
-			SetEncodeNilAsEmpty(true))
+			SetEncodeNilAsEmpty(true).
+			SetEncodeKeysWithStringer(true))
 	uintcodec := bsoncodec.NewUIntCodec(bsonoptions.UIntCodec().SetEncodeToMinSize(true))
 
 	rb.RegisterTypeDecoder(tEmpty, emptyInterCodec).
@@ -94,6 +96,7 @@ func NewRespectNilValuesRegistryBuilder() *bsoncodec.RegistryBuilder {
 		bsonoptions.StructCodec().
 			SetDecodeZeroStruct(true).
 			SetEncodeOmitDefaultStruct(true).
+			SetOverwriteDuplicatedInlinedFields(false).
 			SetAllowUnexportedFields(true))
 	mapCodec := bsoncodec.NewMapCodec(
 		bsonoptions.MapCodec().

@@ -49,8 +49,9 @@ func (s *Service) WebService() *gin.Engine {
 	ws := gin.New()
 
 	ws.Use(gin.Logger())
-	ws.Use(middleware.ReWriteReqUri(s.Discovery()))
+	//ws.Use(middleware.ReWriteReqUri(s.Discovery()))
 	//
+	//ws.Use(middleware.Cors())
 	ws.Use(middleware.RequestIDMiddleware)
 	ws.Use(sessions.Sessions(s.Config.Session.Name, s.Session))
 
@@ -87,8 +88,8 @@ func (s *Service) WebService() *gin.Engine {
 	ws.POST("/insts/owner/:bk_supplier_account/object/:bk_obj_id/import", s.ImportInst)
 	ws.POST("/insts/owner/:bk_supplier_account/object/:bk_obj_id/export", s.ExportInst)
 
-	// Auth
-	ws.POST("/ldapauth", s.LdapAuth)
+	ws.POST("/ldap/auth", s.LdapAuth)
+
 	ws.POST("/logout", s.LogOutUser)
 	ws.GET("/login", s.Login)
 	ws.POST("/login", s.LoginUser)

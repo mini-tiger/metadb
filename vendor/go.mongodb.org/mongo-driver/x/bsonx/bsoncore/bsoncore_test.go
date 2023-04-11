@@ -16,15 +16,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"go.mongodb.org/mongo-driver/bson/bsontype"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
 )
-
-func noerr(t *testing.T, err error) {
-	if err != nil {
-		t.Helper()
-		t.Errorf("Unexpected error: (%T)%v", err, err)
-		t.FailNow()
-	}
-}
 
 func compareErrors(err1, err2 error) bool {
 	if err1 == nil && err2 == nil {
@@ -547,19 +540,19 @@ func TestRead(t *testing.T) {
 			"ReadArray/not enough bytes (length)",
 			ReadArray,
 			[]byte{},
-			[]interface{}{Document(nil), []byte{}, false},
+			[]interface{}{Array(nil), []byte{}, false},
 		},
 		{
 			"ReadArray/not enough bytes (value)",
 			ReadArray,
 			[]byte{0x0F, 0x00, 0x00, 0x00},
-			[]interface{}{Document(nil), []byte{0x0F, 0x00, 0x00, 0x00}, false},
+			[]interface{}{Array(nil), []byte{0x0F, 0x00, 0x00, 0x00}, false},
 		},
 		{
 			"ReadArray/success",
 			ReadArray,
 			[]byte{0x08, 0x00, 0x00, 0x00, 0x0A, '0', 0x00, 0x00},
-			[]interface{}{Document{0x08, 0x00, 0x00, 0x00, 0x0A, '0', 0x00, 0x00}, []byte{}, true},
+			[]interface{}{Array{0x08, 0x00, 0x00, 0x00, 0x0A, '0', 0x00, 0x00}, []byte{}, true},
 		},
 		{
 			"ReadBinary/not enough bytes (length)",
@@ -880,7 +873,7 @@ func TestBuild(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Run("BuildDocument", func(t *testing.T) {
-				elems := make([]byte, 0, 0)
+				elems := make([]byte, 0)
 				for _, elem := range tc.elems {
 					elems = append(elems, elem...)
 				}
@@ -897,6 +890,57 @@ func TestBuild(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestNullBytes(t *testing.T) {
+	// Helper function to execute the provided callback and assert that it panics with the expected message. The
+	// createBSONFn callback should create a BSON document/array/value and return the stringified version.
+	assertBSONCreationPanics := func(t *testing.T, createBSONFn func(), expected string) {
+		t.Helper()
+
+		defer func() {
+			got := recover()
+			assert.Equal(t, expected, got, "expected panic with error %v, got error %v", expected, got)
+		}()
+		createBSONFn()
+	}
+
+	t.Run("element keys", func(t *testing.T) {
+		createDocFn := func() {
+			NewDocumentBuilder().AppendString("a\x00", "foo")
+		}
+		assertBSONCreationPanics(t, createDocFn, invalidKeyPanicMsg)
+	})
+	t.Run("regex values", func(t *testing.T) {
+		testCases := []struct {
+			name    string
+			pattern string
+			options string
+		}{
+			{"null bytes in pattern", "a\x00", "i"},
+			{"null bytes in options", "pattern", "i\x00"},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name+"-AppendRegexElement", func(t *testing.T) {
+				createDocFn := func() {
+					AppendRegexElement(nil, "foo", tc.pattern, tc.options)
+				}
+				assertBSONCreationPanics(t, createDocFn, invalidRegexPanicMsg)
+			})
+			t.Run(tc.name+"-AppendRegex", func(t *testing.T) {
+				createValFn := func() {
+					AppendRegex(nil, tc.pattern, tc.options)
+				}
+				assertBSONCreationPanics(t, createValFn, invalidRegexPanicMsg)
+			})
+		}
+	})
+	t.Run("sub document field name", func(t *testing.T) {
+		createDocFn := func() {
+			NewDocumentBuilder().StartDocument("foobar").AppendDocument("a\x00", []byte("foo")).FinishDocument()
+		}
+		assertBSONCreationPanics(t, createDocFn, invalidKeyPanicMsg)
+	})
 }
 
 func compareDecimal128(d1, d2 primitive.Decimal128) bool {

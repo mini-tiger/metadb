@@ -155,8 +155,10 @@ func (s *server) run() {
 			if exist.Val() == 0 {
 				s.resetServer()
 				s.setServersChan()
+				if blog.V(3) {
+					blog.Errorf("get redis exist path[%s] is 0", s.path)
+				}
 
-				blog.Errorf("get redis exist path[%s] is 0", s.path)
 				continue
 			}
 
