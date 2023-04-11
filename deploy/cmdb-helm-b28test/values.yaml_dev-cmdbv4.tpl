@@ -40,6 +40,13 @@ apps:
 #  - name: taskserver
 #    port: 60012
 #    enable: false
+
+
+ui:
+   image: harbor.dev.21vianet.com/cmdb/cmdb_matedb_ui:1.1.0
+   name: uiserver
+   nodeport: 32164
+
 prefix: lmanager-cmdb
 ingress:
     enable: false
