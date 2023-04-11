@@ -13,23 +13,90 @@
 package local
 
 import (
-	"context"
-	"fmt"
-
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
 	"configcenter/src/common/metadata"
+	"configcenter/src/source_controller/coreservice/bussiness/transactionBus"
+	"context"
+	"errors"
+	"fmt"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"time"
 )
+
+func (c *Mongo) StartTransaction(ctx context.Context, cap *metadata.TxnCapable) error {
+	wc := writeconcern.New(writeconcern.WMajority())
+	rc := readconcern.Snapshot()
+	//var maxCommitTime = cap.Timeout
+	//txnOpts := options.Transaction().SetWriteConcern(wc).SetReadConcern(rc).SetMaxCommitTime(&maxCommitTime)
+	// 将会话ID转换为bsoncore.Document类型
+
+	sessionOpts := &options.SessionOptions{}
+	sessionOpts.SetDefaultWriteConcern(wc).SetDefaultReadConcern(rc).SetDefaultMaxCommitTime(&cap.Timeout)
+
+	session1, err := c.Client().StartSession(sessionOpts)
+	if err != nil {
+		return err
+	}
+	sessionContext := mongo.NewSessionContext(ctx, session1)
+	if err = sessionContext.StartTransaction(); err != nil {
+		return err
+	}
+	txnNumber, err := c.tm.GenTxnNumber(cap.SessionID, cap.Timeout)
+	if err != nil {
+		return err
+	}
+	sessTxnCtx := &metadata.SessionTxnCtx{
+		SessionContext: sessionContext,
+		Time:           time.Now(),
+		TxnNumber:      txnNumber,
+		SessionID:      session1.ID().String(),
+	}
+
+	//使用topo 生成的sessionID
+	transactionBus.TxnMapSess.Set(cap.SessionID, sessTxnCtx)
+
+	//fmt.Println(txnNumber)
+	return nil
+}
+
+func (c *Mongo) ExportTransactionSess(ctx context.Context, cap *metadata.TxnCapable) (mongo.Session, error) {
+	val, exist := transactionBus.TxnMapSess.Get(cap.SessionID)
+	if !exist {
+		err := errors.New(fmt.Sprintf("Not Found Sessionid:%v ", cap.SessionID))
+		//blog.Errorf("commit transaction, but prepare transaction failed, err: %v, rid: %v", err.Error(), rid)
+		return nil, err
+	}
+
+	if _, ok := val.(*metadata.SessionTxnCtx); !ok {
+		err := errors.New(fmt.Sprintf("Sessionid:%v convert type err", cap.SessionID))
+		//blog.Errorf("commit transaction, but prepare transaction failed, err: %v, rid: %v", err.Error(), rid)
+		return nil, err
+	}
+
+	session, _ := val.(*metadata.SessionTxnCtx)
+
+	reloadSession := mongo.SessionFromContext(session.SessionContext)
+	return reloadSession, nil
+}
 
 // CommitTransaction 提交事务
 func (c *Mongo) CommitTransaction(ctx context.Context, cap *metadata.TxnCapable) error {
 	rid := ctx.Value(common.ContextRequestIDField)
-	reloadSession, err := c.tm.PrepareTransaction(cap, c.dbc)
+
+	//reloadSession, err := c.tm.PrepareTransaction(cap, c.dbc)
+	//if err != nil {
+	//	blog.Errorf("commit transaction, but prepare transaction failed, err: %v, rid: %v", err, rid)
+	//	return err
+	//}
+	reloadSession, err := c.ExportTransactionSess(ctx, cap)
 	if err != nil {
-		blog.Errorf("commit transaction, but prepare transaction failed, err: %v, rid: %v", err, rid)
-		return err
+		blog.Errorf("commit transaction, but prepare transaction failed, err: %v, rid: %v", err.Error(), rid)
 	}
+
 	// reset the transaction state, so that we can commit the transaction after start the
 	// transaction immediately.
 	mongo.CmdbPrepareCommitOrAbort(reloadSession)
@@ -46,6 +113,7 @@ func (c *Mongo) CommitTransaction(ctx context.Context, cap *metadata.TxnCapable)
 		blog.Errorf("commit transaction, but delete txn session: %s key failed, err: %v, rid: %v", cap.SessionID, err, rid)
 		// do not return.
 	}
+	transactionBus.TxnMapSess.Remove(cap.SessionID)
 
 	return nil
 }
@@ -53,10 +121,14 @@ func (c *Mongo) CommitTransaction(ctx context.Context, cap *metadata.TxnCapable)
 // AbortTransaction 取消事务
 func (c *Mongo) AbortTransaction(ctx context.Context, cap *metadata.TxnCapable) (bool, error) {
 	rid := ctx.Value(common.ContextRequestIDField)
-	reloadSession, err := c.tm.PrepareTransaction(cap, c.dbc)
+	//reloadSession, err := c.tm.PrepareTransaction(cap, c.dbc)
+	//if err != nil {
+	//	blog.Errorf("abort transaction, but prepare transaction failed, err: %v, rid: %v", err, rid)
+	//	return false, err
+	//}
+	reloadSession, err := c.ExportTransactionSess(ctx, cap)
 	if err != nil {
-		blog.Errorf("abort transaction, but prepare transaction failed, err: %v, rid: %v", err, rid)
-		return false, err
+		blog.Errorf("abort transaction, but prepare transaction failed, err: %v, rid: %v", err.Error(), rid)
 	}
 	// reset the transaction state, so that we can abort the transaction after start the
 	// transaction immediately.
@@ -74,7 +146,7 @@ func (c *Mongo) AbortTransaction(ctx context.Context, cap *metadata.TxnCapable) 
 		blog.Errorf("abort transaction, but delete txn session: %s key failed, err: %v, rid: %v", cap.SessionID, err, rid)
 		// do not return.
 	}
-
+	transactionBus.TxnMapSess.Remove(cap.SessionID)
 	errorType := c.tm.GetTxnError(sessionKey(cap.SessionID))
 	switch errorType {
 	// retry when the transaction error type is write conflict, which means the transaction conflicts with another one

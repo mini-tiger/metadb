@@ -9,7 +9,8 @@ phases: [
         responses: [
             ["a:27017", {
                 ok: 1,
-                ismaster: true,
+                helloOk: true,
+                isWritablePrimary: true,
                 hosts: ["a:27017", "b:27017"],
                 setName: "rs",
                 setVersion: 1,
@@ -36,6 +37,8 @@ phases: [
             topologyType: "ReplicaSetWithPrimary",
             logicalSessionTimeoutMinutes: null,
             setName: "rs",
+            maxSetVersion: 1,
+            maxElectionId: {"$oid": "000000000000000000000001"},
         }
     },
 
@@ -44,7 +47,8 @@ phases: [
         responses: [
             ["b:27017", {
                 ok: 1,
-                ismaster: true,
+                helloOk: true,
+                isWritablePrimary: true,
                 hosts: ["a:27017", "b:27017"],
                 setName: "rs",
                 setVersion: 2,
@@ -69,6 +73,8 @@ phases: [
             topologyType: "ReplicaSetWithPrimary",
             logicalSessionTimeoutMinutes: null,
             setName: "rs",
+            maxSetVersion: 2,
+            maxElectionId: {"$oid": "000000000000000000000001"},
         }
     },
 
@@ -78,7 +84,8 @@ phases: [
         responses: [
             ["a:27017", {
                 ok: 1,
-                ismaster: true,
+                helloOk: true,
+                isWritablePrimary: true,
                 hosts: ["a:27017", "b:27017"],
                 setName: "rs",
                 setVersion: 1,
@@ -103,6 +110,8 @@ phases: [
             topologyType: "ReplicaSetWithPrimary",
             logicalSessionTimeoutMinutes: null,
             setName: "rs",
+            maxSetVersion: 2,
+            maxElectionId: {"$oid": "000000000000000000000001"},
         }
     }
 ]

@@ -8,6 +8,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -157,5 +158,79 @@ func TestCursor(t *testing.T) {
 			assert.Nil(t, err, "All error: %v", err)
 			assert.True(t, tbc.closed, "expected batch cursor to be closed but was not")
 		})
+
+		t.Run("does not error given interface as parameter", func(t *testing.T) {
+			var docs interface{} = []bson.D{}
+
+			cursor, err := newCursor(newTestBatchCursor(1, 5), nil)
+			assert.Nil(t, err, "newCursor error: %v", err)
+
+			err = cursor.All(context.Background(), &docs)
+			assert.Nil(t, err, "expected Nil, got error: %v", err)
+			assert.Equal(t, 5, len(docs.([]bson.D)), "expected 5 documents, got %v", len(docs.([]bson.D)))
+		})
+		t.Run("errors when not given pointer to slice", func(t *testing.T) {
+			var docs interface{} = "test"
+
+			cursor, err := newCursor(newTestBatchCursor(1, 5), nil)
+			assert.Nil(t, err, "newCursor error: %v", err)
+
+			err = cursor.All(context.Background(), &docs)
+			assert.NotNil(t, err, "expected error, got: %v", err)
+		})
+	})
+}
+
+func TestNewCursorFromDocuments(t *testing.T) {
+	// Mock documents returned by Find in a Cursor.
+	t.Run("mock Find", func(t *testing.T) {
+		findResult := []interface{}{
+			bson.D{{"_id", 0}, {"foo", "bar"}},
+			bson.D{{"_id", 1}, {"baz", "qux"}},
+			bson.D{{"_id", 2}, {"quux", "quuz"}},
+		}
+		cur, err := NewCursorFromDocuments(findResult, nil, nil)
+		assert.Nil(t, err, "NewCursorFromDocuments error: %v", err)
+
+		// Assert that decoded documents are as expected.
+		var i int
+		for cur.Next(context.Background()) {
+			docBytes, err := bson.Marshal(findResult[i])
+			assert.Nil(t, err, "Marshal error: %v", err)
+			expectedDecoded := bson.Raw(docBytes)
+
+			var decoded bson.Raw
+			err = cur.Decode(&decoded)
+			assert.Nil(t, err, "Decode error: %v", err)
+			assert.Equal(t, expectedDecoded, decoded,
+				"expected decoded document %v of Cursor to be %v, got %v",
+				i, expectedDecoded, decoded)
+			i++
+		}
+		assert.Equal(t, 3, i, "expected 3 calls to cur.Next, got %v", i)
+
+		// Check for error on Cursor.
+		assert.Nil(t, cur.Err(), "Cursor error: %v", cur.Err())
+
+		// Assert that a call to cur.Close will not fail.
+		err = cur.Close(context.Background())
+		assert.Nil(t, err, "Close error: %v", err)
+	})
+
+	// Mock an error in a Cursor.
+	t.Run("mock Find with error", func(t *testing.T) {
+		mockErr := fmt.Errorf("mock error")
+		findResult := []interface{}{bson.D{{"_id", 0}, {"foo", "bar"}}}
+		cur, err := NewCursorFromDocuments(findResult, mockErr, nil)
+		assert.Nil(t, err, "NewCursorFromDocuments error: %v", err)
+
+		// Assert that a call to Next will return false because of existing error.
+		next := cur.Next(context.Background())
+		assert.False(t, next, "expected call to Next to return false, got true")
+
+		// Check for error on Cursor.
+		assert.NotNil(t, cur.Err(), "expected Cursor error, got nil")
+		assert.Equal(t, mockErr, cur.Err(), "expected Cursor error %v, got %v",
+			mockErr, cur.Err())
 	})
 }

@@ -4,7 +4,8 @@
 // not use this file except in compliance with the License. You may obtain
 // a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
-//+build gssapi
+//go:build gssapi
+// +build gssapi
 
 package auth
 
@@ -12,8 +13,8 @@ import (
 	"context"
 	"testing"
 
-	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
+	"go.mongodb.org/mongo-driver/mongo/address"
+	"go.mongodb.org/mongo-driver/mongo/description"
 )
 
 func TestGSSAPIAuthenticator(t *testing.T) {
@@ -29,12 +30,13 @@ func TestGSSAPIAuthenticator(t *testing.T) {
 				"SERVICE_HOST":           "localhost",
 			},
 		}
-		err := authenticator.Auth(context.Background(), description.Server{
+		desc := description.Server{
 			WireVersion: &description.VersionRange{
 				Max: 6,
 			},
 			Addr: address.Address("foo:27017"),
-		}, nil)
+		}
+		err := authenticator.Auth(context.Background(), &Config{Description: desc})
 		if err == nil {
 			t.Fatalf("expected err, got nil")
 		}

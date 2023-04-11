@@ -8,16 +8,25 @@ package topology
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
+	"path"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/internal"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
+	testhelpers "go.mongodb.org/mongo-driver/internal/testutil/helpers"
+	"go.mongodb.org/mongo-driver/mongo/address"
+	"go.mongodb.org/mongo-driver/mongo/description"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 )
 
 const testTimeout = 2 * time.Second
@@ -83,6 +92,54 @@ func TestServerSelection(t *testing.T) {
 		if srvs[0].Addr != desc.Servers[0].Addr {
 			t.Errorf("Incorrect sever selected. got %s; want %s", srvs[0].Addr, desc.Servers[0].Addr)
 		}
+	})
+	t.Run("Compatibility Error Min Version Too High", func(t *testing.T) {
+		topo, err := New()
+		noerr(t, err)
+		desc := description.Topology{
+			Kind: description.Single,
+			Servers: []description.Server{
+				{Addr: address.Address("one:27017"), Kind: description.Standalone, WireVersion: &description.VersionRange{Max: 11, Min: 11}},
+				{Addr: address.Address("two:27017"), Kind: description.Standalone, WireVersion: &description.VersionRange{Max: 9, Min: 2}},
+				{Addr: address.Address("three:27017"), Kind: description.Standalone, WireVersion: &description.VersionRange{Max: 9, Min: 2}},
+			},
+		}
+		want := fmt.Errorf(
+			"server at %s requires wire version %d, but this version of the Go driver only supports up to %d",
+			desc.Servers[0].Addr.String(),
+			desc.Servers[0].WireVersion.Min,
+			SupportedWireVersions.Max,
+		)
+		desc.CompatibilityErr = want
+		atomic.StoreInt64(&topo.state, topologyConnected)
+		topo.desc.Store(desc)
+		_, err = topo.SelectServer(context.Background(), selectFirst)
+		assert.Equal(t, err, want, "expected %v, got %v", want, err)
+	})
+	t.Run("Compatibility Error Max Version Too Low", func(t *testing.T) {
+		topo, err := New()
+		noerr(t, err)
+		desc := description.Topology{
+			Kind: description.Single,
+			Servers: []description.Server{
+				{Addr: address.Address("one:27017"), Kind: description.Standalone, WireVersion: &description.VersionRange{Max: 1, Min: 1}},
+				{Addr: address.Address("two:27017"), Kind: description.Standalone, WireVersion: &description.VersionRange{Max: 9, Min: 2}},
+				{Addr: address.Address("three:27017"), Kind: description.Standalone, WireVersion: &description.VersionRange{Max: 9, Min: 2}},
+			},
+		}
+		want := fmt.Errorf(
+			"server at %s reports wire version %d, but this version of the Go driver requires "+
+				"at least %d (MongoDB %s)",
+			desc.Servers[0].Addr.String(),
+			desc.Servers[0].WireVersion.Max,
+			SupportedWireVersions.Min,
+			MinSupportedMongoDBVersion,
+		)
+		desc.CompatibilityErr = want
+		atomic.StoreInt64(&topo.state, topologyConnected)
+		topo.desc.Store(desc)
+		_, err = topo.SelectServer(context.Background(), selectFirst)
+		assert.Equal(t, err, want, "expected %v, got %v", want, err)
 	})
 	t.Run("Updated", func(t *testing.T) {
 		topo, err := New()
@@ -160,9 +217,8 @@ func TestServerSelection(t *testing.T) {
 			t.Errorf("Timed out while trying to retrieve selected servers")
 		}
 
-		if err != context.Canceled {
-			t.Errorf("Incorrect error received. got %v; want %v", err, context.Canceled)
-		}
+		want := ServerSelectionError{Wrapped: context.Canceled, Desc: desc}
+		assert.Equal(t, err, want, "Incorrect error received. got %v; want %v", err, want)
 	})
 	t.Run("Timeout", func(t *testing.T) {
 		desc := description.Topology{
@@ -233,8 +289,8 @@ func TestServerSelection(t *testing.T) {
 	t.Run("findServer returns topology kind", func(t *testing.T) {
 		topo, err := New()
 		noerr(t, err)
-		atomic.StoreInt32(&topo.connectionstate, connected)
-		srvr, err := ConnectServer(address.Address("one"), func(desc description.Server) { topo.apply(context.Background(), desc) })
+		atomic.StoreInt64(&topo.state, topologyConnected)
+		srvr, err := ConnectServer(address.Address("one"), topo.updateCallback, topo.id)
 		noerr(t, err)
 		topo.servers[address.Address("one")] = srvr
 		desc := topo.desc.Load().(description.Topology)
@@ -249,11 +305,11 @@ func TestServerSelection(t *testing.T) {
 			t.Errorf("findServer does not properly set the topology description kind. got %v; want %v", ss.Kind, description.Single)
 		}
 	})
-	t.Run("Update on not master error", func(t *testing.T) {
+	t.Run("Update on not primary error", func(t *testing.T) {
 		topo, err := New()
 		noerr(t, err)
 		topo.cfg.cs.HeartbeatInterval = time.Minute
-		atomic.StoreInt32(&topo.connectionstate, connected)
+		atomic.StoreInt64(&topo.state, topologyConnected)
 
 		addr1 := address.Address("one")
 		addr2 := address.Address("two")
@@ -268,7 +324,7 @@ func TestServerSelection(t *testing.T) {
 
 		// manually add the servers to the topology
 		for _, srv := range desc.Servers {
-			s, err := ConnectServer(srv.Addr, func(desc description.Server) { topo.apply(context.Background(), desc) })
+			s, err := ConnectServer(srv.Addr, topo.updateCallback, topo.id)
 			noerr(t, err)
 			topo.servers[srv.Addr] = s
 		}
@@ -285,11 +341,11 @@ func TestServerSelection(t *testing.T) {
 		subCh := make(chan description.Topology, 1)
 		subCh <- desc
 
-		// send a not master error to the server forcing an update
+		// send a not primary error to the server forcing an update
 		serv, err := topo.FindServer(desc.Servers[0])
 		noerr(t, err)
-		atomic.StoreInt32(&serv.connectionstate, connected)
-		serv.ProcessError(driver.Error{Message: "not master"})
+		atomic.StoreInt64(&serv.state, serverConnected)
+		_ = serv.ProcessError(driver.Error{Message: internal.LegacyNotPrimary}, initConnection{})
 
 		resp := make(chan []description.Server)
 
@@ -315,12 +371,12 @@ func TestServerSelection(t *testing.T) {
 			t.Errorf("Incorrect sever selected. got %s; want %s", srvs[0].Addr, desc.Servers[1].Addr)
 		}
 	})
-	t.Run("no subscription in fast path", func(t *testing.T) {
-		// assert that a subscription is not created if there is a server available
+	t.Run("fast path does not subscribe or check timeouts", func(t *testing.T) {
+		// Assert that the server selection fast path does not create a Subscription or check for timeout errors.
 		topo, err := New()
 		noerr(t, err)
 		topo.cfg.cs.HeartbeatInterval = time.Minute
-		atomic.StoreInt32(&topo.connectionstate, connected)
+		atomic.StoreInt64(&topo.state, topologyConnected)
 
 		primaryAddr := address.Address("one")
 		desc := description.Topology{
@@ -330,17 +386,35 @@ func TestServerSelection(t *testing.T) {
 		}
 		topo.desc.Store(desc)
 		for _, srv := range desc.Servers {
-			s, err := ConnectServer(srv.Addr, func(desc description.Server) { topo.apply(context.Background(), desc) })
+			s, err := ConnectServer(srv.Addr, topo.updateCallback, topo.id)
 			noerr(t, err)
 			topo.servers[srv.Addr] = s
 		}
 
-		// manually close subscriptions so calls to Subscribe will error
+		// Manually close subscriptions so calls to Subscribe will error and pass in a cancelled context to ensure the
+		// fast path ignores timeout errors.
 		topo.subscriptionsClosed = true
-		selectedServer, err := topo.SelectServer(context.Background(), description.WriteSelector())
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		selectedServer, err := topo.SelectServer(ctx, description.WriteSelector())
 		noerr(t, err)
 		selectedAddr := selectedServer.(*SelectedServer).address
 		assert.Equal(t, primaryAddr, selectedAddr, "expected address %v, got %v", primaryAddr, selectedAddr)
+	})
+	t.Run("default to selecting from subscription if fast path fails", func(t *testing.T) {
+		topo, err := New()
+		noerr(t, err)
+
+		topo.cfg.cs.HeartbeatInterval = time.Minute
+		atomic.StoreInt64(&topo.state, topologyConnected)
+		desc := description.Topology{
+			Servers: []description.Server{},
+		}
+		topo.desc.Store(desc)
+
+		topo.subscriptionsClosed = true
+		_, err = topo.SelectServer(context.Background(), description.WriteSelector())
+		assert.Equal(t, ErrSubscribeAfterClosed, err, "expected error %v, got %v", ErrSubscribeAfterClosed, err)
 	})
 }
 
@@ -349,6 +423,9 @@ func TestSessionTimeout(t *testing.T) {
 		topo, err := New()
 		noerr(t, err)
 		topo.servers["foo"] = nil
+		topo.fsm.Servers = []description.Server{
+			{Addr: address.Address("foo").Canonicalize(), Kind: description.RSPrimary, SessionTimeoutMinutes: 60},
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -368,8 +445,13 @@ func TestSessionTimeout(t *testing.T) {
 	t.Run("MultipleUpdates", func(t *testing.T) {
 		topo, err := New()
 		noerr(t, err)
+		topo.fsm.Kind = description.ReplicaSetWithPrimary
 		topo.servers["foo"] = nil
 		topo.servers["bar"] = nil
+		topo.fsm.Servers = []description.Server{
+			{Addr: address.Address("foo").Canonicalize(), Kind: description.RSPrimary, SessionTimeoutMinutes: 60},
+			{Addr: address.Address("bar").Canonicalize(), Kind: description.RSSecondary, SessionTimeoutMinutes: 60},
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -378,12 +460,14 @@ func TestSessionTimeout(t *testing.T) {
 			Addr:                  "foo",
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 30,
+			Members:               []address.Address{address.Address("foo").Canonicalize(), address.Address("bar").Canonicalize()},
 		}
 		// should update because new timeout is lower
 		desc2 := description.Server{
 			Addr:                  "bar",
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 20,
+			Members:               []address.Address{address.Address("foo").Canonicalize(), address.Address("bar").Canonicalize()},
 		}
 		topo.apply(ctx, desc1)
 		topo.apply(ctx, desc2)
@@ -398,6 +482,10 @@ func TestSessionTimeout(t *testing.T) {
 		noerr(t, err)
 		topo.servers["foo"] = nil
 		topo.servers["bar"] = nil
+		topo.fsm.Servers = []description.Server{
+			{Addr: address.Address("foo").Canonicalize(), Kind: description.RSPrimary, SessionTimeoutMinutes: 60},
+			{Addr: address.Address("bar").Canonicalize(), Kind: description.RSSecondary, SessionTimeoutMinutes: 60},
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -406,12 +494,14 @@ func TestSessionTimeout(t *testing.T) {
 			Addr:                  "foo",
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 20,
+			Members:               []address.Address{address.Address("foo").Canonicalize(), address.Address("bar").Canonicalize()},
 		}
 		// should not update because new timeout is higher
 		desc2 := description.Server{
 			Addr:                  "bar",
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 30,
+			Members:               []address.Address{address.Address("foo").Canonicalize(), address.Address("bar").Canonicalize()},
 		}
 		topo.apply(ctx, desc1)
 		topo.apply(ctx, desc2)
@@ -426,6 +516,10 @@ func TestSessionTimeout(t *testing.T) {
 		noerr(t, err)
 		topo.servers["foo"] = nil
 		topo.servers["bar"] = nil
+		topo.fsm.Servers = []description.Server{
+			{Addr: address.Address("foo").Canonicalize(), Kind: description.RSPrimary, SessionTimeoutMinutes: 60},
+			{Addr: address.Address("bar").Canonicalize(), Kind: description.RSSecondary, SessionTimeoutMinutes: 60},
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 		defer cancel()
@@ -434,12 +528,14 @@ func TestSessionTimeout(t *testing.T) {
 			Addr:                  "foo",
 			Kind:                  description.RSPrimary,
 			SessionTimeoutMinutes: 20,
+			Members:               []address.Address{address.Address("foo").Canonicalize(), address.Address("bar").Canonicalize()},
 		}
 		// should not update because not a data bearing server
 		desc2 := description.Server{
 			Addr:                  "bar",
 			Kind:                  description.Unknown,
 			SessionTimeoutMinutes: 10,
+			Members:               []address.Address{address.Address("foo").Canonicalize(), address.Address("bar").Canonicalize()},
 		}
 		topo.apply(ctx, desc1)
 		topo.apply(ctx, desc2)
@@ -457,8 +553,9 @@ func TestSessionTimeout(t *testing.T) {
 		topo.servers["two"] = nil
 		topo.servers["three"] = nil
 		topo.fsm.Servers = []description.Server{
-			{Addr: address.Address("one"), Kind: description.RSPrimary, SessionTimeoutMinutes: 20},
-			{Addr: address.Address("two"), Kind: description.RSSecondary}, // does not support sessions
+			{Addr: address.Address("one").Canonicalize(), Kind: description.RSPrimary, SessionTimeoutMinutes: 20},
+			{Addr: address.Address("two").Canonicalize(), Kind: description.RSSecondary}, // does not support sessions
+			{Addr: address.Address("three").Canonicalize(), Kind: description.RSPrimary, SessionTimeoutMinutes: 60},
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
@@ -507,7 +604,7 @@ func TestTopology_String_Race(t *testing.T) {
 	}()
 
 	go func() {
-		topo.String()
+		_ = topo.String()
 		ch <- true
 	}()
 
@@ -538,4 +635,208 @@ func TestTopologyConstruction(t *testing.T) {
 			})
 		}
 	})
+}
+
+type inWindowServer struct {
+	Address  string `json:"address"`
+	Type     string `json:"type"`
+	AvgRTTMS int64  `json:"avg_rtt_ms"`
+}
+
+type inWindowTopology struct {
+	Type    string           `json:"type"`
+	Servers []inWindowServer `json:"servers"`
+}
+
+type inWindowOutcome struct {
+	Tolerance           float64            `json:"tolerance"`
+	ExpectedFrequencies map[string]float64 `json:"expected_frequencies"`
+}
+
+type inWindowTopologyState struct {
+	Address        string `json:"address"`
+	OperationCount int64  `json:"operation_count"`
+}
+
+type inWindowTestCase struct {
+	TopologyDescription inWindowTopology        `json:"topology_description"`
+	MockedTopologyState []inWindowTopologyState `json:"mocked_topology_state"`
+	Iterations          int                     `json:"iterations"`
+	Outcome             inWindowOutcome         `json:"outcome"`
+}
+
+// TestServerSelectionSpecInWindow runs the "in_window" server selection spec tests. This test is
+// in the "topology" package instead of the "description" package (where the rest of the server
+// selection spec tests are) because it primarily tests load-based server selection. Load-based
+// server selection is implemented in Topology.SelectServer() because it requires knowledge of the
+// current "operation count" (the number of currently running operations) for each server, so it
+// can't be effectively accomplished just with server descriptions like most other server selection
+// algorithms.
+func TestServerSelectionSpecInWindow(t *testing.T) {
+	const testsDir = "../../../../data/server-selection/in_window"
+
+	files := testhelpers.FindJSONFilesInDir(t, testsDir)
+
+	for _, file := range files {
+		t.Run(file, func(t *testing.T) {
+			runInWindowTest(t, testsDir, file)
+		})
+	}
+}
+
+func runInWindowTest(t *testing.T, directory string, filename string) {
+	filepath := path.Join(directory, filename)
+	content, err := ioutil.ReadFile(filepath)
+	require.NoError(t, err)
+
+	var test inWindowTestCase
+	require.NoError(t, json.Unmarshal(content, &test))
+
+	// For each server described in the test's "topology_description", create both a *Server and
+	// description.Server, which are both required to run Topology.SelectServer().
+	servers := make(map[string]*Server, len(test.TopologyDescription.Servers))
+	descriptions := make([]description.Server, 0, len(test.TopologyDescription.Servers))
+	for _, testDesc := range test.TopologyDescription.Servers {
+		server := NewServer(
+			address.Address(testDesc.Address),
+			primitive.NilObjectID,
+			withMonitoringDisabled(func(bool) bool { return true }))
+		servers[testDesc.Address] = server
+
+		desc := description.Server{
+			Kind:          serverKindFromString(t, testDesc.Type),
+			Addr:          address.Address(testDesc.Address),
+			AverageRTT:    time.Duration(testDesc.AvgRTTMS) * time.Millisecond,
+			AverageRTTSet: true,
+		}
+
+		if testDesc.AvgRTTMS > 0 {
+			desc.AverageRTT = time.Duration(testDesc.AvgRTTMS) * time.Millisecond
+			desc.AverageRTTSet = true
+		}
+
+		descriptions = append(descriptions, desc)
+	}
+
+	// For each server state in the test's "mocked_topology_state", set the connection pool's
+	// in-use connections count to the test operation count value.
+	for _, state := range test.MockedTopologyState {
+		servers[state.Address].operationCount = state.OperationCount
+	}
+
+	// Create a new Topology, set the state to "connected", store a topology description
+	// containing all server descriptions created from the test server descriptions, and copy
+	// all *Server instances to the Topology's servers list.
+	topology, err := New()
+	require.NoError(t, err, "error creating new Topology")
+	topology.state = topologyConnected
+	topology.desc.Store(description.Topology{
+		Kind:    topologyKindFromString(t, test.TopologyDescription.Type),
+		Servers: descriptions,
+	})
+	for addr, server := range servers {
+		topology.servers[address.Address(addr)] = server
+	}
+
+	// Run server selection the required number of times and record how many times each server
+	// address was selected.
+	counts := make(map[string]int, len(test.TopologyDescription.Servers))
+	for i := 0; i < test.Iterations; i++ {
+		selected, err := topology.SelectServer(
+			context.Background(),
+			description.ReadPrefSelector(readpref.Nearest()))
+		require.NoError(t, err, "error selecting server")
+		counts[string(selected.(*SelectedServer).address)]++
+	}
+
+	// Convert the server selection counts to selection frequencies by dividing the counts by
+	// the total number of server selection attempts.
+	frequencies := make(map[string]float64, len(counts))
+	for addr, count := range counts {
+		frequencies[addr] = float64(count) / float64(test.Iterations)
+	}
+
+	// Assert that the observed server selection frequency for each server address matches the
+	// expected server selection frequency.
+	for addr, expected := range test.Outcome.ExpectedFrequencies {
+		actual := frequencies[addr]
+
+		// If the expected frequency for a given server is 1 or 0, then the observed frequency
+		// MUST be exactly equal to the expected one.
+		if expected == 1 || expected == 0 {
+			assert.Equal(
+				t,
+				expected,
+				actual,
+				"expected frequency of %q to be equal to %f, but is %f",
+				addr, expected, actual)
+			continue
+		}
+
+		// Otherwise, check if the expected frequency is within the given tolerance range.
+		// TODO(GODRIVER-2179): Use assert.Deltaf() when we migrate all test code to the "testify/assert" or an
+		// TODO API-compatible library for assertions.
+		low := expected - test.Outcome.Tolerance
+		high := expected + test.Outcome.Tolerance
+		assert.True(
+			t,
+			actual >= low && actual <= high,
+			"expected frequency of %q to be in range [%f, %f], but is %f",
+			addr, low, high, actual)
+	}
+}
+
+func topologyKindFromString(t *testing.T, s string) description.TopologyKind {
+	t.Helper()
+
+	switch s {
+	case "Single":
+		return description.Single
+	case "ReplicaSet":
+		return description.ReplicaSet
+	case "ReplicaSetNoPrimary":
+		return description.ReplicaSetNoPrimary
+	case "ReplicaSetWithPrimary":
+		return description.ReplicaSetWithPrimary
+	case "Sharded":
+		return description.Sharded
+	case "LoadBalanced":
+		return description.LoadBalanced
+	case "Unknown":
+		return description.Unknown
+	default:
+		t.Fatalf("unrecognized topology kind: %q", s)
+	}
+
+	return description.Unknown
+}
+
+func serverKindFromString(t *testing.T, s string) description.ServerKind {
+	t.Helper()
+
+	switch s {
+	case "Standalone":
+		return description.Standalone
+	case "RSOther":
+		return description.RSMember
+	case "RSPrimary":
+		return description.RSPrimary
+	case "RSSecondary":
+		return description.RSSecondary
+	case "RSArbiter":
+		return description.RSArbiter
+	case "RSGhost":
+		return description.RSGhost
+	case "Mongos":
+		return description.Mongos
+	case "LoadBalancer":
+		return description.LoadBalancer
+	case "PossiblePrimary", "Unknown":
+		// Go does not have a PossiblePrimary server type and per the SDAM spec, this type is synonymous with Unknown.
+		return description.Unknown
+	default:
+		t.Fatalf("unrecognized server kind: %q", s)
+	}
+
+	return description.Unknown
 }

@@ -7,70 +7,51 @@
 package integration
 
 import (
+	"context"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
+	"go.mongodb.org/mongo-driver/internal/testutil/monitor"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 const (
-	errorNotMaster             int32 = 10107
+	errorNotPrimary            int32 = 10107
 	errorShutdownInProgress    int32 = 91
 	errorInterruptedAtShutdown int32 = 11600
 )
-
-var poolChan = make(chan *event.PoolEvent, 100)
-var poolMonitor = &event.PoolMonitor{
-	Event: func(event *event.PoolEvent) {
-		poolChan <- event
-	},
-}
-
-func isPoolCleared() bool {
-	for len(poolChan) > 0 {
-		curr := <-poolChan
-		if curr.Type == event.PoolCleared {
-			return true
-		}
-	}
-	return false
-}
-
-func clearPoolChan() {
-	for len(poolChan) < 0 {
-		<-poolChan
-	}
-}
 
 func TestConnectionsSurvivePrimaryStepDown(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().Topologies(mtest.ReplicaSet).CreateClient(false))
 	defer mt.Close()
 
-	clientOpts := options.Client().ApplyURI(mt.ConnString()).SetRetryWrites(false).SetPoolMonitor(poolMonitor)
-
-	getMoreOpts := mtest.NewOptions().MinServerVersion("4.2").ClientOptions(clientOpts)
+	getMoreOpts := mtest.NewOptions().MinServerVersion("4.2")
 	mt.RunOpts("getMore iteration", getMoreOpts, func(mt *mtest.T) {
-		clearPoolChan()
+		tpm := monitor.NewTestPoolMonitor()
+		mt.ResetClient(options.Client().
+			SetRetryWrites(false).
+			SetPoolMonitor(tpm.PoolMonitor))
 
 		initCollection(mt, mt.Coll)
-		cur, err := mt.Coll.Find(mtest.Background, bson.D{}, options.Find().SetBatchSize(2))
+		cur, err := mt.Coll.Find(context.Background(), bson.D{}, options.Find().SetBatchSize(2))
 		assert.Nil(mt, err, "Find error: %v", err)
-		defer cur.Close(mtest.Background)
-		assert.True(mt, cur.Next(mtest.Background), "expected Next true, got false")
+		defer cur.Close(context.Background())
+		assert.True(mt, cur.Next(context.Background()), "expected Next true, got false")
 
-		err = mt.Client.Database("admin").RunCommand(mtest.Background, bson.D{
+		// replSetStepDown can fail with transient errors, so we use executeAdminCommandWithRetry to handle them and
+		// retry until a timeout is hit.
+		stepDownCmd := bson.D{
 			{"replSetStepDown", 5},
 			{"force", true},
-		}, options.RunCmd().SetReadPreference(readpref.Primary())).Err()
-		assert.Nil(mt, err, "replSetStepDown error: %v", err)
+		}
+		stepDownOpts := options.RunCmd().SetReadPreference(mtest.PrimaryRp)
+		executeAdminCommandWithRetry(mt, mt.Client, stepDownCmd, stepDownOpts)
 
-		assert.True(mt, cur.Next(mtest.Background), "expected Next true, got false")
-		assert.False(mt, isPoolCleared(), "expected pool to not be cleared but was")
+		assert.True(mt, cur.Next(context.Background()), "expected Next true, got false")
+		assert.False(mt, tpm.IsPoolCleared(), "expected pool to not be cleared but was")
 	})
 	mt.RunOpts("server errors", noClientOpts, func(mt *mtest.T) {
 		testCases := []struct {
@@ -79,21 +60,27 @@ func TestConnectionsSurvivePrimaryStepDown(t *testing.T) {
 			errCode                int32
 			poolCleared            bool
 		}{
-			{"notMaster keep pool", "4.2", "", errorNotMaster, false},
-			{"notMaster reset pool", "4.0", "4.0", errorNotMaster, true},
+			{"notPrimary keep pool", "4.2", "", errorNotPrimary, false},
+			{"notPrimary reset pool", "4.0", "4.0", errorNotPrimary, true},
 			{"shutdown in progress reset pool", "4.0", "", errorShutdownInProgress, true},
 			{"interrupted at shutdown reset pool", "4.0", "", errorInterruptedAtShutdown, true},
 		}
 		for _, tc := range testCases {
-			tcOpts := mtest.NewOptions().ClientOptions(clientOpts)
+			opts := mtest.NewOptions()
 			if tc.minVersion != "" {
-				tcOpts.MinServerVersion(tc.minVersion)
+				opts.MinServerVersion(tc.minVersion)
 			}
 			if tc.maxVersion != "" {
-				tcOpts.MaxServerVersion(tc.maxVersion)
+				opts.MaxServerVersion(tc.maxVersion)
 			}
-			mt.RunOpts(tc.name, tcOpts, func(mt *mtest.T) {
-				clearPoolChan()
+			mt.RunOpts(tc.name, opts, func(mt *mtest.T) {
+				tpm := monitor.NewTestPoolMonitor()
+				mt.ResetClient(options.Client().
+					SetRetryWrites(false).
+					SetPoolMonitor(tpm.PoolMonitor).
+					// Use a low heartbeat frequency so the Client will quickly recover when using
+					// failpoints that cause SDAM state changes.
+					SetHeartbeatInterval(defaultHeartbeatInterval))
 
 				mt.SetFailPoint(mtest.FailPoint{
 					ConfigureFailPoint: "failCommand",
@@ -106,21 +93,21 @@ func TestConnectionsSurvivePrimaryStepDown(t *testing.T) {
 					},
 				})
 
-				_, err := mt.Coll.InsertOne(mtest.Background, bson.D{{"test", 1}})
+				_, err := mt.Coll.InsertOne(context.Background(), bson.D{{"test", 1}})
 				assert.NotNil(mt, err, "expected InsertOne error, got nil")
 				cerr, ok := err.(mongo.CommandError)
 				assert.True(mt, ok, "expected error type %v, got %v", mongo.CommandError{}, err)
 				assert.Equal(mt, tc.errCode, cerr.Code, "expected error code %v, got %v", tc.errCode, cerr.Code)
 
 				if tc.poolCleared {
-					assert.True(mt, isPoolCleared(), "expected pool to be cleared but was not")
+					assert.True(mt, tpm.IsPoolCleared(), "expected pool to be cleared but was not")
 					return
 				}
 
 				// if pool shouldn't be cleared, another operation should succeed
-				_, err = mt.Coll.InsertOne(mtest.Background, bson.D{{"test", 1}})
+				_, err = mt.Coll.InsertOne(context.Background(), bson.D{{"test", 1}})
 				assert.Nil(mt, err, "InsertOne error: %v", err)
-				assert.False(mt, isPoolCleared(), "expected pool to not be cleared but was")
+				assert.False(mt, tpm.IsPoolCleared(), "expected pool to not be cleared but was")
 			})
 		}
 	})

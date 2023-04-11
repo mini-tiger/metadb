@@ -2,8 +2,10 @@
   "version": 1,
   "style": "unit",
   "description": "When a pool is closed, it MUST first destroy all available connections in that pool",
-  "skipReason" : "test requires that close does not aggressively close used connections",
   "operations": [
+    {
+      "name": "ready"
+    },
     {
       "name": "checkOut"
     },
@@ -25,12 +27,14 @@
   "events": [
     {
       "type": "ConnectionCheckedIn",
-      "connectionId": 2
+      "connectionId": 2,
+      "address": 42
     },
     {
       "type": "ConnectionClosed",
       "connectionId": 2,
-      "reason": "poolClosed"
+      "reason": "poolClosed",
+      "address": 42
     },
     {
       "type": "ConnectionPoolClosed",
@@ -39,6 +43,7 @@
   ],
   "ignore": [
     "ConnectionCreated",
+    "ConnectionPoolReady",
     "ConnectionReady",
     "ConnectionPoolCreated",
     "ConnectionCheckOutStarted",

@@ -7,7 +7,7 @@
 package assert
 
 import (
-	"errors"
+	"context"
 	"reflect"
 	"sync"
 	"testing"
@@ -25,7 +25,6 @@ var errorCompareFn = func(e1, e2 error) bool {
 	return e1.Error() == e2.Error()
 }
 var errorCompareOpts = cmp.Options{cmp.Comparer(errorCompareFn)}
-var ErrCallbackTimedOut = errors.New("callback timed out")
 
 // RegisterOpts registers go-cmp options for a type. These options will be used when comparing two objects for equality.
 func RegisterOpts(t reflect.Type, opts ...cmp.Option) {
@@ -83,13 +82,18 @@ func NotNil(t testing.TB, obj interface{}, msg string, args ...interface{}) {
 	}
 }
 
-// RunWithTimeout runs the provided callback for a maximum of timeoutMS milliseconds. It returns the callback error
-// if the callback returned and ErrCallbackTimedOut if the timeout expired.
-func RunWithTimeout(callback func() error, timeout time.Duration) error {
+// Soon runs the provided callback for a maximum of timeoutMS milliseconds. The provided callback
+// should respect the passed-in context and cease execution when it has expired.
+func Soon(t testing.TB, callback func(ctx context.Context), timeout time.Duration) {
+	t.Helper()
+
+	// Create context to manually cancel callback after Soon assertion.
+	callbackCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	done := make(chan struct{})
-	var err error
 	fullCallback := func() {
-		err = callback()
+		callback(callbackCtx)
 		done <- struct{}{}
 	}
 
@@ -100,9 +104,9 @@ func RunWithTimeout(callback func() error, timeout time.Duration) error {
 
 	select {
 	case <-done:
-		return err
+		return
 	case <-timer.C:
-		return ErrCallbackTimedOut
+		t.Fatalf("timed out in %s waiting for callback", timeout)
 	}
 }
 

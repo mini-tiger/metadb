@@ -13,6 +13,7 @@
 package main
 
 import (
+	"configcenter/src/source_controller/coreservice/bussiness/transactionBus"
 	"context"
 	"fmt"
 	"os"
@@ -39,7 +40,8 @@ func main() {
 	op.AddFlags(pflag.CommandLine)
 
 	util.InitFlags()
-
+	transactionBus.PrintTxnMap()
+	transactionBus.CleanTimeOutTxn()
 	ctx, cancel := context.WithCancel(context.Background())
 	if err := app.Run(ctx, cancel, op); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
