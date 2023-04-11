@@ -8,7 +8,7 @@ const parseArgs = require('minimist')
 
 const config = {
   BUILD_TITLE: '',
-  BUILD_OUTPUT: '../bin/enterprise/cmdb'
+  BUILD_OUTPUT: '../../Dockerfile/ui'
 }
 
 const argv = parseArgs(process.argv.slice(2))
