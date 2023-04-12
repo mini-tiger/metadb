@@ -1,8 +1,8 @@
 <template>
   <div class="wrapper">
-    <form class="form" method="POST">
+    <form class="form">
       <h1 class="title">
-        <img class="logo" src="./assets/blueking_cn.svg" alt="logo" width="178" height="33">
+        <img class="logo" src="../assets/images/shijihulianLogo.png" alt="logo" height="120">
       </h1>
       <div class="form-error" ref="error">{{error}}</div>
       <div class="form-item">
@@ -13,12 +13,14 @@
         <img class="form-item-icon" src="./assets/password.svg" width="16" height="16">
         <input class="password" id="password" type="password" name="password" placeholder="密码" v-model.trim="password">
       </div>
-      <button class="form-submit" type="submit" @click="handleSubmit">登录</button>
+      <button class="form-submit" type="submit" @click.stop.prevent="handleSubmit">登录</button>
     </form>
   </div>
 </template>
 
 <script>
+  import Axios from 'axios'
+
   export default {
     data() {
       return {
@@ -28,15 +30,29 @@
       }
     },
     methods: {
-      handleSubmit(event) {
+      handleSubmit() {
         if (!this.username.length) {
           this.error = '请输入用户名'
-          event.preventDefault()
-          return
-        }
-        if (!this.password.length) {
+        } else if (!this.password.length) {
           this.error = '请输入密码'
-          event.preventDefault()
+        } else {
+          // axios实例
+          const axiosInstance = Axios.create({
+            baseURL: '/',
+            xsrfCookieName: 'data_csrftoken',
+            xsrfHeaderName: 'X-CSRFToken',
+            withCredentials: true
+          })
+          const formData = new FormData()
+          formData.set('username', window.btoa(this.username))
+          formData.set('password', window.btoa(this.password))
+          axiosInstance.post('ldap/auth', formData).then(() => {
+            window.User.name = this.username
+            window.localStorage.setItem('loginStatus', '1')
+            this.$router.push('/')
+          }).catch(() => {
+            this.error = '鉴权失败'
+          })
         }
       }
     }

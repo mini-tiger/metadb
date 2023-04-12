@@ -1,6 +1,5 @@
 import has from 'has'
 import {
-  MENU_INDEX,
   MENU_BUSINESS,
   MENU_RESOURCE,
   MENU_MODEL,
@@ -55,9 +54,6 @@ const getMenuRoute = (views, symbol) => {
 }
 
 const menus = [{
-  id: MENU_INDEX,
-  i18n: '首页'
-}, {
   id: MENU_BUSINESS,
   i18n: '业务',
   menu: [{

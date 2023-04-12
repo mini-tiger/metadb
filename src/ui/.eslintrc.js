@@ -436,6 +436,7 @@ module.exports = {
     'vue/this-in-template': 'off',
 
     'vue/no-lone-template': 'off',
+    'newline-per-chained-call': 'off'
   },
   overrides: [
     {

@@ -8,7 +8,7 @@
       <span class="tips-text">{{$t('您的浏览器非Chrome，建议您使用最新版本的Chrome浏览，以保证最好的体验效果')}}</span>
       <i class="tips-icon bk-icon icon-close-circle-shape" @click="showBrowserTips = false"></i>
     </div>
-    <the-header></the-header>
+    <the-header v-if="currentRoute !== '/login'"></the-header>
     <router-view class="views-layout" :name="topView" ref="topView"></router-view>
     <the-permission-modal ref="permissionModal"></the-permission-modal>
     <the-login-modal ref="loginModal"
@@ -24,7 +24,6 @@
   import thePermissionModal from '@/components/modal/permission'
   import theLoginModal from '@blueking/paas-login'
   import { addResizeListener, removeResizeListener } from '@/utils/resize-events'
-  import { MENU_INDEX } from '@/dictionary/menu-symbol'
   import { mapGetters } from 'vuex'
   export default {
     name: 'app',
@@ -43,15 +42,15 @@
     computed: {
       ...mapGetters(['globalLoading', 'mainFullScreen']),
       ...mapGetters('userCustom', ['usercustom', 'firstEntryKey', 'classifyNavigationKey']),
-      isIndex() {
-        return this.$route.name === MENU_INDEX
-      },
       hideBreadcrumbs() {
         return !(this.$route.meta.layout || {}).breadcrumbs
       },
       topView() {
         const [topRoute] = this.$route.matched
         return (topRoute && topRoute.meta.view) || 'default'
+      },
+      currentRoute() {
+        return this.$route.fullPath
       },
       loginUrl() {
         if (process.env.NODE_ENV === 'development') {

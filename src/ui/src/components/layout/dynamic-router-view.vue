@@ -67,7 +67,7 @@
       addResizeListener(this.$refs.scroller, this.scrollerObserverHandler)
       this.addScrollerObserver()
     },
-    beforeDestory() {
+    beforeDestroy() {
       removeResizeListener(this.$refs.scroller, this.scrollerObserverHandler)
       this.scrollerObserver && this.scrollerObserver.disconnect()
     },
