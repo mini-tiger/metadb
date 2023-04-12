@@ -105,7 +105,7 @@
         // }).then((data) => {
         //   window.location.href = data.url
         // })
-        window.localStorage.setItem('loginStatus', '0')
+        window.User.name = ''
         window.location.reload()
       }
     }

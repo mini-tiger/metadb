@@ -4,9 +4,9 @@ services:
     build:
       context: ./
       dockerfile: ./Dockerfile-dev
-    image: cmdb/matedb-ui:1.1.0
+    image: cmdb/matedb-ui:1.2.0
     volumes:
        - ./web:/usr/share/nginx/html
-       - ./nginx.http.conf:/etc/nginx/conf.d/default.conf
+       - ./nginx.http.dev.conf:/etc/nginx/conf.d/default.conf
     ports:
       - 80:80

@@ -48,7 +48,6 @@
           formData.set('password', window.btoa(this.password))
           axiosInstance.post('ldap/auth', formData).then(() => {
             window.User.name = this.username
-            window.localStorage.setItem('loginStatus', '1')
             this.$router.push('/')
           }).catch(() => {
             this.error = '鉴权失败'

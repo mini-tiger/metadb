@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  matedb-ui:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile-release
+    image: harbor.dev.21vianet.com/cmdb/cmdb_matedb_ui:1.2.0
+    ports: 
+      - 80:80

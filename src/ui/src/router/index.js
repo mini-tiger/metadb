@@ -209,10 +209,10 @@ router.beforeEach((to, from, next) => {
         throw new StatusError({ name: '404' })
       }
       await checkViewAuthorize(to)
-      if (to.path !== '/login' && window.localStorage.getItem('loginStatus') !== '1') {
+      if (to.path !== '/login' && window.User.name === '') {
         return next('login')
       }
-      if (to.path === '/login' && window.localStorage.getItem('loginStatus') === '1') {
+      if (to.path === '/login' && window.User.name !== '') {
         return  next('/')
       }
       return next()
