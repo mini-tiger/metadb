@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-ldap/ldap"
+	"time"
 )
 
 type LdapAuthSrvInfo struct {
@@ -39,6 +40,7 @@ func (ld *LdapAuthBasic) LdapUserAuthentication() (*ldap.Entry, error) {
 	//bindpassword := "21VIAnet@G!t157"
 	bindusername := la.BindUsername
 	bindpassword := la.BindPassword
+	ldap.DefaultTimeout = 15 * time.Second
 	l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", la.TcpSrv, 3268))
 	//l, err := ldap.Dial("tcp", fmt.Sprintf("%s:%d", "21vianet.com", 3268))
 	if err != nil {
