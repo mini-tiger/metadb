@@ -45,7 +45,7 @@ apps:
 ui:
    image: harbor.dev.21vianet.com/cmdb/cmdb_matedb_ui:1.1.0
    name: uiserver
-   nodeport: 32164
+   nodeport: 32174
 
 prefix: lmanager-cmdb
 ingress:

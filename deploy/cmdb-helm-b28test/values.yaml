@@ -51,7 +51,7 @@ ingress:
     enable: false
 image:
   repository: harbor.dev.21vianet.com/cmdb/
-  tag: 2023-3-29_1018
+  tag: 2023-5-4_1744
 #  tag: "latest"
 env:
 #  pullPolicy: IfNotPresent

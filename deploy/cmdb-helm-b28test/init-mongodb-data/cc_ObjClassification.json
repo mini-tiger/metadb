@@ -1,1 +1,2 @@
+{"_id":{"$oid":"6412b55a2333719e183a76d9"},"id":5,"bk_classification_id":"metadb_default_groups","bk_classification_name":"默认分组","bk_classification_type":"inner","bk_classification_icon":"icon-cc-host","bk_supplier_account":""}
 {"_id":{"$oid":"63fc26e898cb185b745d53d4"},"id":6,"bk_classification_id":"lmanager","bk_classification_name":"lmanager","bk_classification_type":"inner","bk_classification_icon":"icon-cc-business","bk_supplier_account":""}
