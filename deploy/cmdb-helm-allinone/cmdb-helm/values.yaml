@@ -93,8 +93,10 @@ service:
   - type: NodePort
     port: 8080
     targetPort: 8080
-    nodePort: 31982
     name: apiserver
+
+    nodePort: 31882   # m6
+
 
 adminserver:
     type: ClusterIP

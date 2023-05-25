@@ -110,8 +110,12 @@ service:
   - type: NodePort
     port: 8080
     targetPort: 8080
-    nodePort: 31982
     name: apiserver
+{{ if (contains .env "m6") }}
+    nodePort: 31882   # m6
+{{ else }}
+    nodePort: 31882
+{{ end }}
 
 adminserver:
     type: ClusterIP
