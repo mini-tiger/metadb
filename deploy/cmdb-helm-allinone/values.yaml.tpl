@@ -56,7 +56,7 @@ env:
 {{ else }}
   redispass: "Ne01ink2022!"
   redisport: "6379"
-  redisDBnum: "0"
+  redisDBnum: "2"
 {{ end }}
 
   #mongo public params
