@@ -1,0 +1,114 @@
+---
+{{ $repository := .Values.image.repository}}
+{{ $tag := .Values.image.tag }}
+{{ $pullPolicy := .Values.env.pullPolicy }}
+{{ $mongoCluster := .Values.env.mongo_cluster}}
+{{ $mongoShardNode := .Values.env.mongo_shard_node}}
+
+{{- $fullName := include "lmanager-cmdb.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "lmanager-cmdb.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoScaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "lmanager-cmdb.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "lmanager-cmdb.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          env:
+            {{- include "mytemplate" . | indent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: web
+              protocol: TCP
+              containerPort: {{ .Values.containerPorts.webserver }}
+            - name: api
+              containerPort: {{ .Values.containerPorts.apiserver }}
+              protocol: TCP
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            # One second longer than command timeout should prevent generation of zombie processes.
+            timeoutSeconds: {{ add1 .Values.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            httpGet:
+              path: /healthz
+              port: {{ .Values.containerPorts.webserver }}
+              scheme: HTTP
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ add1 .Values.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            httpGet:
+              path: /healthz
+              port: {{ .Values.containerPorts.webserver }}
+              scheme: HTTP
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+      initContainers:
+        - name: init-redis
+          env:
+            {{- include "mytemplate" . | indent 12 }}
+          image: {{ .Values.initContainers.redisimage }}
+          command: [ 'sh','-c',"env && until redis-cli -h ${redisIp} -p ${redisPort} -a ${redisPass} PING;do echo waiting for redis; sleep 10; done" ]
+        #          command: [ 'sh','-c',"env && until redis-cli -h ${redisIp}.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local -p ${redisPort} -a ${redisPass} PING;do echo waiting for redis; sleep 10; done" ]
+        - name: init-mongo
+          env:
+            {{- include "mytemplate" . | indent 12 }}
+          image: {{ .Values.initContainers.mongoimage }}
+              {{- if eq $mongoCluster "shard" }}
+          command: [ 'sh', '-c', 'env 
+               && until mongo "mongodb://${mongoRootUser}:${mongoRootPass}@{{ $mongoShardNode }}/?connectTimeoutMS=10000&authSource=${mongoRootAuthDB}&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done
+               && (mongo  mongodb://{{ $mongoShardNode }}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)'
+          ]
+              {{- else }}
+          command: [ 'sh', '-c', 'env 
+                && (mongo  mongodb://${mongoIp}:${mongoPort}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)
+                && until mongo "mongodb://cc:cc@${mongoIp}:${mongoPort}/?replicaSet=rs0&connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done'
+          ]
+              {{- end}}
+
+          volumeMounts: #挂载到容器
+            - name: mongocreateuserjs
+              mountPath: /js/createUser.js
+              subPath: createUser.js
+      volumes:
+        - name: mongocreateuserjs
+          configMap: #指定为configmap文件
+            name: {{ $fullName }}-mongocreateuserjs    #刚才创建的redis-config的cm文件
+
+---
+

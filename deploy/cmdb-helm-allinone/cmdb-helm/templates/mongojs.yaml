@@ -1,0 +1,20 @@
+{{- $fullName := include "lmanager-cmdb.fullname" . -}}
+---
+apiVersion: v1
+data:
+  createUser.js: |
+    use cmdb;
+    db.createUser({
+      user: "cc",
+      pwd: "cc",
+      roles: [{ role: "readWrite", db: "cmdb" }]
+    });
+
+kind: ConfigMap
+metadata:
+  name: {{ $fullName }}-mongocreateuserjs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "lmanager-cmdb.labels" . | nindent 4 }}
+
+

@@ -1,0 +1,7 @@
+{{ .Chart.Name }}-{{ .Chart.Version }} deploy on {{ .Release.Namespace }} namespace successed!
+Release: {{ .Release.Name }}
+AppVersion: {{ .Chart.AppVersion }}
+{{ now }}
+
+{{ .Chart.Name }} as servicename
+Changing the chart name is prohibited as it may affect the normal access of the service !!!
