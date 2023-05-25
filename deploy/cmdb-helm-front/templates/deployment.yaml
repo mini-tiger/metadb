@@ -71,7 +71,20 @@ spec:
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: time
+            - name: config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: time
+          hostPath:
+            path: /etc/localtime
+            type: ""
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-configmap
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
