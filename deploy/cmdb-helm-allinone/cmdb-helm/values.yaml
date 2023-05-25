@@ -24,7 +24,7 @@ ingress:
 
 image:
   repository: harbor.lclouds.info/lclouds/cmdb_allinone
-  tag: v2023-5-25_1040
+  tag: v2023-5-25_1538
   pullPolicy: Always
 
 
@@ -38,6 +38,7 @@ imagePullSecrets: []
 
 env:
   pullPolicy: Always
+  redisuser: "neolink"
 
 
 

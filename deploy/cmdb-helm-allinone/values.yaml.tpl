@@ -38,6 +38,7 @@ imagePullSecrets: []
 
 env:
   pullPolicy: Always
+  redisuser: "neolink"
 {{ if or (contains .env "cmdbv4") (contains .env "neolink") }}
   redisip: "redis-master"
 {{ end }}

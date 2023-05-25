@@ -10,6 +10,11 @@
     secretKeyRef:
       name: {{ include "lmanager-cmdb.fullname" . }}-secret
       key: redisDBnum
+- name: redisUser
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "lmanager-cmdb.fullname" . }}-secret
+      key: redisUser
 - name: redisPass
   valueFrom:
     secretKeyRef:

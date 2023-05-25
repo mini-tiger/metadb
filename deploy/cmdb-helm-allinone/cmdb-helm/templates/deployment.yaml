@@ -84,7 +84,7 @@ spec:
             {{- include "mytemplate" . | indent 12 }}
           image: {{ .Values.initContainers.redisimage }}
           command: [ 'sh','-c',"env && until redis-cli -h ${redisIp} -p ${redisPort} -a ${redisPass} PING;do echo waiting for redis; sleep 10; done" ]
-        #          command: [ 'sh','-c',"env && until redis-cli -h ${redisIp}.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local -p ${redisPort} -a ${redisPass} PING;do echo waiting for redis; sleep 10; done" ]
+        #          command: [ 'sh','-c',"env && until redis-cli -h ${redisIp}.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local -p ${redisPort} --user ${redisUser} --pass ${redisPass} PING;do echo waiting for redis; sleep 10; done" ]
         - name: init-mongo
           env:
             {{- include "mytemplate" . | indent 12 }}
