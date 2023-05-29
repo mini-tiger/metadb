@@ -44,6 +44,8 @@ env:
   redisip: "172.60.3.120"
 
 
+
+
   redispass: "Ne01ink2022!"
   redisport: "6379"
   redisDBnum: "2"
@@ -51,8 +53,13 @@ env:
 
   #mongo public params
 
-  mongorootuser: "root"
-  mongorootpass: "cc"
+
+
+
+  mongorootuser: "neolink"
+  mongorootpass: "Ne01ink2022!"
+
+
 
   mongorootauthdb: "admin"
 

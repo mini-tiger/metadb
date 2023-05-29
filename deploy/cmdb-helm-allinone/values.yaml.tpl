@@ -63,7 +63,15 @@ env:
 {{ if (contains .env "m6") }}
   mongorootuser: "neolink"
   mongorootpass: "Ne01ink2022!"
-{{ else }}
+{{ end }}
+
+
+{{ if (contains .env "b28-test") }}
+  mongorootuser: "neolink"
+  mongorootpass: "Ne01ink2022!"
+{{ end }}
+
+{{ if or (contains .env "cmdbv4") (contains .env "neolink") }}
   mongorootuser: "root"
   mongorootpass: "cc"
 {{ end }}
