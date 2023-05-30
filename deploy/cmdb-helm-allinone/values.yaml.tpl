@@ -170,3 +170,29 @@ nodeSelector:
 
 # 资源调度
 tolerations: []
+
+global:
+  ui:
+    enabled: false
+    replicaCount: 1
+    repository: harbor.dev.21vianet.com/lclouds/cmdb_matedb_ui
+    tag: v1.1.0
+    service:
+      type: NodePort
+      port: 80
+      targetPort: 80
+      nodePort: 32174
+    ingress:
+      enabled: false
+      hosts:
+        - paths:
+            - path: /lmanager-cmdb-ui
+              pathType: Prefix
+    resources:
+      limits:
+        cpu: 2
+        memory: 2Gi
+      requests:
+        cpu: 0.5
+        memory: 1Gi
+

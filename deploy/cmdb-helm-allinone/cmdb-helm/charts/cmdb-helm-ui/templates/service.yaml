@@ -1,0 +1,25 @@
+{{- $fullName := include "lmanager-cmdb-ui.fullname" . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "lmanager-cmdb-ui.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.global.ui.service.type | default .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      protocol: TCP
+      name: http
+      {{- if (and (or (eq .Values.global.ui.service.type "NodePort") (eq .Values.global.ui.service.type "LoadBalancer")) (not (empty .Values.global.ui.service.nodePort))) }}
+      nodePort: {{ .Values.global.ui.service.nodePort }}
+      {{- else}}
+      {{- if (and (or (eq .Values.service.type "NodePort") (eq .Values.service.type "LoadBalancer")) (not (empty .Values.service.nodePort))) }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
+      {{- end }}
+
+  selector:
+    {{- include "lmanager-cmdb-ui.selectorLabels" . | nindent 4 }}
