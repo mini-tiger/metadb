@@ -88,16 +88,16 @@ spec:
         - name: init-mongo
           env:
             {{- include "mytemplate" . | indent 12 }}
-          image: {{ .Values.initContainers.mongoimage }}
+          image: {{ .Values.initContainers.jobmongoimage }}
               {{- if eq $mongoCluster "shard" }}
           command: [ 'sh', '-c', 'env 
-               && until mongo "mongodb://${mongoRootUser}:${mongoRootPass}@{{ $mongoShardNode }}/?connectTimeoutMS=10000&authSource=${mongoRootAuthDB}&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done
-               && (mongo  mongodb://{{ $mongoShardNode }}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)'
+               && until mongosh "mongodb://${mongoRootUser}:${mongoRootPass}@{{ $mongoShardNode }}/?connectTimeoutMS=10000&authSource=${mongoRootAuthDB}&authMechanism=SCRAM-SHA-256" --shell="{ disableImplicitSessions: true }" --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done
+               && (mongosh  mongodb://{{ $mongoShardNode }}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)'
           ]
               {{- else }}
           command: [ 'sh', '-c', 'env 
-                && (mongo  mongodb://${mongoIp}:${mongoPort}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)
-                && until mongo "mongodb://cc:cc@${mongoIp}:${mongoPort}/?replicaSet=rs0&connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256" --disableImplicitSessions --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done'
+                && (mongosh  mongodb://${mongoIp}:${mongoPort}/${mongoRootAuthDB} -u ${mongoRootUser} -p ${mongoRootPass} --authenticationDatabase ${mongoRootAuthDB} < /js/createUser.js|| exit 0)
+                && until mongosh "mongodb://cc:cc@${mongoIp}:${mongoPort}/?replicaSet=rs0&connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256" --shell="{ disableImplicitSessions: true }" --eval "db.serverStatus().connections"; do echo waiting for mongodb1; sleep 10; done'
           ]
               {{- end}}
 
