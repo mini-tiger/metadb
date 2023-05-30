@@ -25,6 +25,7 @@ metadata:
 spec:
   #  backoffLimit: 5
   #  activeDeadlineSeconds: 100
+  ttlSecondsAfterFinished: 86400
   template:
     spec:
       containers:
@@ -43,7 +44,7 @@ spec:
               subPath: createShard.js
       restartPolicy: Never
       initContainers:
-        - name: curl-reqest
+        - name: curl-request
           env:
             {{- include "mytemplate" . | indent 12 }}
             - name: POD_IP

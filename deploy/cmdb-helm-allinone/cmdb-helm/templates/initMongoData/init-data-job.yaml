@@ -9,6 +9,7 @@ metadata:
   labels:
     {{- include "lmanager-cmdb.labels" . | nindent 4 }}
 spec:
+  ttlSecondsAfterFinished: 86400
   #  backoffLimit: 5
   #  activeDeadlineSeconds: 100
   template:
