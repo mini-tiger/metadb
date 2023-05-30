@@ -23,16 +23,16 @@ ingress:
     enable: false
 
 image:
-  repository: harbor.dev.21vianet.com/lclouds/cmdb_allinone
+  repository: harbor.lclouds.info/lclouds/cmdb_allinone
   tag: v2023-5-25_163
   pullPolicy: Always
 
 
 initContainers:
-  mongoimage: harbor.dev.21vianet.com/lclouds/mongo:v4.4.13-debian-10-r52
-  redisimage: harbor.dev.21vianet.com/lclouds/redis:vbitnami-6.2.6-debian-10-r103
-  jobmongoimage: harbor.dev.21vianet.com/lclouds/mongodb-sharded:v6.0.1-debian-11-r10
-  jobcurl: harbor.dev.21vianet.com/lclouds/curl:vcentos
+  #mongoimage: harbor.lclouds.info/lclouds/mongo:v4.4.13-debian-10-r52
+  redisimage: harbor.lclouds.info/lclouds/redis:vbitnami-6.2.6-debian-10-r103
+  jobmongoimage: harbor.lclouds.info/lclouds/mongodb-sharded:v6.0.1-debian-11-r10
+  jobcurl: harbor.lclouds.info/lclouds/curl:vcentos
 
 imagePullSecrets: []
 
@@ -41,23 +41,23 @@ env:
   redisuser: "neolink"
 
 
-  redisip: "172.60.3.120"
+
+  redisip: "172.22.34.22"
 
 
 
-
-  redispass: "Ne01ink2022!"
+  redispass: "ne0liNk2022#"
   redisport: "6379"
-  redisDBnum: "2"
+  redisDBnum: "7"
 
 
   #mongo public params
 
-
-
-
   mongorootuser: "neolink"
   mongorootpass: "Ne01ink2022!"
+
+
+
 
 
 
@@ -68,8 +68,8 @@ env:
 
 
 
-  mongo_shard_node: "172.60.3.144:27000,172.60.3.145:27000,172.60.3.146:27000"   # b28-test
 
+  mongo_shard_node: "172.22.34.31:27000,172.22.34.32:27000,172.22.34.33:27000"   # m6
 
   mongo_cluster: "shard"
   # 副本集
@@ -100,7 +100,7 @@ service:
     targetPort: 8080
     name: apiserver
 
-    nodePort: 31882
+    nodePort: 31882   # m6
 
 
 adminserver:

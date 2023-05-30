@@ -29,7 +29,7 @@ image:
 
 
 initContainers:
-  mongoimage: {{.harborDomain}}/lclouds/mongo:v4.4.13-debian-10-r52
+  #mongoimage: {{.harborDomain}}/lclouds/mongo:v4.4.13-debian-10-r52
   redisimage: {{.harborDomain}}/lclouds/redis:vbitnami-6.2.6-debian-10-r103
   jobmongoimage: {{.harborDomain}}/lclouds/mongodb-sharded:v6.0.1-debian-11-r10
   jobcurl: {{.harborDomain}}/lclouds/curl:vcentos
