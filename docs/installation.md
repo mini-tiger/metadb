@@ -1,90 +1,55 @@
-### 1. MTDADB
+### 1. metaDB
 
-#### 1.1编译镜像
+#### 1.1编译打包镜像
 
 ```
+cd configcenter
+make linux
+
 cd configcenter/scripts
-images.go
+go run images.go 
  
 ```
 
 #### 1.2 部署k8s
+##### 1.2.1 deploy mongodb
+```shell
+cd configcenter/deploy/mongodb-sharded
+helm install -n ${ns} mongodb-sharded
+```
 
+##### 1.2.2 deploy redis
+```shell
+cd configcenter/deploy/redis-helm
+helm install -n ${ns} redis
+```
+
+#### 1.2.3 deploy metadb
 ```
 #登录k8s master , clone代码
-cd configcenter/src/deploy
+cd configcenter/deploy/cmdb-helm-allinone/cmdb-helm
 
-helm install mongo -n cmdbv3 -f values.yaml ./mongodb-helm
-helm install redis -n cmdbv3 -f values.yaml ./redis-helm
-helm install zookeeper -n cmdbv3 -f values.yaml ./zookeeper-helm
-
-添加mongo 用户
-kubectl -n cmdbv3 exec mongo-mongodb-primary-0 -ti bash
-mongo -u root -p cc
-use cmdb
-db.createUser({user: "cc",pwd: "cc",roles: [ { role: "readWrite", db: "cmdb" } ]})
-
-cd configcenter/deploy/cmdb-helm
-helm install -n cmdbv3 cmdb .
+helm install -n ${ns} cmdb .
 ```
 
 #### 1.3 开发环境搭建
-
-./mongod --port 27017 --dbpath /soft/mongodb/data/db0 --replSet rs0 --auth --bind_ip_all --fork --logpath=/data/logs
-
+##### 1.3.1 mongo,redis deploy
+基于 docker-compose 3.x
 ```shell
-cd $GOPATH/src/configcenter/deploy/compose
-1.mongo
-mongo集群部署
+cd configcenter/deploy/compose-dev
+./deploy-dev.sh
 
- startdb.sh
-
-mongo 创建用户
- docker exec -ti mongo1 bash
- mongo
- > use cmdb
- > db.createUser({user: "cc",pwd: "cc",roles: [ { role: "readWrite", db: "cmdb" } ]})
-
-mongo 删除
-# docker-compose -f mongo-compose.yml down -v
-docker stop mongo1
-docker stop mongo2
-docker stop mongo3
-docker rm mongo1
-docker rm mongo2
-docker rm mongo3
-rm -rf /home/taojun/mongors
-
-2. redis
-redis 部署
- docker-compose -f redis-compose.yml up -d
- 
-3. zk
- zk 部署
- docker-compose -f zk-compose.yml up -d
- zk 删除
- # docker-compose -f zk-compose.yml down -v
- rm -rf /home/taojun/zookeeper
-```
-
-### 2.ui
-
-#### 2.1 编译镜像
 
 ```
-cd configcenter/deploy_ui
-./docker.sh
-```
 
-#### 2.2 部署k8s
-
+##### 1.3.2 部署k8s helm metadb
 ```
 #登录k8s master , clone代码
 cd configcenter/deploy_ui/cmdb-ui
-helm install -n cmdb ui
+helm install -n ${ns} cmdb .
 ```
 
-#### 2.3 开发环境搭建
+##### 1.3.3 front ui
 
 ```
 cd configcenter/indc-front
