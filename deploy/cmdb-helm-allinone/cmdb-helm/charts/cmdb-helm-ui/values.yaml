@@ -1,0 +1,99 @@
+# Default values for lstack-compute.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+autoScaling:
+  enabled: false
+
+# 生产修改实例数
+replicaCount: 2
+# 检查仓库地址，及tag标签是否正确
+image:
+  repository: harbor.dev.21vianet.com/lclouds/cmdb_matedb_ui
+  tag: v1.1.0
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+# runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+  nodePort: 32174
+
+containerPorts:
+  server: 80
+
+# 存活探针
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 120
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+# 就绪探针
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 1
+  successThreshold: 1
+  failureThreshold: 3
+
+ingress:
+  enabled: true
+  ingressClassName: apisix
+  annotations: {}
+    # k8s.apisix.apache.org/enable-websocket: "true"
+  # k8s.apisix.apache.org/plugin-config-name: lmanager-auth
+  hosts:
+    - paths:
+        - path: /lmanager-cmdb-ui
+          pathType: Prefix
+  tls: []
+
+
+
+# 资源限制
+resources:
+  limits:
+    cpu: 4
+    memory: 4Gi
+  requests:
+    cpu: 1
+    memory: 1Gi
+
+# 标签选择器
+nodeSelector:
+  kubernetes.io/os: linux
+
+# 资源调度
+tolerations: []
+
+affinity: {}

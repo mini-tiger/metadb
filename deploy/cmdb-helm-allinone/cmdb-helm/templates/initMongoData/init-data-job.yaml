@@ -1,0 +1,87 @@
+{{- $fullName := include "lmanager-cmdb.fullname" . -}}
+{{ $adminserver := printf "%s-%s" $fullName .Values.adminserver.name }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $fullName }}-init-mongodb-data-job
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "lmanager-cmdb.labels" . | nindent 4 }}
+spec:
+  ttlSecondsAfterFinished: 86400
+  #  backoffLimit: 5
+  #  activeDeadlineSeconds: 100
+  template:
+    spec:
+      containers:
+        - name: mongodb-data-init-finish
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          image: {{ .Values.initContainers.jobcurl }}
+          command: [ "bash","-c","/data/check_200.sh http://{{ $adminserver }}:60004/UpdateSequence" ]
+#          command: ["bash",  "-c", "sleep 999d"]
+          volumeMounts:
+            - mountPath: /data/check_200.sh
+              name: check-200
+              subPath: check_200.sh
+      restartPolicy: Never
+      initContainers:
+        # 判断metadb basedata 是否完成
+        - name: curl-find-init-metadb-basedata
+          env:
+            {{- include "mytemplate" . | indent 12 }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          image: {{ .Values.initContainers.jobcurl }}
+          command: [ "bash","-c","/data/check_200.sh http://{{ $adminserver }}:60004/FindInitBaseData" ]
+          #command: ["sh","-c","sleep 999d"]
+          volumeMounts:
+            - mountPath: /data/check_200.sh
+              name: check-200
+              subPath: check_200.sh
+        # 导入json mongoimport
+        - name: init-mongodb-job-import
+          env:
+            {{- include "mytemplate" . | indent 12 }}
+          image: {{ .Values.initContainers.jobmongoimage }}
+          command: ["bash","-c","pushd /data/; ./checkandimport.sh  http://{{ $adminserver }}:60004/find/init_mongodb_data ${mongoShardNode}"]
+#          command: ["bash",  "-c", "sleep 999d"]
+          volumeMounts:
+            - mountPath: /data/checkandimport.sh
+              name: checkimportshell
+              subPath: checkandimport.sh
+          {{ $currentScope := . }}
+          {{ range $path, $_ :=  .Files.Glob  "init-mongodb-data/**.json" }}
+          {{- with $currentScope }}
+          {{ $filename := lower (base  $path | trimSuffix ".json" | trimPrefix "cc_") }}
+
+            - name: jsonfile-{{ $filename }}
+              mountPath: /data/{{ base $path }}
+              subPath: {{ base $path }}
+          {{- end }}
+          {{ end }}
+      volumes:
+        - configMap:
+            defaultMode: 0777
+            name: {{ $fullName }}-check-200
+          name: check-200
+        - configMap:
+            defaultMode: 0777
+            name: {{ $fullName }}-checkimportshell
+          name: checkimportshell
+      {{ $currentScope := . }}
+      {{ range $path, $_ :=  .Files.Glob  "init-mongodb-data/**.json" }}
+      {{- with $currentScope }}
+      {{ $filename := lower (base  $path | trimSuffix ".json" | trimPrefix "cc_") }}
+        - configMap:
+            defaultMode: 0777
+            name: {{ $fullName }}-init-data-cm-{{ $filename }}
+          name: jsonfile-{{ $filename }}
+          {{- end }}
+          {{ end }}

@@ -1,0 +1,1 @@
+go run images.go --tplonly=false --tpl=dev-cmdbv4 --helmdeploy=false

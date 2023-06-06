@@ -1,0 +1,134 @@
+
+
+nameOverride: ""
+fullnameOverride: ""
+
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+autoScaling:
+  enabled: false
+
+# 生产修改实例数
+replicaCount: 1
+
+ingress:
+    enable: false
+
+image:
+  repository: harbor.dev.21vianet.com/cmdb/cmdb_allinone
+  tag: 2023-5-9_1314
+  pullPolicy: Always
+
+
+initContainers:
+  mongoimage: harbor.dev.21vianet.com/library/mongo:4.4.13-debian-10-r52
+  redisimage: harbor.dev.21vianet.com/library/redis:bitnami-6.2.6-debian-10-r103
+  jobmongoimage: harbor.dev.21vianet.com/taojun/mongodb-sharded:6.0.1-debian-11-r10
+  jobcurl: harbor.dev.21vianet.com/taojun/mycurl:centos
+
+imagePullSecrets: []
+
+env:
+#  pullPolicy: IfNotPresent
+  pullPolicy: Always
+  redisip: "redis-master"
+  #redisip: "172.60.3.120"   # b28-test
+  #redisip: "redis-master"   # 50.25 cmdb-neolink cmdbv4
+  redispass: "Ne01ink2022!"
+  redisport: "6379"
+  redisDBnum: "0"
+
+  #mongo public params
+  mongorootuser: "root"
+  mongorootauthdb: "admin"
+  mongorootpass: "cc"
+
+  # cluster shard
+
+  #mongo_shard_node: "172.60.3.144:27000,172.60.3.145:27000,172.60.3.146:27000"   # b28-test
+  #mongo_shard_node: "172.22.50.25:32085,172.22.50.25:32086,172.22.50.25:32087"   # 50.25 cmdb-neolink
+  mongo_shard_node: "172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084"    # cmdbv4
+#  mongo_shard_node: "mongo-shard-mongodb-sharded-0:27017,mongo-shard-mongodb-sharded-1:27017,mongo-shard-mongodb-sharded-2:27017"    # cmdbv4
+  mongo_cluster: "shard"
+  # 副本集
+  mongoip: "mongo-mongodb-headless"
+  mongoport: "27017"
+
+podAnnotations: {}
+
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+# runAsUser: 1000
+
+service:
+  - type: NodePort
+    port: 8090
+    targetPort: 8090
+    nodePort: 32178
+    name: webserver
+  - type: NodePort
+    port: 8080
+    targetPort: 8080
+    nodePort: 31982
+    name: apiserver
+
+adminserver:
+    type: ClusterIP
+    port: 60004
+    targetPort: 60004
+    nodePort: 0
+    name: adminserver
+
+containerPorts:
+  webserver: 8090
+  apiserver: 8080
+
+
+
+# 存活探针
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 120
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+# 就绪探针
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 1
+  successThreshold: 1
+  failureThreshold: 3
+
+# 资源限制
+resources:
+  limits:
+    cpu: 4
+    memory: 4Gi
+  requests:
+    cpu: 2
+    memory: 4Gi
+
+# 标签选择器
+nodeSelector:
+  kubernetes.io/os: linux
+
+# 资源调度
+tolerations: []

@@ -5,12 +5,12 @@ apps:
     enable: false
   - name: webserver
     port: 8090
-    nodePort: 32168
+#        nodePort: 32168
     enable: true
   - name: apiserver
     port: 8080
     enable: true
-    nodePort: 31922
+#    nodePort: 31922
   - name: coreservice
     port: 50009
 #    nodePort: 32006
@@ -41,38 +41,40 @@ apps:
 #    port: 60012
 #    enable: false
 
+
 ui:
    image: harbor.dev.21vianet.com/cmdb/cmdb_matedb_ui:1.1.0
    name: uiserver
-   nodeport: 32164
+   nodeport: 32174
 
 prefix: lmanager-cmdb
 ingress:
     enable: false
 image:
   repository: harbor.dev.21vianet.com/cmdb/
-  tag: 2023-3-29_1018
+  tag: 2023-5-4_1744
 #  tag: "latest"
 env:
 #  pullPolicy: IfNotPresent
   pullPolicy: Always
-  #redisip: "redis-master"
-  redisip: "172.60.3.120"   # b28-test
-  #redisip: "redis-master"   # 50.25 cmdb-neolink
+  redisip: "redis-master"
+  #redisip: "172.60.3.120"   # b28-test
+  #redisip: "redis-master"   # 50.25 cmdb-neolink cmdbv4
   redispass: "Ne01ink2022!"
   redisport: "6379"
-  redisDBnum: "7"
+  redisDBnum: "0"
 
   #mongo public params
-  mongorootuser: "neolink"
+  mongorootuser: "root"
   mongorootauthdb: "admin"
-  mongorootpass: "Ne01ink2022!"
+  mongorootpass: "cc"
 
   # cluster shard
 
-  mongo_shard_node: "172.60.3.144:27000,172.60.3.145:27000,172.60.3.146:27000"   # b28-test
+  #mongo_shard_node: "172.60.3.144:27000,172.60.3.145:27000,172.60.3.146:27000"   # b28-test
   #mongo_shard_node: "172.22.50.25:32085,172.22.50.25:32086,172.22.50.25:32087"   # 50.25 cmdb-neolink
-  #mongo_shard_node: "172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084"   #cmdbv4
+  #mongo_shard_node: "172.22.50.25:32082,172.22.50.25:32083,172.22.50.25:32084"    # cmdbv4
+  mongo_shard_node: "mongo-shard-mongodb-sharded-0:27017,mongo-shard-mongodb-sharded-1:27017,mongo-shard-mongodb-sharded-2:27017"    # cmdbv4
   mongo_cluster: "shard"
   # 副本集
   mongoip: "mongo-mongodb-headless"
