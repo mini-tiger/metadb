@@ -1,115 +1,246 @@
 {
-  "collection_name": "test",
-  "database_name": "change-stream-tests",
-  "collection2_name": "test2",
-  "database2_name": "change-stream-tests-2",
+  "description": "change-streams-errors",
+  "schemaVersion": "1.7",
+  "runOnRequirements": [
+    {
+      "serverless": "forbid"
+    }
+  ],
+  "createEntities": [
+    {
+      "client": {
+        "id": "client0",
+        "observeEvents": [
+          "commandStartedEvent"
+        ],
+        "ignoreCommandMonitoringEvents": [
+          "killCursors"
+        ],
+        "useMultipleMongoses": false
+      }
+    },
+    {
+      "client": {
+        "id": "globalClient",
+        "useMultipleMongoses": false
+      }
+    },
+    {
+      "database": {
+        "id": "database0",
+        "client": "client0",
+        "databaseName": "database0"
+      }
+    },
+    {
+      "collection": {
+        "id": "collection0",
+        "database": "database0",
+        "collectionName": "collection0"
+      }
+    },
+    {
+      "database": {
+        "id": "globalDatabase0",
+        "client": "globalClient",
+        "databaseName": "database0"
+      }
+    },
+    {
+      "collection": {
+        "id": "globalCollection0",
+        "database": "globalDatabase0",
+        "collectionName": "collection0"
+      }
+    }
+  ],
+  "initialData": [
+    {
+      "collectionName": "collection0",
+      "databaseName": "database0",
+      "documents": []
+    }
+  ],
   "tests": [
     {
       "description": "The watch helper must not throw a custom exception when executed against a single server topology, but instead depend on a server error",
-      "minServerVersion": "3.6.0",
-      "target": "collection",
-      "topology": [
-        "single"
-      ],
-      "changeStreamPipeline": [],
-      "changeStreamOptions": {},
-      "operations": [],
-      "expectations": [],
-      "result": {
-        "error": {
-          "code": 40573
+      "runOnRequirements": [
+        {
+          "minServerVersion": "3.6.0",
+          "topologies": [
+            "single"
+          ]
         }
-      }
+      ],
+      "operations": [
+        {
+          "name": "createChangeStream",
+          "object": "collection0",
+          "arguments": {
+            "pipeline": []
+          },
+          "expectError": {
+            "errorCode": 40573
+          }
+        }
+      ]
     },
     {
       "description": "Change Stream should error when an invalid aggregation stage is passed in",
-      "minServerVersion": "3.6.0",
-      "target": "collection",
-      "topology": [
-        "replicaset"
-      ],
-      "changeStreamPipeline": [
+      "runOnRequirements": [
         {
-          "$unsupported": "foo"
+          "minServerVersion": "3.6.0",
+          "topologies": [
+            "replicaset"
+          ]
         }
       ],
-      "changeStreamOptions": {},
       "operations": [
         {
-          "database": "change-stream-tests",
-          "collection": "test",
-          "name": "insertOne",
+          "name": "createChangeStream",
+          "object": "collection0",
           "arguments": {
-            "document": {
-              "z": 3
-            }
+            "pipeline": [
+              {
+                "$unsupported": "foo"
+              }
+            ]
+          },
+          "expectError": {
+            "errorCode": 40324
           }
         }
       ],
-      "expectations": [
+      "expectEvents": [
         {
-          "command_started_event": {
-            "command": {
-              "aggregate": "test",
-              "cursor": {},
-              "pipeline": [
-                {
-                  "$changeStream": {
-                    "fullDocument": "default"
-                  }
+          "client": "client0",
+          "ignoreExtraEvents": true,
+          "events": [
+            {
+              "commandStartedEvent": {
+                "command": {
+                  "aggregate": "collection0",
+                  "cursor": {},
+                  "pipeline": [
+                    {
+                      "$changeStream": {}
+                    },
+                    {
+                      "$unsupported": "foo"
+                    }
+                  ]
                 },
-                {
-                  "$unsupported": "foo"
-                }
-              ]
-            },
-            "command_name": "aggregate",
-            "database_name": "change-stream-tests"
-          }
+                "commandName": "aggregate",
+                "databaseName": "database0"
+              }
+            }
+          ]
         }
-      ],
-      "result": {
-        "error": {
-          "code": 40324
-        }
-      }
+      ]
     },
     {
       "description": "Change Stream should error when _id is projected out",
-      "minServerVersion": "4.1.11",
-      "target": "collection",
-      "topology": [
-        "replicaset",
-        "sharded"
-      ],
-      "changeStreamPipeline": [
+      "runOnRequirements": [
         {
-          "$project": {
-            "_id": 0
-          }
+          "minServerVersion": "4.1.11",
+          "topologies": [
+            "replicaset",
+            "sharded-replicaset",
+            "load-balanced"
+          ]
         }
       ],
-      "changeStreamOptions": {},
       "operations": [
         {
-          "database": "change-stream-tests",
-          "collection": "test",
+          "name": "createChangeStream",
+          "object": "collection0",
+          "arguments": {
+            "pipeline": [
+              {
+                "$project": {
+                  "_id": 0
+                }
+              }
+            ]
+          },
+          "saveResultAsEntity": "changeStream0"
+        },
+        {
           "name": "insertOne",
+          "object": "globalCollection0",
           "arguments": {
             "document": {
               "z": 3
             }
           }
+        },
+        {
+          "name": "iterateUntilDocumentOrError",
+          "object": "changeStream0",
+          "expectError": {
+            "errorCode": 280
+          }
         }
-      ],
-      "result": {
-        "error": {
-          "code": 280,
-          "errorLabels": [
-            "NonResumableChangeStreamError"
+      ]
+    },
+    {
+      "description": "change stream errors on ElectionInProgress",
+      "runOnRequirements": [
+        {
+          "minServerVersion": "4.2",
+          "topologies": [
+            "replicaset",
+            "sharded-replicaset",
+            "load-balanced"
           ]
         }
-      }
+      ],
+      "operations": [
+        {
+          "name": "failPoint",
+          "object": "testRunner",
+          "arguments": {
+            "client": "globalClient",
+            "failPoint": {
+              "configureFailPoint": "failCommand",
+              "mode": {
+                "times": 1
+              },
+              "data": {
+                "failCommands": [
+                  "getMore"
+                ],
+                "errorCode": 216,
+                "closeConnection": false
+              }
+            }
+          }
+        },
+        {
+          "name": "createChangeStream",
+          "object": "collection0",
+          "arguments": {
+            "pipeline": []
+          },
+          "saveResultAsEntity": "changeStream0"
+        },
+        {
+          "name": "insertOne",
+          "object": "globalCollection0",
+          "arguments": {
+            "document": {
+              "z": 3
+            }
+          }
+        },
+        {
+          "name": "iterateUntilDocumentOrError",
+          "object": "changeStream0",
+          "expectError": {
+            "errorCode": 216
+          }
+        }
+      ]
     }
   ]
 }

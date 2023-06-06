@@ -210,6 +210,11 @@ func MergeNameOptions(opts ...*NameOptions) *NameOptions {
 
 // GridFSFindOptions represents options that can be used to configure a GridFS Find operation.
 type GridFSFindOptions struct {
+	// If true, the server can write temporary data to disk while executing the find operation. The default value
+	// is false. This option is only valid for MongoDB versions >= 4.4. For previous server versions, the server will
+	// return an error if this option is used.
+	AllowDiskUse *bool
+
 	// The maximum number of documents to be included in each batch returned by the server.
 	BatchSize *int32
 
@@ -220,6 +225,10 @@ type GridFSFindOptions struct {
 
 	// The maximum amount of time that the query can run on the server. The default value is nil, meaning that there
 	// is no time limit for query execution.
+	//
+	// NOTE(benjirewis): MaxTime will be deprecated in a future release. The more general Timeout option may be used
+	// in its place to control the amount of time that a single operation can run before returning an error. MaxTime
+	// is ignored if Timeout is set on the client.
 	MaxTime *time.Duration
 
 	// If true, the cursor created by the operation will not timeout after a period of inactivity. The default value
@@ -229,13 +238,20 @@ type GridFSFindOptions struct {
 	// The number of documents to skip before adding documents to the result. The default value is 0.
 	Skip *int32
 
-	// A document specifying the order in which documents should be returned.
+	// A document specifying the order in which documents should be returned.  The driver will return an error if the
+	// sort parameter is a multi-key map.
 	Sort interface{}
 }
 
 // GridFSFind creates a new GridFSFindOptions instance.
 func GridFSFind() *GridFSFindOptions {
 	return &GridFSFindOptions{}
+}
+
+// SetAllowDiskUse sets the value for the AllowDiskUse field.
+func (f *GridFSFindOptions) SetAllowDiskUse(b bool) *GridFSFindOptions {
+	f.AllowDiskUse = &b
+	return f
 }
 
 // SetBatchSize sets the value for the BatchSize field.
@@ -251,6 +267,10 @@ func (f *GridFSFindOptions) SetLimit(i int32) *GridFSFindOptions {
 }
 
 // SetMaxTime sets the value for the MaxTime field.
+//
+// NOTE(benjirewis): MaxTime will be deprecated in a future release. The more general Timeout
+// option may be used in its place to control the amount of time that a single operation can
+// run before returning an error. MaxTime is ignored if Timeout is set on the client.
 func (f *GridFSFindOptions) SetMaxTime(d time.Duration) *GridFSFindOptions {
 	f.MaxTime = &d
 	return f
@@ -281,6 +301,9 @@ func MergeGridFSFindOptions(opts ...*GridFSFindOptions) *GridFSFindOptions {
 	for _, opt := range opts {
 		if opt == nil {
 			continue
+		}
+		if opt.AllowDiskUse != nil {
+			fo.AllowDiskUse = opt.AllowDiskUse
 		}
 		if opt.BatchSize != nil {
 			fo.BatchSize = opt.BatchSize

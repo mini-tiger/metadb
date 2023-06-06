@@ -1,3 +1,9 @@
+// Copyright (C) MongoDB, Inc. 2022-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package integration
 
 import (
@@ -28,7 +34,7 @@ func TestMain(m *testing.M) {
 	mongodbURI = addCompressorToURI(mongodbURI)
 
 	var err error
-	connectionString, err = connstring.Parse(mongodbURI)
+	connectionString, err = connstring.ParseAndValidate(mongodbURI)
 	if err != nil {
 		fmt.Printf("Could not parse connection string: %v\n", err)
 		os.Exit(1)

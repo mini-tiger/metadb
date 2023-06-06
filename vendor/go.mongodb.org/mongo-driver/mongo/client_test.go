@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"os"
 	"testing"
 	"time"
 
@@ -17,13 +18,13 @@ import (
 	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/internal/testutil"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readconcern"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/tag"
 	"go.mongodb.org/mongo-driver/x/mongo/driver"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 )
 
@@ -31,7 +32,9 @@ var bgCtx = context.Background()
 
 func setupClient(opts ...*options.ClientOptions) *Client {
 	if len(opts) == 0 {
-		opts = append(opts, options.Client().ApplyURI("mongodb://localhost:27017"))
+		clientOpts := options.Client().ApplyURI("mongodb://localhost:27017")
+		testutil.AddTestServerAPIVersion(clientOpts)
+		opts = append(opts, clientOpts)
 	}
 	client, _ := NewClient(opts...)
 	return client
@@ -177,6 +180,94 @@ func TestClient(t *testing.T) {
 		client := setupClient(options.Client().SetReadConcern(rc))
 		assert.Equal(t, rc, client.readConcern, "expected read concern %v, got %v", rc, client.readConcern)
 	})
+	t.Run("min pool size from Set*PoolSize()", func(t *testing.T) {
+		testCases := []struct {
+			name string
+			opts *options.ClientOptions
+			err  error
+		}{
+			{
+				name: "minPoolSize < default maxPoolSize",
+				opts: options.Client().SetMinPoolSize(64),
+				err:  nil,
+			},
+			{
+				name: "minPoolSize > default maxPoolSize",
+				opts: options.Client().SetMinPoolSize(128),
+				err:  errors.New("minPoolSize must be less than or equal to maxPoolSize, got minPoolSize=128 maxPoolSize=100"),
+			},
+			{
+				name: "minPoolSize < maxPoolSize",
+				opts: options.Client().SetMinPoolSize(128).SetMaxPoolSize(256),
+				err:  nil,
+			},
+			{
+				name: "minPoolSize == maxPoolSize",
+				opts: options.Client().SetMinPoolSize(128).SetMaxPoolSize(128),
+				err:  nil,
+			},
+			{
+				name: "minPoolSize > maxPoolSize",
+				opts: options.Client().SetMinPoolSize(64).SetMaxPoolSize(32),
+				err:  errors.New("minPoolSize must be less than or equal to maxPoolSize, got minPoolSize=64 maxPoolSize=32"),
+			},
+			{
+				name: "maxPoolSize == 0",
+				opts: options.Client().SetMinPoolSize(128).SetMaxPoolSize(0),
+				err:  nil,
+			},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				_, err := NewClient(tc.opts)
+				assert.Equal(t, tc.err, err, "expected error %v, got %v", tc.err, err)
+			})
+		}
+	})
+	t.Run("min pool size from ApplyURI()", func(t *testing.T) {
+		testCases := []struct {
+			name string
+			opts *options.ClientOptions
+			err  error
+		}{
+			{
+				name: "minPoolSize < default maxPoolSize",
+				opts: options.Client().ApplyURI("mongodb://localhost:27017/?minPoolSize=64"),
+				err:  nil,
+			},
+			{
+				name: "minPoolSize > default maxPoolSize",
+				opts: options.Client().ApplyURI("mongodb://localhost:27017/?minPoolSize=128"),
+				err:  errors.New("minPoolSize must be less than or equal to maxPoolSize, got minPoolSize=128 maxPoolSize=100"),
+			},
+			{
+				name: "minPoolSize < maxPoolSize",
+				opts: options.Client().ApplyURI("mongodb://localhost:27017/?minPoolSize=128&maxPoolSize=256"),
+				err:  nil,
+			},
+			{
+				name: "minPoolSize == maxPoolSize",
+				opts: options.Client().ApplyURI("mongodb://localhost:27017/?minPoolSize=128&maxPoolSize=128"),
+				err:  nil,
+			},
+			{
+				name: "minPoolSize > maxPoolSize",
+				opts: options.Client().ApplyURI("mongodb://localhost:27017/?minPoolSize=64&maxPoolSize=32"),
+				err:  errors.New("minPoolSize must be less than or equal to maxPoolSize, got minPoolSize=64 maxPoolSize=32"),
+			},
+			{
+				name: "maxPoolSize == 0",
+				opts: options.Client().ApplyURI("mongodb://localhost:27017/?minPoolSize=128&maxPoolSize=0"),
+				err:  nil,
+			},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				_, err := NewClient(tc.opts)
+				assert.Equal(t, tc.err, err, "expected error %v, got %v", tc.err, err)
+			})
+		}
+	})
 	t.Run("retry writes", func(t *testing.T) {
 		retryWritesURI := "mongodb://localhost:27017/?retryWrites=false"
 		retryWritesErrorURI := "mongodb://localhost:27017/?retryWrites=foobar"
@@ -238,6 +329,11 @@ func TestClient(t *testing.T) {
 		client := setupClient(options.Client().SetWriteConcern(wc))
 		assert.Equal(t, wc, client.writeConcern, "mismatch; expected write concern %v, got %v", wc, client.writeConcern)
 	})
+	t.Run("server monitor", func(t *testing.T) {
+		monitor := &event.ServerMonitor{}
+		client := setupClient(options.Client().SetServerMonitor(monitor))
+		assert.Equal(t, monitor, client.serverMonitor, "expected sdam monitor %v, got %v", monitor, client.serverMonitor)
+	})
 	t.Run("GetURI", func(t *testing.T) {
 		t.Run("ApplyURI not called", func(t *testing.T) {
 			opts := options.Client().SetHosts([]string{"localhost:27017"})
@@ -273,6 +369,10 @@ func TestClient(t *testing.T) {
 			{"number of sessions does not divide evenly", endSessionsBatchSize + 1, []int{endSessionsBatchSize, 1}},
 		}
 		for _, tc := range testCases {
+			if testing.Short() {
+				t.Skip("skipping integration test in short mode")
+			}
+
 			t.Run(tc.name, func(t *testing.T) {
 				// Setup a client and skip the test based on server version.
 				var started []*event.CommandStartedEvent
@@ -291,6 +391,7 @@ func TestClient(t *testing.T) {
 				}
 				clientOpts := options.Client().ApplyURI(cs.Original).SetReadPreference(readpref.Primary()).
 					SetWriteConcern(writeconcern.New(writeconcern.WMajority())).SetMonitor(cmdMonitor)
+				testutil.AddTestServerAPIVersion(clientOpts)
 				client, err := Connect(bgCtx, clientOpts)
 				assert.Nil(t, err, "Connect error: %v", err)
 				defer func() {
@@ -299,7 +400,7 @@ func TestClient(t *testing.T) {
 
 				serverVersion, err := getServerVersion(client.Database("admin"))
 				assert.Nil(t, err, "getServerVersion error: %v", err)
-				if compareVersions(t, serverVersion, "3.6.0") < 1 {
+				if compareVersions(serverVersion, "3.6.0") < 1 {
 					t.Skip("skipping server version < 3.6")
 				}
 
@@ -335,6 +436,96 @@ func TestClient(t *testing.T) {
 					assert.Equal(t, len(values), expectedNumValues,
 						"batch size mismatch at index %d; expected %d sessions in batch, got %d", i, expectedNumValues,
 						len(values))
+				}
+			})
+		}
+	})
+	t.Run("serverAPI version", func(t *testing.T) {
+		getServerAPIOptions := func() *options.ServerAPIOptions {
+			return options.ServerAPI(options.ServerAPIVersion1).
+				SetStrict(false).SetDeprecationErrors(false)
+		}
+
+		t.Run("success with all options", func(t *testing.T) {
+			serverAPIOptions := getServerAPIOptions()
+			client, err := NewClient(options.Client().SetServerAPIOptions(serverAPIOptions))
+			assert.Nil(t, err, "unexpected error from NewClient: %v", err)
+			convertedAPIOptions := convertToDriverAPIOptions(serverAPIOptions)
+			assert.Equal(t, convertedAPIOptions, client.serverAPI,
+				"mismatch in serverAPI; expected %v, got %v", convertedAPIOptions, client.serverAPI)
+		})
+		t.Run("failure with unsupported version", func(t *testing.T) {
+			serverAPIOptions := options.ServerAPI("badVersion")
+			_, err := NewClient(options.Client().SetServerAPIOptions(serverAPIOptions))
+			assert.NotNil(t, err, "expected error from NewClient, got nil")
+			errmsg := `api version "badVersion" not supported; this driver version only supports API version "1"`
+			assert.Equal(t, errmsg, err.Error(), "expected error %v, got %v", errmsg, err.Error())
+		})
+		t.Run("cannot modify options after client creation", func(t *testing.T) {
+			serverAPIOptions := getServerAPIOptions()
+			client, err := NewClient(options.Client().SetServerAPIOptions(serverAPIOptions))
+			assert.Nil(t, err, "unexpected error from NewClient: %v", err)
+
+			expectedServerAPIOptions := getServerAPIOptions()
+			// modify passed-in options
+			serverAPIOptions.SetStrict(true).SetDeprecationErrors(true)
+			convertedAPIOptions := convertToDriverAPIOptions(expectedServerAPIOptions)
+			assert.Equal(t, convertedAPIOptions, client.serverAPI,
+				"unexpected modification to serverAPI; expected %v, got %v", convertedAPIOptions, client.serverAPI)
+		})
+	})
+	t.Run("mongocryptd or crypt_shared", func(t *testing.T) {
+		cryptSharedLibPath := os.Getenv("CRYPT_SHARED_LIB_PATH")
+		if cryptSharedLibPath == "" {
+			t.Skip("CRYPT_SHARED_LIB_PATH not set, skipping")
+		}
+
+		testCases := []struct {
+			description       string
+			useCryptSharedLib bool
+		}{
+			{
+				description:       "when crypt_shared is loaded, should not attempt to spawn mongocryptd",
+				useCryptSharedLib: true,
+			},
+			{
+				description:       "when crypt_shared is not loaded, should attempt to spawn mongocryptd",
+				useCryptSharedLib: false,
+			},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.description, func(t *testing.T) {
+				extraOptions := map[string]interface{}{
+					// Set a mongocryptd path that does not exist. If Connect() attempts to start
+					// mongocryptd, it will cause an error.
+					"mongocryptdPath": "/does/not/exist",
+				}
+
+				// If we're using the crypt_shared library, set the "cryptSharedLibRequired" option
+				// to true and the "cryptSharedLibPath" option to the crypt_shared library path from
+				// the CRYPT_SHARED_LIB_PATH environment variable. If we're not using the
+				// crypt_shared library, explicitly disable loading the crypt_shared library.
+				if tc.useCryptSharedLib {
+					extraOptions["cryptSharedLibRequired"] = true
+					extraOptions["cryptSharedLibPath"] = cryptSharedLibPath
+				} else {
+					extraOptions["__cryptSharedLibDisabledForTestOnly"] = true
+				}
+
+				_, err := NewClient(options.Client().
+					SetAutoEncryptionOptions(options.AutoEncryption().
+						SetKmsProviders(map[string]map[string]interface{}{
+							"local": {"key": make([]byte, 96)},
+						}).
+						SetExtraOptions(extraOptions)))
+
+				// If we're using the crypt_shared library, expect that Connect() doesn't attempt to spawn
+				// mongocryptd and no error is returned. If we're not using the crypt_shared library,
+				// expect that Connect() tries to spawn mongocryptd and returns an error.
+				if tc.useCryptSharedLib {
+					assert.Nil(t, err, "Connect() error: %v", err)
+				} else {
+					assert.NotNil(t, err, "expected Connect() error, but got nil")
 				}
 			})
 		}

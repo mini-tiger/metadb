@@ -1,3 +1,9 @@
+// Copyright (C) MongoDB, Inc. 2022-present.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may
+// not use this file except in compliance with the License. You may obtain
+// a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+
 package integration
 
 import (
@@ -17,7 +23,7 @@ func TestInsert(t *testing.T) {
 	var topoOpts []topology.Option
 
 	connOpts = append(connOpts, topology.WithHandshaker(func(h driver.Handshaker) driver.Handshaker {
-		return operation.NewIsMaster().AppName("operationgen-test")
+		return operation.NewHello().AppName("operationgen-test")
 	}))
 	// topoOpts = append(topoOpts, topology.WithServerSelectionTimeout(func(time.Duration) time.Duration { return 5 * time.Second }))
 	serverOpts = append(serverOpts, topology.WithConnectionOptions(func(opts ...topology.ConnectionOption) []topology.ConnectionOption {

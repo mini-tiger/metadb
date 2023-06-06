@@ -19,6 +19,22 @@ import (
 	"configcenter/src/storage/driver/mongodb"
 )
 
+func (s *coreService) StartTransaction(ctx *rest.Contexts) {
+	cap := new(metadata.TxnCapable)
+	if err := ctx.DecodeInto(cap); err != nil {
+		ctx.RespErrorCodeOnly(common.CCErrCommHTTPInputInvalid, "decode transaction request body failed, err: %v", err)
+		return
+	}
+
+	err := mongodb.Client().StartTransaction(ctx.Kit.Ctx, cap)
+	if err != nil {
+		ctx.RespAutoError(ctx.Kit.CCError.Errorf(common.CCErrCommCommitTransactionFailed, err.Error()))
+		return
+	}
+
+	ctx.RespEntity(nil)
+}
+
 // CommitTransaction to commit transaction
 func (s *coreService) CommitTransaction(ctx *rest.Contexts) {
 	cap := new(metadata.TxnCapable)

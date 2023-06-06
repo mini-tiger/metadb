@@ -8,7 +8,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "setName": "rs",
             "setVersion": 1,
             "primary": "a:27017",
@@ -37,6 +38,7 @@
               },
               "newDescription": {
                 "topologyType": "ReplicaSetNoPrimary",
+                "setName": "rs",
                 "servers": [
                   {
                     "address": "a:27017",
@@ -98,6 +100,7 @@
               "topologyId": "42",
               "previousDescription": {
                 "topologyType": "ReplicaSetNoPrimary",
+                "setName": "rs",
                 "servers": [
                   {
                     "address": "a:27017",

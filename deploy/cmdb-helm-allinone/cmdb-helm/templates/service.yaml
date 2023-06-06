@@ -1,0 +1,65 @@
+{{- $fullName := include "lmanager-cmdb.fullname" . -}}
+{{- $firstObject := index .Values.service 0 -}}
+{{- $secondObject := index .Values.service 1 -}}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-{{ $firstObject.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "lmanager-cmdb.labels" . | nindent 4 }}
+spec:
+  type: {{ $firstObject.type }}
+  ports:
+    - port: {{ $firstObject.port }}
+      targetPort: {{ $firstObject.targetPort }}
+      protocol: TCP
+      name: http
+      {{- if (and (or (eq $firstObject.type "NodePort") (eq $firstObject.type "LoadBalancer")) (not (empty $firstObject.nodePort))) }}
+      nodePort: {{ $firstObject.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "lmanager-cmdb.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-{{ $secondObject.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "lmanager-cmdb.labels" . | nindent 4 }}
+spec:
+  type: {{ $secondObject.type }}
+  ports:
+    - port: {{ $secondObject.port }}
+      targetPort: {{ $secondObject.targetPort }}
+      protocol: TCP
+      name: http
+      {{- if (and (or (eq $secondObject.type "NodePort") (eq $secondObject.type "LoadBalancer")) (not (empty $secondObject.nodePort))) }}
+      nodePort: {{ $secondObject.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "lmanager-cmdb.selectorLabels" . | nindent 4 }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-{{ .Values.adminserver.name}}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "lmanager-cmdb.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.adminserver.type }}
+  ports:
+    - port: {{ .Values.adminserver.port }}
+      targetPort: {{ .Values.adminserver.targetPort }}
+      protocol: TCP
+      name: http
+      {{- if (and (or (eq .Values.adminserver.type "NodePort") (eq .Values.adminserver.type "LoadBalancer")) (not (empty .Values.adminserver.nodePort))) }}
+      nodePort: {{ .Values.adminserver.nodePort }}
+      {{- end }}
+  selector:
+    {{- include "lmanager-cmdb.selectorLabels" . | nindent 4 }}

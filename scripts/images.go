@@ -134,7 +134,7 @@ func RunCommandStd(command string) (bytes.Buffer, bytes.Buffer) {
 
 func main() {
 	flag.Parse()
-	fmt.Printf("!!!!!!!!!!!   当前 k8s namespace: %s ,tplflag: %s , tplOnly: %v \n ", getNSEnv(), tpl, tplOnly)
+	fmt.Printf("!!!!!!!!!!!   当前 ENV k8s namespace: %s ,tplflag: %s , tplOnly: %v \n ", getNSEnv(), tpl, tplOnly)
 	time.Sleep(500 * time.Millisecond)
 	if tplOnly {
 		//fmt.Println("helm tpl flag:", tpl)

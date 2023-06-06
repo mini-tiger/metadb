@@ -55,6 +55,9 @@ type DB interface {
 	Close() error
 
 	// CommitTransaction 提交事务
+	StartTransaction(context.Context, *metadata.TxnCapable) error
+
+	// CommitTransaction 提交事务
 	CommitTransaction(context.Context, *metadata.TxnCapable) error
 	// AbortTransaction 取消事务
 	AbortTransaction(context.Context, *metadata.TxnCapable) (bool, error)

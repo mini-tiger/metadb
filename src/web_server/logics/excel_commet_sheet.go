@@ -13,16 +13,14 @@
 package logics
 
 import (
-	"configcenter/src/common/util"
-	"context"
-	"encoding/json"
-	"strings"
-
 	"configcenter/src/common"
 	"configcenter/src/common/blog"
 	lang "configcenter/src/common/language"
-
+	"configcenter/src/common/util"
+	"context"
+	"encoding/json"
 	"github.com/rentiansheng/xlsx"
+	"strings"
 )
 
 // ProductExcelHeader Excel comment sheet，
@@ -34,10 +32,13 @@ func ProductExcelCommentSheet(ctx context.Context, excel *xlsx.File, defLang lan
 	}
 
 	sheet, err := excel.AddSheet(sheetName)
+
+	//sheet, err := excel.AddSheet(sheetName)
 	if nil != err {
 		blog.Errorf("add comment sheet error,sheet name:%s, error:%s , rid: %s", sheetName, err.Error(), rid)
 		return
 	}
+
 	strJSON := defLang.Language(common.ExcelCommentSheetCotentLangPrefixKey + "_sheet")
 	if "" == strJSON {
 		blog.Errorf("excel comment sheet content is empty, rid: %s", rid)

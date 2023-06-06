@@ -28,6 +28,7 @@ func SetQueryOwner(condition map[string]interface{}, ownerID string) map[string]
 		condition[common.BKOwnerIDField] = common.BKDefaultOwnerID
 		return condition
 	}
+	//condition[common.BKOwnerIDField] = map[string]interface{}{common.BKDBIN: []string{ownerID}}
 	condition[common.BKOwnerIDField] = map[string]interface{}{common.BKDBIN: []string{common.BKDefaultOwnerID, ownerID}}
 	return condition
 }

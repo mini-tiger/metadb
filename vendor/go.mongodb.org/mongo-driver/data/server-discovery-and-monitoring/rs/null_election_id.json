@@ -8,7 +8,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017",
               "b:27017",
@@ -42,7 +43,8 @@
         },
         "topologyType": "ReplicaSetWithPrimary",
         "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
+        "setName": "rs",
+        "maxSetVersion": 1
       }
     },
     {
@@ -51,7 +53,8 @@
           "b:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017",
               "b:27017",
@@ -90,7 +93,11 @@
         },
         "topologyType": "ReplicaSetWithPrimary",
         "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
+        "setName": "rs",
+        "maxSetVersion": 1,
+        "maxElectionId": {
+          "$oid": "000000000000000000000002"
+        }
       }
     },
     {
@@ -99,7 +106,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017",
               "b:27017",
@@ -133,7 +141,11 @@
         },
         "topologyType": "ReplicaSetWithPrimary",
         "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
+        "setName": "rs",
+        "maxSetVersion": 1,
+        "maxElectionId": {
+          "$oid": "000000000000000000000002"
+        }
       }
     },
     {
@@ -142,7 +154,8 @@
           "c:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017",
               "b:27017",
@@ -179,7 +192,11 @@
         },
         "topologyType": "ReplicaSetWithPrimary",
         "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
+        "setName": "rs",
+        "maxSetVersion": 1,
+        "maxElectionId": {
+          "$oid": "000000000000000000000002"
+        }
       }
     }
   ]

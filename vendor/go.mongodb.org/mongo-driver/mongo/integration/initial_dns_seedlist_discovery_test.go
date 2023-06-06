@@ -17,32 +17,46 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/internal/testutil/assert"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/topology"
 )
 
 const (
-	seedlistDiscoveryTestsDir = "../../data/initial-dns-seedlist-discovery"
+	seedlistDiscoveryTestsBaseDir = "../../data/initial-dns-seedlist-discovery"
 )
 
 type seedlistTest struct {
-	URI     string   `bson:"uri"`
-	Seeds   []string `bson:"seeds"`
-	Hosts   []string `bson:"hosts"`
-	Error   bool     `bson:"error"`
-	Options bson.Raw `bson:"options"`
+	URI      string   `bson:"uri"`
+	Seeds    []string `bson:"seeds"`
+	NumSeeds *int     `bson:"numSeeds"`
+	Hosts    []string `bson:"hosts"`
+	NumHosts *int     `bson:"numHosts"`
+	Error    bool     `bson:"error"`
+	Options  bson.Raw `bson:"options"`
 }
 
 func TestInitialDNSSeedlistDiscoverySpec(t *testing.T) {
-	mtOpts := mtest.NewOptions().Topologies(mtest.ReplicaSet).CreateClient(false)
-	mt := mtest.New(t, mtOpts)
+	mt := mtest.New(t, noClientOpts)
 	defer mt.Close()
 
-	for _, file := range jsonFilesInDir(mt, seedlistDiscoveryTestsDir) {
+	mt.RunOpts("replica set", mtest.NewOptions().Topologies(mtest.ReplicaSet).CreateClient(false), func(mt *mtest.T) {
+		runSeedlistDiscoveryDirectory(mt, "replica-set")
+	})
+	mt.RunOpts("sharded", mtest.NewOptions().Topologies(mtest.Sharded).CreateClient(false), func(mt *mtest.T) {
+		runSeedlistDiscoveryDirectory(mt, "sharded")
+	})
+	mt.RunOpts("load balanced", mtest.NewOptions().Topologies(mtest.LoadBalanced).CreateClient(false), func(mt *mtest.T) {
+		runSeedlistDiscoveryDirectory(mt, "load-balanced")
+	})
+}
+
+func runSeedlistDiscoveryDirectory(mt *mtest.T, subdirectory string) {
+	directoryPath := path.Join(seedlistDiscoveryTestsBaseDir, subdirectory)
+	for _, file := range jsonFilesInDir(mt, directoryPath) {
 		mt.RunOpts(file, noClientOpts, func(mt *mtest.T) {
-			runSeedlistDiscoveryTest(mt, path.Join(seedlistDiscoveryTestsDir, file))
+			runSeedlistDiscoveryTest(mt, path.Join(directoryPath, file))
 		})
 	}
 }
@@ -62,36 +76,47 @@ func runSeedlistDiscoveryTest(mt *mtest.T, file string) {
 		mt.Skip("skipping to avoid go1.11 problem with multiple strings in one TXT record")
 	}
 
-	cs, err := connstring.Parse(test.URI)
+	cs, err := connstring.ParseAndValidate(test.URI)
 	if test.Error {
 		assert.NotNil(mt, err, "expected URI parsing error, got nil")
 		return
 	}
-	// the resolved connstring may not have valid credentials
-	if err != nil && err.Error() == "error parsing uri: authsource without username is invalid" {
-		err = nil
-	}
-	assert.Nil(mt, err, "Connect error: %v", err)
+
+	assert.Nil(mt, err, "ParseAndValidate error: %v", err)
 	assert.Equal(mt, connstring.SchemeMongoDBSRV, cs.Scheme,
 		"expected scheme %v, got %v", connstring.SchemeMongoDBSRV, cs.Scheme)
 
-	// DNS records may be out of order from the test file's ordering
-	expectedSeedlist := buildSet(test.Seeds)
+	// DNS records may be out of order from the test file's ordering.
 	actualSeedlist := buildSet(cs.Hosts)
-	assert.Equal(mt, expectedSeedlist, actualSeedlist, "expected seedlist %v, got %v", expectedSeedlist, actualSeedlist)
+	// If NumSeeds is set, check number of seeds in seedlist.
+	if test.NumSeeds != nil {
+		assert.Equal(mt, len(actualSeedlist), *test.NumSeeds,
+			"expected %v seeds, got %v", *test.NumSeeds, len(actualSeedlist))
+	}
+	// If Seeds is set, check contents of seedlist.
+	if test.Seeds != nil {
+		expectedSeedlist := buildSet(test.Seeds)
+		assert.Equal(mt, expectedSeedlist, actualSeedlist, "expected seedlist %v, got %v", expectedSeedlist, actualSeedlist)
+	}
 	verifyConnstringOptions(mt, test.Options, cs)
 	setSSLSettings(mt, &cs, test)
 
-	// make a topology from the options
+	// Make a topology from the options.
 	topo, err := topology.New(topology.WithConnString(func(connstring.ConnString) connstring.ConnString { return cs }))
 	assert.Nil(mt, err, "topology.New error: %v", err)
 	err = topo.Connect()
 	assert.Nil(mt, err, "topology.Connect error: %v", err)
-	defer func() { _ = topo.Disconnect(mtest.Background) }()
+	defer func() { _ = topo.Disconnect(context.Background()) }()
 
+	// If NumHosts is set, check number of hosts currently stored on the Topology.
+	if test.NumHosts != nil {
+		actualNumHosts := len(topo.Description().Servers)
+		assert.Equal(mt, *test.NumHosts, actualNumHosts, "expected to find %v hosts, found %v",
+			*test.NumHosts, actualNumHosts)
+	}
 	for _, host := range test.Hosts {
 		_, err := getServerByAddress(host, topo)
-		assert.Nil(mt, err, "did not find host %v", host)
+		assert.Nil(mt, err, "error finding host %q: %v", host, err)
 	}
 }
 
@@ -121,6 +146,20 @@ func verifyConnstringOptions(mt *mtest.T, expected bson.Raw, cs connstring.ConnS
 		case "authSource":
 			source := opt.StringValue()
 			assert.Equal(mt, source, cs.AuthSource, "expected auth source value %v, got %v", source, cs.AuthSource)
+		case "directConnection":
+			dc := opt.Boolean()
+			assert.True(mt, cs.DirectConnectionSet, "expected cs.DirectConnectionSet to be true, got false")
+			assert.Equal(mt, dc, cs.DirectConnection, "expected cs.DirectConnection to be %v, got %v", dc, cs.DirectConnection)
+		case "loadBalanced":
+			lb := opt.Boolean()
+			assert.True(mt, cs.LoadBalancedSet, "expected cs.LoadBalancedSet set to be true, got false")
+			assert.Equal(mt, lb, cs.LoadBalanced, "expected cs.LoadBalanced to be %v, got %v", lb, cs.LoadBalanced)
+		case "srvMaxHosts":
+			srvMaxHosts := opt.Int32()
+			assert.Equal(mt, srvMaxHosts, int32(cs.SRVMaxHosts), "expected cs.SRVMaxHosts to be %v, got %v", srvMaxHosts, cs.SRVMaxHosts)
+		case "srvServiceName":
+			srvName := opt.StringValue()
+			assert.Equal(mt, srvName, cs.SRVServiceName, "expected cs.SRVServiceName to be %q, got %q", srvName, cs.SRVServiceName)
 		default:
 			mt.Fatalf("unrecognized connstring option %v", key)
 		}
@@ -152,7 +191,7 @@ func setSSLSettings(mt *mtest.T, cs *connstring.ConnString, test seedlistTest) {
 
 	// Skip SSL tests if the server is running without SSL.
 	if testCaseExpectsSSL && !envSSL {
-		mt.Skip("skipping test that expectes ssl in a non-ssl environment")
+		mt.Skip("skipping test that expects ssl in a non-ssl environment")
 	}
 
 	// If SSL tests are running, set the CA file.
@@ -171,9 +210,14 @@ func getServerByAddress(address string, topo *topology.Topology) (description.Se
 		return []description.Server{}, nil
 	})
 
-	selectedServer, err := topo.SelectServerLegacy(context.Background(), selectByName)
+	selectedServer, err := topo.SelectServer(context.Background(), selectByName)
 	if err != nil {
 		return description.Server{}, err
 	}
-	return selectedServer.Server.Description(), nil
+	selectedServerConnection, err := selectedServer.Connection(context.Background())
+	if err != nil {
+		return description.Server{}, err
+	}
+	defer selectedServerConnection.Close()
+	return selectedServerConnection.Description(), nil
 }

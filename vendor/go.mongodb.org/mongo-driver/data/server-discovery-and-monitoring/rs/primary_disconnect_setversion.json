@@ -8,7 +8,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017",
               "b:27017"
@@ -26,7 +27,8 @@
           "b:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017",
               "b:27017"
@@ -59,7 +61,11 @@
         },
         "topologyType": "ReplicaSetWithPrimary",
         "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
+        "setName": "rs",
+        "maxSetVersion": 2,
+        "maxElectionId": {
+          "$oid": "000000000000000000000001"
+        }
       }
     },
     {
@@ -84,7 +90,11 @@
         },
         "topologyType": "ReplicaSetNoPrimary",
         "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
+        "setName": "rs",
+        "maxSetVersion": 2,
+        "maxElectionId": {
+          "$oid": "000000000000000000000001"
+        }
       }
     },
     {
@@ -93,7 +103,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017",
               "b:27017"
@@ -123,7 +134,11 @@
         },
         "topologyType": "ReplicaSetNoPrimary",
         "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
+        "setName": "rs",
+        "maxSetVersion": 2,
+        "maxElectionId": {
+          "$oid": "000000000000000000000001"
+        }
       }
     },
     {
@@ -132,7 +147,8 @@
           "a:27017",
           {
             "ok": 1,
-            "ismaster": true,
+            "helloOk": true,
+            "isWritablePrimary": true,
             "hosts": [
               "a:27017",
               "b:27017"
@@ -165,7 +181,11 @@
         },
         "topologyType": "ReplicaSetWithPrimary",
         "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
+        "setName": "rs",
+        "maxSetVersion": 2,
+        "maxElectionId": {
+          "$oid": "000000000000000000000002"
+        }
       }
     },
     {
@@ -174,7 +194,8 @@
           "b:27017",
           {
             "ok": 1,
-            "ismaster": false,
+            "helloOk": true,
+            "isWritablePrimary": false,
             "secondary": true,
             "hosts": [
               "a:27017",
@@ -203,7 +224,11 @@
         },
         "topologyType": "ReplicaSetWithPrimary",
         "logicalSessionTimeoutMinutes": null,
-        "setName": "rs"
+        "setName": "rs",
+        "maxSetVersion": 2,
+        "maxElectionId": {
+          "$oid": "000000000000000000000002"
+        }
       }
     }
   ]

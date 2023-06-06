@@ -4,6 +4,7 @@
 // not use this file except in compliance with the License. You may obtain
 // a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 
+//go:build cse
 // +build cse
 
 package mongocrypt
@@ -14,6 +15,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"testing"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -48,11 +50,20 @@ func compareResources(t *testing.T, expected, actual bsoncore.Document) {
 
 func createMongoCrypt(t *testing.T) *MongoCrypt {
 	t.Helper()
-	localMasterKey := make([]byte, 96)
-	awsOpts := options.AwsKmsProvider().SetAccessKeyID("example").SetSecretAccessKey("example")
-	localOpts := options.LocalKmsProvider().SetMasterKey(localMasterKey)
-	cryptOpts := options.MongoCrypt().SetAwsProviderOptions(awsOpts).SetLocalProviderOptions(localOpts)
 
+	awsProvider := bsoncore.NewDocumentBuilder().
+		AppendString("accessKeyId", "example").
+		AppendString("secretAccessKey", "example").
+		Build()
+	localProvider := bsoncore.NewDocumentBuilder().
+		AppendBinary("key", 0, make([]byte, 96)).
+		Build()
+	kmsProviders := bsoncore.NewDocumentBuilder().
+		AppendDocument("aws", awsProvider).
+		AppendDocument("local", localProvider).
+		Build()
+
+	cryptOpts := options.MongoCrypt().SetKmsProviders(kmsProviders)
 	crypt, err := NewMongoCrypt(cryptOpts)
 	noerr(t, err)
 	if crypt == nil {
@@ -115,9 +126,15 @@ func testKmsCtx(t *testing.T, ctx *Context, keyAltName bool) {
 	kmsCtx := ctx.NextKmsContext()
 	hostname, err := kmsCtx.HostName()
 	noerr(t, err)
+
+	// TODO GODRIVER-2217: Simply check if hostname != expectedHost once all OSes build the latest libmongocrypt
+	// TODO versions.
+	//
+	// Only check for the hostname. libmongocrypt versions that do not include MONGOCRYPT-352 will not
+	// include the default port "443".
 	expectedHost := "kms.us-east-1.amazonaws.com"
-	if hostname != expectedHost {
-		t.Fatalf("hostname mismatch; expected %s, got %s", expectedHost, hostname)
+	if !strings.Contains(hostname, expectedHost) {
+		t.Fatalf("hostname mismatch; expected %s to contain %s", hostname, expectedHost)
 	}
 
 	// get message to send to KMS
@@ -195,8 +212,13 @@ func TestMongoCrypt(t *testing.T) {
 			schemaMap := map[string]bsoncore.Document{
 				"test.test": schema,
 			}
-			awsOpts := options.AwsKmsProvider().SetSecretAccessKey("example").SetAccessKeyID("example")
-			cryptOpts := options.MongoCrypt().SetAwsProviderOptions(awsOpts).SetLocalSchemaMap(schemaMap)
+			kmsProviders := bsoncore.NewDocumentBuilder().
+				StartDocument("aws").
+				AppendString("accessKeyId", "example").
+				AppendString("secretAccessKey", "example").
+				FinishDocument().
+				Build()
+			cryptOpts := options.MongoCrypt().SetKmsProviders(kmsProviders).SetLocalSchemaMap(schemaMap)
 			crypt, err := NewMongoCrypt(cryptOpts)
 			noerr(t, err)
 			defer crypt.Close()
@@ -270,7 +292,7 @@ func TestMongoCrypt(t *testing.T) {
 
 		// create data key context and check initial state
 		dataKeyOpts := options.DataKey().SetMasterKey(masterKey)
-		dataKeyCtx, err := crypt.CreateDataKeyContext(LocalProvider, dataKeyOpts)
+		dataKeyCtx, err := crypt.CreateDataKeyContext("local", dataKeyOpts)
 		noerr(t, err)
 		defer dataKeyCtx.Close()
 		compareStates(t, Ready, dataKeyCtx.State())

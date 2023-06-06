@@ -13,10 +13,12 @@
 package local
 
 import (
+	"configcenter/src/source_controller/coreservice/bussiness/transactionBus"
 	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/session"
 	"net/http"
 	"strconv"
 	"strings"
@@ -28,7 +30,6 @@ import (
 	"configcenter/src/storage/dal/redis"
 
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/uuid"
 )
 
 const (
@@ -126,34 +127,49 @@ func (t *TxnManager) PrepareCommit(cli *mongo.Client) (mongo.Session, error) {
 
 func (t *TxnManager) PrepareTransaction(cap *metadata.TxnCapable, cli *mongo.Client) (mongo.Session, error) {
 	// create a session client.
-	sess, err := cli.StartSession()
-	if err != nil {
-		return nil, fmt.Errorf("start session failed, err: %v", err)
+	//sess, err := cli.StartSession()
+	//if err != nil {
+	//	return nil, fmt.Errorf("start session failed, err: %v", err)
+	//}
+	//
+	//// only for changing the transaction status
+	//err = sess.StartTransaction()
+	//if err != nil {
+	//	return nil, fmt.Errorf("start transaction %s failed: %v", cap.SessionID, err)
+	//}
+	//
+	//txnNumber, err := t.GenTxnNumber(cap.SessionID, cap.Timeout)
+	//if err != nil {
+	//	return nil, fmt.Errorf("generate txn number failed, err: %v", err)
+	//}
+	//
+	//// reset the session info with the session id.
+	//info := &mongo.SessionInfo{
+	//	TxnNubmer: txnNumber,
+	//	SessionID: cap.SessionID,
+	//}
+	//
+	//err = mongo.CmdbReloadSession(sess, info)
+	//if err != nil {
+	//	return nil, fmt.Errorf("reload transaction: %s failed, err: %v", cap.SessionID, err)
+	//}
+
+	val, exist := transactionBus.TxnMapSess.Get(cap.SessionID)
+	if !exist {
+		err := errors.New(fmt.Sprintf("Not Found Sessionid:%v ", cap.SessionID))
+		blog.Errorf("PrepareTransaction, but prepare transaction failed, err: %v,", err.Error())
+		return nil, err
 	}
 
-	// only for changing the transaction status
-	err = sess.StartTransaction()
-	if err != nil {
-		return nil, fmt.Errorf("start transaction %s failed: %v", cap.SessionID, err)
+	if _, ok := val.(*metadata.SessionTxnCtx); !ok {
+		err := errors.New(fmt.Sprintf("Sessionid:%v convert type err", cap.SessionID))
+		blog.Errorf("PrepareTransaction, but prepare transaction failed, err: %v,", err.Error())
+		return nil, err
 	}
 
-	txnNumber, err := t.GenTxnNumber(cap.SessionID, cap.Timeout)
-	if err != nil {
-		return nil, fmt.Errorf("generate txn number failed, err: %v", err)
-	}
+	reloadSession, _ := val.(*metadata.SessionTxnCtx)
 
-	// reset the session info with the session id.
-	info := &mongo.SessionInfo{
-		TxnNubmer: txnNumber,
-		SessionID: cap.SessionID,
-	}
-
-	err = mongo.CmdbReloadSession(sess, info)
-	if err != nil {
-		return nil, fmt.Errorf("reload transaction: %s failed, err: %v", cap.SessionID, err)
-	}
-
-	return sess, nil
+	return reloadSession, nil
 }
 
 // GetTxnContext create a session if the ctx is a session context, and the bool value is true.
@@ -288,10 +304,12 @@ func (t *TxnManager) GetTxnError(sessionID sessionKey) TxnErrorType {
 
 func GenSessionID() (string, error) {
 	// mongodb driver used this as it's mongodb session id, and we use it too.
-	id, err := uuid.New()
+	//id, err := uuid.New()
+	id, err := session.GetUUID()
 	if err != nil {
 		return "", err
 	}
+
 	return base64.StdEncoding.EncodeToString(id[:]), nil
 }
 

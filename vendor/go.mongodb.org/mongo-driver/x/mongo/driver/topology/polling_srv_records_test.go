@@ -16,9 +16,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
+	"go.mongodb.org/mongo-driver/internal/testutil/assert"
+	"go.mongodb.org/mongo-driver/mongo/address"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/dns"
 )
 
@@ -49,7 +50,7 @@ func (r *mockResolver) LookupSRV(service, proto, name string) (string, []*net.SR
 	if r.lookupTimeout {
 		return "", nil, &net.DNSError{IsTimeout: true}
 	}
-	str, addresses, err := net.LookupSRV("mongodb", "tcp", name)
+	str, addresses, err := net.LookupSRV(service, proto, name)
 	if err != nil {
 		return str, addresses, err
 	}
@@ -124,12 +125,22 @@ func compareHosts(t *testing.T, received []description.Server, expected []string
 }
 
 func TestPollingSRVRecordsSpec(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+	for _, uri := range []string{
+		"mongodb+srv://test1.test.build.10gen.cc/?heartbeatFrequencyMS=100",
+		// Test with user:pass as a regression test for GODRIVER-2620
+		"mongodb+srv://user:pass@test1.test.build.10gen.cc/?heartbeatFrequencyMS=100",
+	} {
+		t.Run(uri, func(t *testing.T) {
+			testPollingSRVRecordsSpec(t, uri)
+		})
 	}
+}
+
+func testPollingSRVRecordsSpec(t *testing.T, uri string) {
+	t.Helper()
 	for _, tt := range srvPollingTests {
 		t.Run(tt.name, func(t *testing.T) {
-			cs, err := connstring.Parse("mongodb+srv://test1.test.build.10gen.cc/?heartbeatFrequencyMS=100")
+			cs, err := connstring.ParseAndValidate(uri)
 			require.NoError(t, err, "Problem parsing the uri: %v", err)
 			topo, err := New(
 				WithConnString(func(connstring.ConnString) connstring.ConnString { return cs }),
@@ -152,23 +163,14 @@ func TestPollingSRVRecordsSpec(t *testing.T) {
 
 			require.True(t, tt.heartbeatTime == topo.pollHeartbeatTime.Load().(bool), "Not polling on correct intervals")
 			compareHosts(t, desc.Servers, tt.expectedHosts)
-			for _, e := range tt.expectedHosts {
-				addr := address.Address(e).Canonicalize()
-				if _, ok := topo.servers[addr]; !ok {
-					t.Errorf("Topology server list did not contain expected value %v", e)
-				}
-			}
 			_ = topo.Disconnect(context.Background())
 		})
 	}
 }
 
 func TestPollSRVRecords(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
-	}
 	t.Run("Not unknown or sharded topology", func(t *testing.T) {
-		cs, err := connstring.Parse("mongodb+srv://test1.test.build.10gen.cc/?heartbeatFrequencyMS=100")
+		cs, err := connstring.ParseAndValidate("mongodb+srv://test1.test.build.10gen.cc/?heartbeatFrequencyMS=100")
 		require.NoError(t, err, "Problem parsing the uri: %v", err)
 		topo, err := New(
 			WithConnString(func(connstring.ConnString) connstring.ConnString { return cs }),
@@ -203,17 +205,11 @@ func TestPollSRVRecords(t *testing.T) {
 		actualHosts := topo.Description().Servers
 		expectedHosts := []string{"localhost.test.build.10gen.cc:27017", "localhost.test.build.10gen.cc:27018"}
 		compareHosts(t, actualHosts, expectedHosts)
-		for _, e := range expectedHosts {
-			addr := address.Address(e).Canonicalize()
-			if _, ok := topo.servers[addr]; !ok {
-				t.Errorf("Topology server list did not contain expected value %v", e)
-			}
-		}
 		_ = topo.Disconnect(context.Background())
 
 	})
 	t.Run("Failed Hostname Verification", func(t *testing.T) {
-		cs, err := connstring.Parse("mongodb+srv://test1.test.build.10gen.cc/?heartbeatFrequencyMS=100")
+		cs, err := connstring.ParseAndValidate("mongodb+srv://test1.test.build.10gen.cc/?heartbeatFrequencyMS=100")
 		require.NoError(t, err, "Problem parsing the uri: %v", err)
 		topo, err := New(
 			WithConnString(func(connstring.ConnString) connstring.ConnString { return cs }),
@@ -237,17 +233,11 @@ func TestPollSRVRecords(t *testing.T) {
 		require.False(t, topo.pollHeartbeatTime.Load().(bool))
 		expectedHosts := []string{"localhost.test.build.10gen.cc:27017", "localhost.test.build.10gen.cc:27018", "localhost.test.build.10gen.cc:27020"}
 		compareHosts(t, desc.Servers, expectedHosts)
-		for _, e := range expectedHosts {
-			addr := address.Address(e).Canonicalize()
-			if _, ok := topo.servers[addr]; !ok {
-				t.Errorf("Topology server list did not contain expected value %v", e)
-			}
-		}
 		_ = topo.Disconnect(context.Background())
 
 	})
 	t.Run("Return to polling time", func(t *testing.T) {
-		cs, err := connstring.Parse("mongodb+srv://test1.test.build.10gen.cc/?heartbeatFrequencyMS=100")
+		cs, err := connstring.ParseAndValidate("mongodb+srv://test1.test.build.10gen.cc/?heartbeatFrequencyMS=100")
 		require.NoError(t, err, "Problem parsing the uri: %v", err)
 		topo, err := New(
 			WithConnString(func(connstring.ConnString) connstring.ConnString { return cs }),
@@ -272,12 +262,175 @@ func TestPollSRVRecords(t *testing.T) {
 		require.False(t, topo.pollHeartbeatTime.Load().(bool))
 		expectedHosts := []string{"localhost.test.build.10gen.cc:27017", "localhost.test.build.10gen.cc:27018"}
 		compareHosts(t, desc.Servers, expectedHosts)
-		for _, e := range expectedHosts {
-			addr := address.Address(e).Canonicalize()
-			if _, ok := topo.servers[addr]; !ok {
-				t.Errorf("Topology server list did not contain expected value %v", e)
-			}
-		}
 		_ = topo.Disconnect(context.Background())
+	})
+}
+
+func TestPollingSRVRecordsLoadBalanced(t *testing.T) {
+	createLBTopology := func(t *testing.T, uri string) *Topology {
+		t.Helper()
+
+		cs, err := connstring.ParseAndValidate(uri)
+		assert.Nil(t, err, "connstring.ParseAndValidate error: %v", err)
+		cs.LoadBalancedSet = true
+		cs.LoadBalanced = true
+
+		topo, err := New(
+			WithConnString(func(connstring.ConnString) connstring.ConnString { return cs }),
+			WithURI(func(string) string { return cs.Original }),
+		)
+		assert.Nil(t, err, "topology.New error: %v", err)
+		return topo
+	}
+
+	t.Run("pollingRequired is set to false", func(t *testing.T) {
+		topo := createLBTopology(t, "mongodb+srv://test1.test.build.10gen.cc/?heartbeatFrequencyMS=100")
+		assert.False(t, topo.pollingRequired, "expected SRV polling to not be required, but it is")
+	})
+
+	t.Run("new records are not detected", func(t *testing.T) {
+		recordsToAdd := []*net.SRV{{"localhost.test.build.10gen.cc.", 27019, 0, 0}}
+		mockResolver := newMockResolver(recordsToAdd, nil, false, false)
+		dnsResolver := &dns.Resolver{
+			LookupSRV: mockResolver.LookupSRV,
+			LookupTXT: mockResolver.LookupTXT,
+		}
+
+		topo := createLBTopology(t, "mongodb+srv://test3.test.build.10gen.cc")
+		topo.dnsResolver = dnsResolver
+		topo.rescanSRVInterval = time.Millisecond * 5
+		err := topo.Connect()
+		assert.Nil(t, err, "Connect error: %v", err)
+		defer func() {
+			_ = topo.Disconnect(context.Background())
+		}()
+
+		// Wait for 2*rescanInterval and assert that polling was not done and the final host list only contains the
+		// original host.
+		time.Sleep(2 * topo.rescanSRVInterval)
+		lookupCalledTimes := atomic.LoadInt32(&mockResolver.ranLookup)
+		assert.Equal(t, int32(0), lookupCalledTimes, "expected SRV lookup to occur 0 times, got %d", lookupCalledTimes)
+		expectedHosts := []string{"localhost.test.build.10gen.cc:27017"}
+		compareHosts(t, topo.Description().Servers, expectedHosts)
+	})
+}
+
+func TestPollSRVRecordsMaxHosts(t *testing.T) {
+	// simulateSRVPoll creates a topology with srvMaxHosts, mocks the DNS changes described by
+	// recordsToAdd and recordsToRemove, and returns the the topology.
+	simulateSRVPoll := func(srvMaxHosts int, recordsToAdd []*net.SRV, recordsToRemove []*net.SRV) (*Topology, func(ctx context.Context) error) {
+		t.Helper()
+
+		cs, err := connstring.ParseAndValidate("mongodb+srv://test1.test.build.10gen.cc/?heartbeatFrequencyMS=100")
+		assert.Nil(t, err, "ParseAndValidate error: %v", err)
+		topo, err := New(
+			WithConnString(func(connstring.ConnString) connstring.ConnString { return cs }),
+			WithURI(func(string) string { return cs.Original }),
+			WithSRVMaxHosts(func(int) int { return srvMaxHosts }),
+		)
+		assert.Nil(t, err, "error during topology creation: %v", err)
+
+		mockRes := newMockResolver(recordsToAdd, recordsToRemove, false, false)
+		topo.dnsResolver = &dns.Resolver{mockRes.LookupSRV, mockRes.LookupTXT}
+		topo.rescanSRVInterval = time.Millisecond * 5
+		err = topo.Connect()
+		assert.Nil(t, err, "Connect error: %v", err)
+
+		// Wait for description to update.
+		sub, err := topo.Subscribe()
+		assert.Nil(t, err, "Subscribe error: %v", err)
+		for atomic.LoadInt32(&mockRes.ranLookup) < 2 {
+			<-sub.Updates
+		}
+
+		return topo, topo.Disconnect
+	}
+
+	t.Run("SRVMaxHosts is 0", func(t *testing.T) {
+		recordsToAdd := []*net.SRV{{"localhost.test.build.10gen.cc.", 27019, 0, 0}, {"localhost.test.build.10gen.cc.", 27020, 0, 0}}
+		recordsToRemove := []*net.SRV{{"localhost.test.build.10gen.cc.", 27018, 0, 0}}
+		topo, disconnect := simulateSRVPoll(0, recordsToAdd, recordsToRemove)
+		defer func() { _ = disconnect(context.Background()) }()
+
+		actualHosts := topo.Description().Servers
+		expectedHosts := []string{
+			"localhost.test.build.10gen.cc:27017",
+			"localhost.test.build.10gen.cc:27019",
+			"localhost.test.build.10gen.cc:27020",
+		}
+		compareHosts(t, actualHosts, expectedHosts)
+	})
+	t.Run("SRVMaxHosts is number of hosts", func(t *testing.T) {
+		recordsToAdd := []*net.SRV{{"localhost.test.build.10gen.cc.", 27019, 0, 0}, {"localhost.test.build.10gen.cc.", 27020, 0, 0}}
+		recordsToRemove := []*net.SRV{{"localhost.test.build.10gen.cc.", 27017, 0, 0}, {"localhost.test.build.10gen.cc.", 27018, 0, 0}}
+		topo, disconnect := simulateSRVPoll(2, recordsToAdd, recordsToRemove)
+		defer func() { _ = disconnect(context.Background()) }()
+
+		actualHosts := topo.Description().Servers
+		expectedHosts := []string{
+			"localhost.test.build.10gen.cc:27019",
+			"localhost.test.build.10gen.cc:27020",
+		}
+		compareHosts(t, actualHosts, expectedHosts)
+	})
+	t.Run("SRVMaxHosts is less than number of hosts", func(t *testing.T) {
+		recordsToAdd := []*net.SRV{{"localhost.test.build.10gen.cc.", 27019, 0, 0}, {"localhost.test.build.10gen.cc.", 27020, 0, 0}}
+		recordsToRemove := []*net.SRV{{"localhost.test.build.10gen.cc.", 27018, 0, 0}}
+		topo, disconnect := simulateSRVPoll(2, recordsToAdd, recordsToRemove)
+		defer func() { _ = disconnect(context.Background()) }()
+
+		actualHosts := topo.Description().Servers
+		assert.Equal(t, 2, len(actualHosts), "expected 2 hosts in topology server list, got %v", len(actualHosts))
+
+		expectedHost := "localhost.test.build.10gen.cc:27017"
+		addr := address.Address(expectedHost).Canonicalize()
+		_, ok := topo.servers[addr]
+		assert.True(t, ok, "topology server list did not contain expected host %v", expectedHost)
+	})
+}
+
+func TestPollSRVRecordsServiceName(t *testing.T) {
+	// simulateSRVPoll creates a topology with srvServiceName, mocks the DNS changes described by
+	// recordsToAdd and recordsToRemove, and returns the topology.
+	simulateSRVPoll := func(srvServiceName string, recordsToAdd []*net.SRV, recordsToRemove []*net.SRV) (*Topology, func(ctx context.Context) error) {
+		t.Helper()
+
+		cs, err := connstring.ParseAndValidate("mongodb+srv://test22.test.build.10gen.cc/?heartbeatFrequencyMS=100&srvServiceName=customname")
+		assert.Nil(t, err, "ParseAndValidate error: %v", err)
+		topo, err := New(
+			WithConnString(func(connstring.ConnString) connstring.ConnString { return cs }),
+			WithURI(func(string) string { return cs.Original }),
+			WithSRVServiceName(func(string) string { return srvServiceName }),
+		)
+		assert.Nil(t, err, "error during topology creation: %v", err)
+
+		mockRes := newMockResolver(recordsToAdd, recordsToRemove, false, false)
+		topo.dnsResolver = &dns.Resolver{mockRes.LookupSRV, mockRes.LookupTXT}
+		topo.rescanSRVInterval = time.Millisecond * 5
+		err = topo.Connect()
+		assert.Nil(t, err, "Connect error: %v", err)
+
+		// Wait for description to update.
+		sub, err := topo.Subscribe()
+		assert.Nil(t, err, "Subscribe error: %v", err)
+		for atomic.LoadInt32(&mockRes.ranLookup) < 2 {
+			<-sub.Updates
+		}
+
+		return topo, topo.Disconnect
+	}
+
+	t.Run("SRVServiceName is customname", func(t *testing.T) {
+		recordsToAdd := []*net.SRV{{"localhost.test.build.10gen.cc.", 27019, 0, 0}, {"localhost.test.build.10gen.cc.", 27020, 0, 0}}
+		recordsToRemove := []*net.SRV{{"localhost.test.build.10gen.cc.", 27017, 0, 0}, {"localhost.test.build.10gen.cc.", 27018, 0, 0}}
+		topo, disconnect := simulateSRVPoll("customname", recordsToAdd, recordsToRemove)
+		defer func() { _ = disconnect(context.Background()) }()
+
+		actualHosts := topo.Description().Servers
+		expectedHosts := []string{
+			"localhost.test.build.10gen.cc:27019",
+			"localhost.test.build.10gen.cc:27020",
+		}
+		compareHosts(t, actualHosts, expectedHosts)
 	})
 }

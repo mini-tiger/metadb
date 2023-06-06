@@ -10,9 +10,9 @@ import (
 	"context"
 	"errors"
 
+	"go.mongodb.org/mongo-driver/mongo/address"
+	"go.mongodb.org/mongo-driver/mongo/description"
 	"go.mongodb.org/mongo-driver/x/bsonx/bsoncore"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/address"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/description"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage"
 )
 
@@ -61,8 +61,19 @@ func (c *ChannelConn) ID() string {
 	return "faked"
 }
 
+// ServerConnectionID implements the driver.Connection interface.
+func (c *ChannelConn) ServerConnectionID() *int32 {
+	serverConnectionID := int32(42)
+	return &serverConnectionID
+}
+
 // Address implements the driver.Connection interface.
 func (c *ChannelConn) Address() address.Address { return address.Address("0.0.0.0") }
+
+// Stale implements the driver.Connection interface.
+func (c *ChannelConn) Stale() bool {
+	return false
+}
 
 // MakeReply creates an OP_REPLY wiremessage from a BSON document
 func MakeReply(doc bsoncore.Document) []byte {
@@ -106,4 +117,28 @@ func GetCommandFromQueryWireMessage(wm []byte) (bsoncore.Document, error) {
 		return nil, errors.New("could not read query")
 	}
 	return query, nil
+}
+
+// GetCommandFromMsgWireMessage returns the command document sent in an OP_MSG wire message.
+func GetCommandFromMsgWireMessage(wm []byte) (bsoncore.Document, error) {
+	var ok bool
+	_, _, _, _, wm, ok = wiremessage.ReadHeader(wm)
+	if !ok {
+		return nil, errors.New("could not read header")
+	}
+
+	_, wm, ok = wiremessage.ReadMsgFlags(wm)
+	if !ok {
+		return nil, errors.New("could not read flags")
+	}
+	_, wm, ok = wiremessage.ReadMsgSectionType(wm)
+	if !ok {
+		return nil, errors.New("could not read section type")
+	}
+
+	cmdDoc, wm, ok := wiremessage.ReadMsgSectionSingleDocument(wm)
+	if !ok {
+		return nil, errors.New("could not read command document")
+	}
+	return cmdDoc, nil
 }
