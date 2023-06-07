@@ -84,6 +84,9 @@ module.exports = () => ({
       use: [
         ...baseStyleLoaders,
         {
+          loader: 'resolve-url-loader',
+        },
+        {
           loader: 'sass-loader',
           options: {
             sassOptions: {
@@ -91,7 +94,8 @@ module.exports = () => ({
                 resolveBase('src/assets'),
                 resolveBase('src/magicbox')
               ],
-            }
+            },
+            sourceMap: true
           }
         },
         {

@@ -42,12 +42,12 @@ const dev = {
   assetsSubDirectory: '',
   assetsPublicPath: '',
   proxyTable: {
-    '/proxy': {
+    '/meta-ui/*': {
       logLevel: 'info',
       changeOrigin: true,
-      target: 'http://{webserver地址}/',
+      target: 'http://172.22.50.25:32168/',
       pathRewrite: {
-        '^/proxy': ''
+        '^/meta-ui/': ''
       }
     },
     '/api/*': {
@@ -130,7 +130,7 @@ module.exports = {
     assetsRoot: `${path.resolve(config.BUILD_OUTPUT)}/web`,
 
     assetsSubDirectory: '',
-    assetsPublicPath: '/',
+    assetsPublicPath: '/meta/',
 
     /**
          * Source Maps

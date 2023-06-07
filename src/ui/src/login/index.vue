@@ -19,7 +19,7 @@
 </template>
 
 <script>
-  import Axios from 'axios'
+  // import Axios from 'axios'
 
   export default {
     data() {
@@ -36,22 +36,28 @@
         } else if (!this.password.length) {
           this.error = '请输入密码'
         } else {
-          // axios实例
-          const axiosInstance = Axios.create({
-            baseURL: '/',
-            xsrfCookieName: 'data_csrftoken',
-            xsrfHeaderName: 'X-CSRFToken',
-            withCredentials: true
-          })
-          const formData = new FormData()
-          formData.set('username', window.btoa(this.username))
-          formData.set('password', window.btoa(this.password))
-          axiosInstance.post('ldap/auth', formData).then(() => {
+          if (this.username === 'admin' && this.password === 'admin') {
             window.User.name = this.username
             this.$router.push('/')
-          }).catch(() => {
+          } else {
             this.error = '鉴权失败'
-          })
+          }
+          // axios实例
+          // const axiosInstance = Axios.create({
+          //   baseURL: '/',
+          //   xsrfCookieName: 'data_csrftoken',
+          //   xsrfHeaderName: 'X-CSRFToken',
+          //   withCredentials: true
+          // })
+          // const formData = new FormData()
+          // formData.set('username', window.btoa(this.username))
+          // formData.set('password', window.btoa(this.password))
+          // axiosInstance.post('ldap/auth', formData).then(() => {
+          //   window.User.name = this.username
+          //   this.$router.push('/')
+          // }).catch(() => {
+          //   this.error = '鉴权失败'
+          // })
         }
       }
     }
