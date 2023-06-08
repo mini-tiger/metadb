@@ -34,7 +34,7 @@
         }
         window.User = {
             admin: '',
-            name: 'admin'
+            name: ''
         }
         window.Supplier = {
             account: '0'
@@ -42,8 +42,8 @@
         window.ESB = {
           userManage: null
         }
-        window.API_HOST = Site.buildVersion.indexOf('dev') !== -1 ? Site.url : (window.location.origin + '/')
-        window.API_PREFIX = API_HOST + 'api/' + Site.version
+        window.API_HOST = window.location.origin + '/meta-ui/'
+        window.API_PREFIX = window.location.origin + '/api/' + Site.version
     </script>
   </body>
 </html>
