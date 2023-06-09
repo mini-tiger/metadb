@@ -1,0 +1,110 @@
+{{- $fullName := include "monstache.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monstache.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "monstache.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "monstache.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml .| nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml .| nindent 12 }}
+          {{- end }}
+          image: {{ template "monstache.image" . }}
+          command: [ "/bin/monstache" ]
+          args: [ "-f", "/etc/config.toml" ]
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+{{/*          ports:*/}}
+{{/*            - name: server*/}}
+{{/*              protocol: TCP*/}}
+{{/*              containerPort: {{ .Values.containerPorts.serverPort }}*/}}
+{{/*            - name: management*/}}
+{{/*              containerPort: {{ .Values.containerPorts.managementPort }}*/}}
+{{/*              protocol: TCP*/}}
+          envFrom:
+            - configMapRef:
+                name: {{ $fullName }}-env
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            # One second longer than command timeout should prevent generation of zombie processes.
+            timeoutSeconds: {{ add1 .Values.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            httpGet:
+              path: /actuator/health/liveness
+{{/*              port: {{ .Values.containerPorts.managementPort }}*/}}
+              scheme: HTTP
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ add1 .Values.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            httpGet:
+              path: /actuator/health/readiness
+{{/*              port: {{ .Values.containerPorts.managementPort }}*/}}
+              scheme: HTTP
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - mountPath: /etc/localtime
+              name: time
+            - name: config-toml
+              mountPath: /etc/config.toml
+              subPath: config.toml
+      volumes:
+        - name: time
+          hostPath:
+            path: /etc/localtime
+            type: ""
+        - name: config-toml
+          configMap:
+            name: {{ .Release.Name }}-configmap
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

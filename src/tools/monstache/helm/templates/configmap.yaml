@@ -1,0 +1,10 @@
+{{- $fullName := include "monstache.fullname" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullName }}-env
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monstache.labels" . | nindent 4 }}
+data:
+{{- toYaml .Values.env | nindent 2 }}

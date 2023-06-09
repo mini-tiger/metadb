@@ -1,0 +1,85 @@
+# Default values for lstack-network-ops.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  registry: harbor.dev.21vianet.com
+  repository: taojun/monstache
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+#localLogPath:  /var/log/lstack-network-ops
+#commonSecretName: lstack-common
+
+
+podAnnotations: {}
+
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+# runAsUser: 1000
+
+env:
+  MONSTACHE_ES_URLS: "http://172.22.50.25:32572"
+  MONSTACHE_MONGO_URL: "mongodb://cc:cc@172.22.50.25:27117,172.22.50.25:27118/?readPreference=primary&serverSelectionTimeoutMS=5000&connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256"
+  MONSTACHE_CHANGE_STREAM_NS: cmdb.cc_ApplicationBase,cmdb.cc_HostBase,cmdb.cc_ObjectBase,cmdb.cc_ObjDes
+  MONSTACHE_DIRECT_READ_NS: cmdb.cc_ApplicationBase,cmdb.cc_HostBase,cmdb.cc_ObjectBase,cmdb.cc_ObjDes
+  MONSTACHE_MONGO_CONFIG_URL: "mongodb://root:cc@172.22.50.25:27119/?readPreference=primary&serverSelectionTimeoutMS=5000&connectTimeoutMS=10000&authSource=admin&authMechanism=SCRAM-SHA-256"
+
+containerPorts:
+#  serverPort: 30114
+#  managementPort: 30115
+
+#service:
+#  type: ClusterIP
+#  port: 80
+#  targetPort: 30114
+#  nodePort: 30114
+
+# 存活探针
+livenessProbe:
+  enabled: false
+  initialDelaySeconds: 120
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+# 就绪探针
+readinessProbe:
+  enabled: false
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 1
+  successThreshold: 1
+  failureThreshold: 3
+
+
+
+resources:
+  limits:
+    cpu: 4
+    memory: 4Gi
+  requests:
+    cpu: 2
+    memory: 4Gi
+
+# 标签选择器
+nodeSelector:
+  kubernetes.io/os: linux
+
+# 资源调度
+tolerations: []
+
+affinity: {}

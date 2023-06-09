@@ -1,0 +1,65 @@
+# cmdb connection settings
+
+# connect to MongoDB using the following URL
+#mongo-url =  "mongodb://cc:cc@172.22.50.25:27117,172.22.50.25:27118/?readPreference=primary&serverSelectionTimeoutMS=5000&connectTimeoutMS=10000&authSource=cmdb&authMechanism=SCRAM-SHA-256"
+# connect to the Elasticsearch REST API at the following node URLs
+#elasticsearch-urls = ["http://localhost:9200"]
+#elasticsearch-urls = ["http://172.22.50.25:32572"]
+# frequently required settings
+
+# if you need to seed an index from a collection and not just listen and sync changes events
+# you can copy entire collections or views from MongoDB to Elasticsearch
+#direct-read-namespaces = ["cmdb.cc_ApplicationBase","cmdb.cc_HostBase","cmdb.cc_ObjectBase","cmdb.cc_ObjDes"]
+
+# if you want to use MongoDB change streams instead of legacy oplog tailing use change-stream-namespaces
+# change streams require at least MongoDB API 3.6+
+# if you have MongoDB 4+ you can listen for changes to an entire database or entire deployment
+# in this case you usually don't need regexes in your config to filter collections unless you target the deployment.
+# to listen to an entire db use only the database name.  For a deployment use an empty string.
+#change-stream-namespaces = ["cmdb.cc_ApplicationBase","cmdb.cc_HostBase","cmdb.cc_ObjectBase","cmdb.cc_ObjDes"]
+
+# additional settings
+
+# compress requests to Elasticsearch
+gzip = true
+# use the following user name for Elasticsearch basic auth
+elasticsearch-user = ""
+# use the following password for Elasticsearch basic auth
+elasticsearch-password = ""
+# use 4 go routines concurrently pushing documents to Elasticsearch
+elasticsearch-max-conns = 4
+# propagate dropped collections in MongoDB as index deletes in Elasticsearch
+dropped-collections = true
+# propagate dropped databases in MongoDB as index deletes in Elasticsearch
+dropped-databases = true
+# resume processing from a timestamp saved in a previous run
+resume = true
+# do not validate that progress timestamps have been saved
+resume-write-unsafe = false
+# override the name under which resume state is saved
+resume-name = "default"
+# use a custom resume strategy (tokens) instead of the default strategy (timestamps)
+# tokens work with MongoDB API 3.6+ while timestamps work only with MongoDB API 4.0+
+resume-strategy = 0
+# print detailed information including request traces
+verbose = true
+
+# mapping settings
+
+[[mapping]]
+namespace = "cmdb.cc_ApplicationBase"
+index = "cmdb.cc_applicationbase"
+
+[[mapping]]
+namespace = "cmdb.cc_HostBase"
+index = "cmdb.cc_hostbase"
+
+[[mapping]]
+namespace = "cmdb.cc_ObjectBase"
+index = "cmdb.cc_objectbase"
+
+[[mapping]]
+namespace = "cmdb.cc_ObjDes"
+index = "cmdb.cc_objdes"
+
+#

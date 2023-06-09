@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "monstache.labels" . | nindent 4 }}
+data:
+  config.toml: |-
+{{ .Files.Get "config.toml" | indent 4}}
